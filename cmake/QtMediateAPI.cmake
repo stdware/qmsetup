@@ -1,11 +1,73 @@
+include_guard(DIRECTORY)
+
 if(NOT DEFINED QTMEDIATE_CMAKE_MODULES_DIR)
     set(QTMEDIATE_CMAKE_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 endif()
 
 #[[
+    Skip CMAKE_AUTOMOC for all source files in directory.
+
+    qtmediate_dir_skip_automoc()
+]] #
+macro(qtmediate_dir_skip_automoc)
+    foreach(_item ${ARGN})
+        file(GLOB _src ${_item}/*.h ${_item}/*.cpp ${_item}/*.cc)
+        set_source_files_properties(
+            ${_src} PROPERTIES SKIP_AUTOMOC ON
+        )
+    endforeach()
+endmacro()
+
+#[[
+    Find Qt libraries.
+
+    qtmediate_find_qt_libraries(<modules...>)
+#]]
+macro(qtmediate_find_qt_libraries)
+    foreach(_module ${ARGN})
+        find_package(QT NAMES Qt6 Qt5 COMPONENTS ${_module} REQUIRED)
+        find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${_module} REQUIRED)
+    endforeach()
+endmacro()
+
+#[[
+    Link Qt libraries.
+
+    qtmediate_link_qt_libraries(<target> <scope> <modules...>)
+#]]
+macro(qtmediate_link_qt_libraries _target _scope)
+    foreach(_module ${ARGN})
+        # Find
+        if(NOT QT_VERSION_MAJOR OR NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})
+            qtmediate_find_qt_libraries(${_module})
+        endif()
+
+        # Link
+        target_link_libraries(${_target} ${_scope} Qt${QT_VERSION_MAJOR}::${_module})
+    endforeach()
+endmacro()
+
+#[[
+    Include Qt private header directories.
+
+    qtmediate_include_qt_private(<target> <scope> <modules...>)
+#]]
+macro(qtmediate_include_qt_private _target _scope)
+    foreach(_module ${ARGN})
+        # Find
+        if(NOT QT_VERSION_MAJOR OR NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})
+            qtmediate_find_qt_libraries(${_module})
+        endif()
+
+        # Include
+        target_include_directories(${_target} ${_scope} ${Qt${QT_VERSION_MAJOR}${_module}_PRIVATE_INCLUDE_DIRS})
+    endforeach()
+endmacro()
+
+#[[
 Attach windows RC file to a target.
 
-    qtmediate_add_winrc(<target>
+    qtmediate_add_win_rc(<target>
         [NAME           name] 
         [VERSION        version] 
         [DESCRIPTION    desc]
@@ -14,7 +76,7 @@ Attach windows RC file to a target.
         [OUTPUT         output]
     )
 ]] #
-function(qtmediate_add_winrc _target)
+function(qtmediate_add_win_rc _target)
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON OUTPUT)
     set(multiValueArgs)
@@ -23,7 +85,7 @@ function(qtmediate_add_winrc _target)
     _qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
     _qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
 
-    _qtmediate_set_value(_name FUNC_NAME ${PROJECT_NAME})
+    _qtmediate_set_value(_name FUNC_NAME ${_target})
     _qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
     _qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
     _qtmediate_set_value(_copyright FUNC_COPYRIGHT ${_name})
@@ -43,21 +105,21 @@ function(qtmediate_add_winrc _target)
         set(RC_ICON_PATH ${FUNC_ICON})
     endif()
 
-    configure_file("${QTMEDIATE_CMAKE_MODULES_DIR}/win/WinResource.rc.in" ${_out_path} @ONLY)
-    target_sources(${RC_PROJECT_NAME} PRIVATE ${_out_path})
+    configure_file("${QTMEDIATE_CMAKE_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
+    target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
 
 #[[
 Attach windows manifest file to a target.
 
-    qtmediate_add_winrc(<target>
+    qtmediate_add_win_manifest(<target>
         [NAME           name] 
         [VERSION        version] 
         [DESCRIPTION    desc]
         [OUTPUT         output]
     )
 ]] #
-function(qtmediate_add_manifest _target)
+function(qtmediate_add_win_manifest _target)
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION OUTPUT)
     set(multiValueArgs)
@@ -66,7 +128,7 @@ function(qtmediate_add_manifest _target)
     _qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
     _qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${RC_PROJECT_NAME}_manifest.manifest")
 
-    _qtmediate_set_value(_name FUNC_NAME ${PROJECT_NAME})
+    _qtmediate_set_value(_name FUNC_NAME ${_target})
     _qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
     _qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
 
@@ -74,8 +136,107 @@ function(qtmediate_add_manifest _target)
     set(MANIFEST_VERSION ${_version})
     set(MANIFEST_DESCRIPTION ${_desc})
 
-    configure_file("${QTMEDIATE_CMAKE_MODULES_DIR}/win/WinManifest.nanifest.in" ${_out_path} @ONLY)
-    target_sources(${RC_PROJECT_NAME} PRIVATE ${_out_path})
+    configure_file("${QTMEDIATE_CMAKE_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
+    target_sources(${_target} PRIVATE ${_out_path})
+endfunction()
+
+#[[
+Add Mac bundle info.
+
+    qtmediate_add_mac_bundle(<target>
+        [NAME           <name>]
+        [VERSION        <version>]
+        [DESCRIPTION    <desc>]
+        [COPYRIGHT      <copyright>]
+        [ICON           <file>]
+    )
+]] #
+function(qtmediate_add_mac_bundle _target)
+    set(options)
+    set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    
+    _qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+
+    _qtmediate_set_value(_app_name FUNC_NAME ${_target})
+    _qtmediate_set_value(_app_version FUNC_VERSION ${_version_temp})
+    _qtmediate_set_value(_app_desc FUNC_DESCRIPTION ${_app_name})
+    _qtmediate_set_value(_app_copyright FUNC_COPYRIGHT ${_app_name})
+
+    _qtmediate_parse_version(_app_version ${_app_version})
+
+    # configure mac plist
+    set_target_properties(${_target} PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME ${_app_name}
+        MACOSX_BUNDLE_EXECUTABLE_NAME ${_app_name}
+        MACOSX_BUNDLE_INFO_STRING ${_app_desc}
+        MACOSX_BUNDLE_GUI_IDENTIFIER ${_app_name}
+        MACOSX_BUNDLE_BUNDLE_VERSION ${_app_version}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${_app_version_1}.${_app_version_2}
+        MACOSX_BUNDLE_COPYRIGHT ${_app_copyright}
+    )
+
+    if(FUNC_ICON)
+        # And this part tells CMake where to find and install the file itself
+        set_source_files_properties(${FUNC_ICON} PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources"
+        )
+
+        # NOTE: Don't include the path in MACOSX_BUNDLE_ICON_FILE -- this is
+        # the property added to Info.plist
+        get_filename_component(_icns_name ${FUNC_ICON} NAME)
+
+        # configure mac plist
+        set_target_properties(${_target} PROPERTIES
+            MACOSX_BUNDLE_ICON_FILE ${_icns_name}
+        )
+
+        # ICNS icon MUST be added to executable's sources list, for some reason
+        # Only apple can do
+        target_sources(${_target} PRIVATE ${FUNC_ICON})
+    endif()
+endfunction()
+
+#[[
+Generate Windows shortcut after building target.
+
+    qtmediate_create_win_shortcut(<target> <dir>
+        [OUTPUT_NAME <name]
+    )
+]] #
+function(qtmediate_create_win_shortcut _target _dir)
+    set(options)
+    set(oneValueArgs OUTPUT_NAME)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    _qtmediate_set_value(_output_name FUNC_OUTPUT_NAME $<TARGET_FILE_BASE_NAME:${_target}>)
+
+    set(_vbs_name ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut.vbs)
+    set(_vbs_temp ${_vbs_name}.in)
+
+    set(_lnk_path "${_dir}/${_output_name}.lnk")
+
+    set(SHORTCUT_PATH ${_lnk_path})
+    set(SHORTCUT_TARGET_PATH $<TARGET_FILE:${_target}>)
+    set(SHORTCUT_WORKING_DIRECOTRY $<TARGET_FILE_DIR:${_target}>)
+    set(SHORTCUT_DESCRIPTION $<TARGET_FILE_BASE_NAME:${_target}>)
+    set(SHORTCUT_ICON_LOCATION $<TARGET_FILE:${_target}>)
+
+    configure_file(
+        "${QTMEDIATE_CMAKE_MODULES_DIR}/windows/WinCreateShortcut.vbs.in"
+        ${_vbs_temp}
+        @ONLY
+    )
+    file(GENERATE OUTPUT ${_vbs_name} INPUT ${_vbs_temp})
+
+    add_custom_command(
+        TARGET ${_target} POST_BUILD
+        COMMAND cscript ${_vbs_name}
+        BYPRODUCTS ${_lnk_path}
+    )
 endfunction()
 
 #[[
@@ -340,6 +501,7 @@ function(qtmediate_gen_include _src_dir _dest_dir)
                     -D \"src=${_src_dir}\"
                     -D \"dest=${_install_dir}\"
                     -D \"clean=TRUE\"
+                    -D \"copy=TRUE\"
                     -P \"${QTMEDIATE_CMAKE_MODULES_DIR}/commands/GenInclude.cmake\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                 )
