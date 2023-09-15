@@ -90,7 +90,7 @@ function(qtmediate_add_win_rc _target)
     _qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
     _qtmediate_set_value(_copyright FUNC_COPYRIGHT ${_name})
 
-    _qtmediate_parse_version(_ver ${_version})
+    qtmediate_parse_version(_ver ${_version})
     set(RC_VERSION ${_ver_1},${_ver_2},${_ver_3},${_ver_4})
 
     set(RC_APPLICATION_NAME ${_name})
@@ -156,7 +156,7 @@ function(qtmediate_add_mac_bundle _target)
     set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    
+
     _qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
 
     _qtmediate_set_value(_app_name FUNC_NAME ${_target})
@@ -164,7 +164,7 @@ function(qtmediate_add_mac_bundle _target)
     _qtmediate_set_value(_app_desc FUNC_DESCRIPTION ${_app_name})
     _qtmediate_set_value(_app_copyright FUNC_COPYRIGHT ${_app_name})
 
-    _qtmediate_parse_version(_app_version ${_app_version})
+    qtmediate_parse_version(_app_version ${_app_version})
 
     # configure mac plist
     set_target_properties(${_target} PROPERTIES
@@ -512,18 +512,12 @@ function(qtmediate_gen_include _src_dir _dest_dir)
     endif()
 endfunction()
 
-# ----------------------------------
-# QtMediate Private API
-# ----------------------------------
-macro(_qtmediate_set_value _key _maybe_value _default)
-    if(${_maybe_value})
-        set(${_key} ${${_maybe_value}})
-    else()
-        set(${_key} ${_default})
-    endif()
-endmacro()
+#[[
+Parse version and create seq vars with specified prefix.
 
-function(_qtmediate_parse_version _prefix _version)
+    qtmediate_parse_version(<prefix> <version>)
+]] #
+function(qtmediate_parse_version _prefix _version)
     string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ ${_version})
 
     foreach(_i RANGE 1 4)
@@ -536,3 +530,14 @@ function(_qtmediate_parse_version _prefix _version)
         set(${_prefix}_${_i} ${_tmp} PARENT_SCOPE)
     endforeach()
 endfunction()
+
+# ----------------------------------
+# QtMediate Private API
+# ----------------------------------
+macro(_qtmediate_set_value _key _maybe_value _default)
+    if(${_maybe_value})
+        set(${_key} ${${_maybe_value}})
+    else()
+        set(${_key} ${_default})
+    endif()
+endmacro()

@@ -2,7 +2,7 @@
 
 CMake modules for QtMediate and other projects.
 
-## Utilities
+## Modules
 
 + Windows & MacOS platform resources
     + `qtmediate_add_win_rc`
@@ -18,6 +18,8 @@ CMake modules for QtMediate and other projects.
     + `qtmediate_find_qt_libraries`
     + `qtmediate_link_qt_libraries`
     + `qtmediate_include_qt_private`
++ CMake Utils
+    + `qtmediate_parse_version`
 
 ## Integrate
 
