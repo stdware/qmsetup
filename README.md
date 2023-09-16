@@ -20,6 +20,9 @@ CMake modules for QtMediate and other projects.
     + `qtmediate_include_qt_private`
 + CMake Utils
     + `qtmediate_parse_version`
+    + `qtmediate_set_value`
+    + `qtmediate_configure_target`
+    + `qtmediate_export_defines`
 
 ## Integrate
 

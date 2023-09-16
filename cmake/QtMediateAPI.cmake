@@ -82,13 +82,13 @@ function(qtmediate_add_win_rc _target)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    _qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
-    _qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
+    qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
 
-    _qtmediate_set_value(_name FUNC_NAME ${_target})
-    _qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
-    _qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
-    _qtmediate_set_value(_copyright FUNC_COPYRIGHT ${_name})
+    qtmediate_set_value(_name FUNC_NAME ${_target})
+    qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
+    qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qtmediate_set_value(_copyright FUNC_COPYRIGHT ${_name})
 
     qtmediate_parse_version(_ver ${_version})
     set(RC_VERSION ${_ver_1},${_ver_2},${_ver_3},${_ver_4})
@@ -125,12 +125,12 @@ function(qtmediate_add_win_manifest _target)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    _qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
-    _qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${RC_PROJECT_NAME}_manifest.manifest")
+    qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${RC_PROJECT_NAME}_manifest.manifest")
 
-    _qtmediate_set_value(_name FUNC_NAME ${_target})
-    _qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
-    _qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qtmediate_set_value(_name FUNC_NAME ${_target})
+    qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
+    qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
 
     set(MANIFEST_IDENTIFIER ${_name})
     set(MANIFEST_VERSION ${_version})
@@ -157,12 +157,12 @@ function(qtmediate_add_mac_bundle _target)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    _qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+    qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
 
-    _qtmediate_set_value(_app_name FUNC_NAME ${_target})
-    _qtmediate_set_value(_app_version FUNC_VERSION ${_version_temp})
-    _qtmediate_set_value(_app_desc FUNC_DESCRIPTION ${_app_name})
-    _qtmediate_set_value(_app_copyright FUNC_COPYRIGHT ${_app_name})
+    qtmediate_set_value(_app_name FUNC_NAME ${_target})
+    qtmediate_set_value(_app_version FUNC_VERSION ${_version_temp})
+    qtmediate_set_value(_app_desc FUNC_DESCRIPTION ${_app_name})
+    qtmediate_set_value(_app_copyright FUNC_COPYRIGHT ${_app_name})
 
     qtmediate_parse_version(_app_version ${_app_version})
 
@@ -212,7 +212,7 @@ function(qtmediate_create_win_shortcut _target _dir)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    _qtmediate_set_value(_output_name FUNC_OUTPUT_NAME $<TARGET_FILE_BASE_NAME:${_target}>)
+    qtmediate_set_value(_output_name FUNC_OUTPUT_NAME $<TARGET_FILE_BASE_NAME:${_target}>)
 
     set(_vbs_name ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut.vbs)
     set(_vbs_temp ${_vbs_name}.in)
@@ -277,12 +277,12 @@ function(qtmediate_setup_doxygen _target)
 
     set(DOXYGEN_FILE_DIR ${QTMEDIATE_CMAKE_MODULES_DIR}/doxygen)
 
-    _qtmediate_set_value(_name FUNC_NAME "${PROJECT_NAME}")
-    _qtmediate_set_value(_version FUNC_VERSION "${PROJECT_VERSION}")
-    _qtmediate_set_value(_desc FUNC_DESCRIPTION "${PROJECT_DESCRIPTION}")
-    _qtmediate_set_value(_logo FUNC_LOGO "")
-    _qtmediate_set_value(_mdfile FUNC_MDFILE "")
-    _qtmediate_set_value(_tagfile FUNC_GENERATE_TAGFILE "")
+    qtmediate_set_value(_name FUNC_NAME "${PROJECT_NAME}")
+    qtmediate_set_value(_version FUNC_VERSION "${PROJECT_VERSION}")
+    qtmediate_set_value(_desc FUNC_DESCRIPTION "${PROJECT_DESCRIPTION}")
+    qtmediate_set_value(_logo FUNC_LOGO "")
+    qtmediate_set_value(_mdfile FUNC_MDFILE "")
+    qtmediate_set_value(_tagfile FUNC_GENERATE_TAGFILE "")
 
     if(_desc STREQUAL "")
         set(${_desc} "${_name}")
@@ -531,10 +531,87 @@ function(qtmediate_parse_version _prefix _version)
     endforeach()
 endfunction()
 
-# ----------------------------------
-# QtMediate Private API
-# ----------------------------------
-macro(_qtmediate_set_value _key _maybe_value _default)
+#[[
+Helper to link libraries and include directories of a target.
+
+    qtmediate_configure_target(<target>
+        [SOURCES          <files>]
+        [LINKS            <libs>]
+        [LINKS_PRIVATE    <libs>]
+        [INCLUDE_PRIVATE  <dirs>]
+
+        [QT_LINKS            <modules>]
+        [QT_LINKS_PRIVATE    <modules>]
+        [QT_INCLUDE_PRIVATE  <modules>]
+
+        [SKIP_AUTOMOC_DIRS   <dirs>]
+        [SKIP_AUTOMOC_FILES  <files]
+    )
+]] #
+function(qtmediate_configure_target _target)
+    set(options)
+    set(oneValueArgs)
+    set(multiValueArgs
+        SOURCES LINKS LINKS_PRIVATE QT_LINKS QT_LINKS_PRIVATE QT_INCLUDE_PRIVATE INCLUDE_PRIVATE
+        SKIP_AUTOMOC_DIRS SKIP_AUTOMOC_FILES
+    )
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    target_sources(${_target} PRIVATE ${FUNC_SOURCES})
+    target_link_libraries(${_target} PUBLIC ${FUNC_LINKS})
+    target_link_libraries(${_target} PRIVATE ${FUNC_LINKS_PRIVATE})
+    qtmediate_link_qt_libraries(${_target} PUBLIC ${FUNC_QT_LINKS})
+    qtmediate_link_qt_libraries(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
+    target_include_directories(${_target} PRIVATE ${FUNC_INCLUDE_PRIVATE})
+    qtmediate_include_qt_private(${_target} PRIVATE ${FUNC_QT_INCLUDE_PRIVATE})
+    qtmediate_dir_skip_automoc(${FUNC_SKIP_AUTOMOC_DIRS})
+
+    if(FUNC_SKIP_AUTOMOC_FILES)
+        set_source_files_properties(
+            ${FUNC_SKIP_AUTOMOC_FILES} PROPERTIES SKIP_AUTOMOC ON
+        )
+    endif()
+endfunction()
+
+#[[
+Helper to define export macros.
+
+    qtmediate_export_defines(<target>
+        [PREFIX     <prefix>]
+        [STATIC     <token>]
+        [LIBRARY    <token>]
+    )
+]] #
+function(qtmediate_export_defines _target)
+    set(options)
+    set(oneValueArgs PREFIX STATIC LIBRARY)
+    set(multiValueArgs)
+
+    if(NOT FUNC_PREFIX)
+        string(TOUPPER ${_target} _prefix)
+    else()
+        set(_prefix ${FUNC_PREFIX})
+    endif()
+
+    qtmediate_set_value(_static_macro FUNC_STATIC ${_prefix}_STATIC)
+    qtmediate_set_value(_library_macro FUNC_LIBRARY ${_prefix}_LIBRARY)
+
+    get_target_property(_type ${_target} TYPE)
+
+    if(${_type} STREQUAL STATIC_LIBRARY)
+        target_compile_definitions(${_target} PUBLIC ${_static_macro})
+    endif()
+
+    target_compile_definitions(${_target} PRIVATE ${_library_macro})
+endfunction()
+
+
+#[[
+Set value if valid, otherwise use default.
+
+    qtmediate_set_value(<key> <maybe_value> <default>)
+]] #
+macro(qtmediate_set_value _key _maybe_value _default)
     if(${_maybe_value})
         set(${_key} ${${_maybe_value}})
     else()
