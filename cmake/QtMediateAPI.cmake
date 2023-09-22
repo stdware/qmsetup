@@ -479,9 +479,9 @@ function(qtmediate_gen_include _src_dir _dest_dir)
                 else()
                     file(REMOVE ${_dest_dir})
                 endif()
-            else()
-                return()
             endif()
+        else()
+            return()
         endif()
 
         execute_process(
@@ -604,7 +604,6 @@ function(qtmediate_export_defines _target)
 
     target_compile_definitions(${_target} PRIVATE ${_library_macro})
 endfunction()
-
 
 #[[
 Set value if valid, otherwise use default.
