@@ -540,6 +540,12 @@ Helper to link libraries and include directories of a target.
         [LINKS_PRIVATE    <libs>]
         [INCLUDE_PRIVATE  <dirs>]
 
+        [DEFINES          <defs>]
+        [DEFINES_PRIVATE  <defs>]
+
+        [CCFLAGS          <flags>]
+        [CCFLAGS_PRIVATE  <flags>]
+
         [QT_LINKS            <modules>]
         [QT_LINKS_PRIVATE    <modules>]
         [QT_INCLUDE_PRIVATE  <modules>]
@@ -552,7 +558,11 @@ function(qtmediate_configure_target _target)
     set(options)
     set(oneValueArgs)
     set(multiValueArgs
-        SOURCES LINKS LINKS_PRIVATE QT_LINKS QT_LINKS_PRIVATE QT_INCLUDE_PRIVATE INCLUDE_PRIVATE
+        SOURCES LINKS LINKS_PRIVATE
+        QT_LINKS QT_LINKS_PRIVATE QT_INCLUDE_PRIVATE
+        INCLUDE_PRIVATE
+        DEFINES DEFINES_PRIVATE
+        CCFLAGS CCFLAGS_PUBLIC
         SKIP_AUTOMOC_DIRS SKIP_AUTOMOC_FILES
     )
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -560,6 +570,10 @@ function(qtmediate_configure_target _target)
     target_sources(${_target} PRIVATE ${FUNC_SOURCES})
     target_link_libraries(${_target} PUBLIC ${FUNC_LINKS})
     target_link_libraries(${_target} PRIVATE ${FUNC_LINKS_PRIVATE})
+    target_compile_definitions(${_target} PUBLIC ${FUNC_DEFINES})
+    target_compile_definitions(${_target} PRIVATE ${FUNC_DEFINES_PRIVATE})
+    target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
+    target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
     qtmediate_link_qt_libraries(${_target} PUBLIC ${FUNC_QT_LINKS})
     qtmediate_link_qt_libraries(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
     target_include_directories(${_target} PRIVATE ${FUNC_INCLUDE_PRIVATE})
