@@ -448,11 +448,11 @@ endfunction()
     Generate reference include directories.
 
     qtmediate_gen_include(<src> <dest>
-        [CLEAN] [INSTALL_DIR]
+        [INSTALL_DIR]
     )
 #]]
 function(qtmediate_gen_include _src_dir _dest_dir)
-    set(options COPY CLEAN)
+    set(options COPY)
     set(oneValueArgs INSTALL_DIR)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -472,18 +472,6 @@ function(qtmediate_gen_include _src_dir _dest_dir)
     if(IS_DIRECTORY ${_src_dir})
         file(GLOB_RECURSE header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
 
-        if(FUNC_CLEAN)
-            if(EXISTS ${_dest_dir})
-                if(IS_DIRECTORY ${_dest_dir})
-                    file(REMOVE_RECURSE ${_dest_dir})
-                else()
-                    file(REMOVE ${_dest_dir})
-                endif()
-            endif()
-        else()
-            return()
-        endif()
-
         execute_process(
             COMMAND ${CMAKE_COMMAND}
             -D "src=${_src_dir}"
@@ -500,7 +488,6 @@ function(qtmediate_gen_include _src_dir _dest_dir)
                     COMMAND \"${CMAKE_COMMAND}\"
                     -D \"src=${_src_dir}\"
                     -D \"dest=${_install_dir}\"
-                    -D \"clean=TRUE\"
                     -D \"copy=TRUE\"
                     -P \"${QTMEDIATE_CMAKE_MODULES_DIR}/commands/GenInclude.cmake\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"

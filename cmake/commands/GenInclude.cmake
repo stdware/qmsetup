@@ -2,7 +2,6 @@
 # cmake
 # -D src=<dir>
 # -D dest=<dir>
-# [-D clean=TRUE]
 # [-D copy=TRUE]
 # -P GenInclude.cmake
 
@@ -19,13 +18,12 @@ if(NOT DEFINED dest)
     message(FATAL_ERROR "Argument \"dest\" not specified.")
 endif()
 
-if(NOT DEFINED clean)
-    set(clean off)
-endif()
-
 if(NOT DEFINED copy)
     set(copy off)
 endif()
+
+# Enable "IN_LIST"
+cmake_policy(SET CMP0057 NEW)
 
 # Get absolute paths
 if(NOT IS_ABSOLUTE ${src})
@@ -40,22 +38,34 @@ else()
     set(_dest_dir ${dest})
 endif()
 
-# Clean if exists
-if(clean AND EXISTS ${_dest_dir})
-    if(IS_DIRECTORY ${_dest_dir})
-        file(REMOVE_RECURSE ${_dest_dir})
-    else()
-        file(REMOVE ${_dest_dir})
-    endif()
-endif()
-
 if(NOT IS_DIRECTORY ${_src_dir})
     message(FATAL_ERROR "Source directory \"${_src_dir}\" doesn't exist.")
 endif()
 
-file(GLOB_RECURSE header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
+# Collect files
+file(GLOB_RECURSE _header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
 
-foreach(_file ${header_files})
+set(_header_file_names)
+
+foreach(_item ${_header_files})
+    get_filename_component(_name ${_item} NAME)
+    list(APPEND _header_file_names ${_name})
+endforeach()
+
+# Removed deprecated ones
+file(GLOB_RECURSE _existing_files ${_dest_dir}/*.h ${_dest_dir}/*.hpp)
+
+foreach(_item ${_existing_files})
+    get_filename_component(_name ${_item} NAME)
+
+    if(${_name} IN_LIST _header_file_names)
+        continue()
+    endif()
+
+    file(REMOVE ${_item})
+endforeach()
+
+foreach(_file ${_header_files})
     get_filename_component(file_name ${_file} NAME)
 
     if(file_name MATCHES "_p\\.")
@@ -70,11 +80,24 @@ foreach(_file ${header_files})
 
     file(RELATIVE_PATH rel_path ${_dir} ${_file})
     string(REPLACE "\\" "/" rel_path ${rel_path})
-    set(new_file ${_dir}/${file_name})
+    set(_new_file ${_dir}/${file_name})
 
     if(copy)
         file(COPY ${_file} DESTINATION ${_dir})
     else()
-        file(WRITE ${new_file} "#include \"${rel_path}\"\n")
+        set(_content "#include \"${rel_path}\"\n")
+
+        # Compare
+        if(EXISTS ${_new_file})
+            file(READ ${_new_file} _file_content)
+
+            if(${_file_content} STREQUAL ${_content})
+                continue()
+            endif()
+
+            file(REMOVE ${_new_file})
+        endif()
+
+        file(WRITE ${_new_file} ${_content})
     endif()
 endforeach()
