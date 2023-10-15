@@ -64,7 +64,6 @@ static void processHeaders(const fs::path &src, const fs::path &dest,
                     if (!f) {
                         continue;
                     }
-
                     fprintf(f, R"(#include "%s")", rel.data());
                     fclose(f);
                 }

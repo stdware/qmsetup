@@ -68,20 +68,19 @@ static int generateHeaderFile(const TString &filename, const std::vector<std::st
 
     // Read file
     do {
-        auto f = _FOPEN(filename.c_str(), _TSTR("r"));
-        if (!f) {
+        // Check if file exists and has the same hash
+        std::ifstream inFile(filename);
+        if (!inFile.is_open()) {
             break;
         }
 
-        // Check if file exists and has the same hash
-        std::ifstream infile(f);
         std::regex hashPattern(R"(^// SHA256: (\w+)$)");
         std::smatch match;
         std::string line;
         bool matched = false;
 
         int pp_cnt = 0;
-        while (std::getline(infile, line)) {
+        while (std::getline(inFile, line)) {
             if (line.empty())
                 continue;
 
@@ -104,7 +103,7 @@ static int generateHeaderFile(const TString &filename, const std::vector<std::st
             }
         }
 
-        fclose(f);
+        inFile.close();
 
         if (matched) {
             printf("Content matched. (%s)\n", hash.data());
@@ -115,13 +114,11 @@ static int generateHeaderFile(const TString &filename, const std::vector<std::st
 
     // Create file
     {
-        auto f = _FOPEN(filename.c_str(), _TSTR("w"));
-        if (!f) {
+        std::ofstream outFile(filename);
+        if (!outFile.is_open()) {
             tprintf(_TSTR("Failed to open file \"%s\"."), filename.data());
             return -1;
         }
-
-        std::ofstream outFile(f);
 
         // Header guard
         std::string guard = toHeaderGuard(std::filesystem::path(filename).filename().string());
@@ -144,7 +141,7 @@ static int generateHeaderFile(const TString &filename, const std::vector<std::st
         // Header guard end
         outFile << "#endif // " << guard << "\n";
 
-        fclose(f);
+        outFile.close();
     }
 
     return 0;
