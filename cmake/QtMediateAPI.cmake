@@ -446,7 +446,7 @@ function(qtmediate_setup_doxygen _target)
 endfunction()
 
 #[[
-    Generate reference include directories.
+Generate indirect reference files for header files to make the include statements more orderly. The generated file has the same timestamp as the source file, so there is no need .
 
     qtmediate_sync_include(<src> <dest>
         [INSTALL_DIR]
@@ -769,14 +769,14 @@ macro(qtmediate_add_definition)
 endmacro()
 
 #[[
-Generate a configuration header.
+Generate a configuration header. If the configuration has not changed, the generated file's timestemp will not be updated when you reconfigure it.
 
-    ck_generate_config_header(<file>
+    qtmediate_generate_config(<file>
         [TARGET <target>]
         [PROPERTY prop]
     )
 ]] #
-function(ck_generate_config_header _file)
+function(qtmediate_generate_config _file)
     set(options GLOBAL)
     set(oneValueArgs TARGET PROPERTY)
     set(multiValueArgs)
@@ -786,7 +786,7 @@ function(ck_generate_config_header _file)
     set(_tool_target qtmediate-cmake-modules::cfggen)
 
     if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "ck_generate_config_header: tool \"cfggen\" not found.")
+        message(FATAL_ERROR "qtmediate_generate_config: tool \"cfggen\" not found.")
     else()
         get_target_property(_tool ${_tool_target} LOCATION)
     endif()

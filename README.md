@@ -1,24 +1,29 @@
 # QtMediate CMake Modules
 
-CMake modules for QtMediate and other projects.
+CMake Modules for QtMediate and other projects.
 
-## Modules
+This project is independent from Qt and other 3rdparty libraries. Due to the fact that it encompasses some tools that need to be compiled, it cannot be included as a subproject.
+
+## Functions
 
 + Windows & MacOS platform resources
     + `qtmediate_add_win_rc`
     + `qtmediate_add_win_manifest`
-    + `qtmediate_create_win_shortcut`
     + `qtmediate_add_mac_bundle`
+    + `qtmediate_create_win_shortcut`
+    + `qtmediate_win_applocal_deps`
 + Doxygen
     + `qtmediate_setup_doxygen`
-+ Source file processing
-    + `qtmediate_gen_include`
++ Preprocess
+    + `qtmediate_sync_include`
+    + `qtmediate_add_definition`
+    + `qtmediate_generate_config`
 + Qt related functions
     + `qtmediate_dir_skip_automoc`
     + `qtmediate_find_qt_libraries`
     + `qtmediate_link_qt_libraries`
     + `qtmediate_include_qt_private`
-+ CMake Utils
++ CMake Utilities
     + `qtmediate_parse_version`
     + `qtmediate_set_value`
     + `qtmediate_configure_target`
@@ -26,12 +31,23 @@ CMake modules for QtMediate and other projects.
 
 ## Integrate
 
-+ CMake Sub-project
-    + Edit `CMakeLists.txt`
-        ```cmake
-        include("${QTMEDIATE_MODULES_DIR}/QtMediateAPI.cmake")
-        ```
-    + CMake Configure
-        ```sh
-        cmake -DQTMEDIATE_MODULES_DIR=<dir> ...
-        ```
++ Build & Install
+    ```sh
+    cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to
+    cmake -B build --target all
+    cmake -B build --target install
+    ```
+
++ Integrate
+    ```sh
+    cmake -Dqtmediate-cmake-modules_DIR=/path/to/lib/cmake/qtmediate-cmake-modules ...
+    ```
+    ```cmake
+    find_package(qtmediate-cmake-modules REQUIRED)
+    ```
+
+## Thanks
+
++ RigoLigoRLC
++ CrSjimo
++ wangwenx190
