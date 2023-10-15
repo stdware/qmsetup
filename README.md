@@ -29,9 +29,9 @@ CMake modules for QtMediate and other projects.
 + CMake Sub-project
     + Edit `CMakeLists.txt`
         ```cmake
-        include("${QTMEDIATE_CMAKE_MODULES_DIR}/QtMediateAPI.cmake")
+        include("${QTMEDIATE_MODULES_DIR}/QtMediateAPI.cmake")
         ```
     + CMake Configure
         ```sh
-        cmake -DQTMEDIATE_CMAKE_MODULES_DIR=<dir> ...
+        cmake -DQTMEDIATE_MODULES_DIR=<dir> ...
         ```

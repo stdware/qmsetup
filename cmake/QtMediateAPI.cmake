@@ -1,7 +1,7 @@
 include_guard(DIRECTORY)
 
-if(NOT DEFINED QTMEDIATE_CMAKE_MODULES_DIR)
-    set(QTMEDIATE_CMAKE_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
+if(NOT DEFINED QTMEDIATE_MODULES_DIR)
+    set(QTMEDIATE_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 endif()
 
 #[[
@@ -105,7 +105,7 @@ function(qtmediate_add_win_rc _target)
         set(RC_ICON_PATH ${FUNC_ICON})
     endif()
 
-    configure_file("${QTMEDIATE_CMAKE_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
+    configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
 
@@ -136,7 +136,7 @@ function(qtmediate_add_win_manifest _target)
     set(MANIFEST_VERSION ${_version})
     set(MANIFEST_DESCRIPTION ${_desc})
 
-    configure_file("${QTMEDIATE_CMAKE_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
+    configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
 
@@ -226,7 +226,7 @@ function(qtmediate_create_win_shortcut _target _dir)
     set(SHORTCUT_ICON_LOCATION $<TARGET_FILE:${_target}>)
 
     configure_file(
-        "${QTMEDIATE_CMAKE_MODULES_DIR}/windows/WinCreateShortcut.vbs.in"
+        "${QTMEDIATE_MODULES_DIR}/windows/WinCreateShortcut.vbs.in"
         ${_vbs_temp}
         @ONLY
     )
@@ -275,7 +275,7 @@ function(qtmediate_setup_doxygen _target)
         message(FATAL_ERROR "qtmediate_setup_doxygen: doxygen executable not defined!")
     endif()
 
-    set(DOXYGEN_FILE_DIR ${QTMEDIATE_CMAKE_MODULES_DIR}/doxygen)
+    set(DOXYGEN_FILE_DIR ${QTMEDIATE_MODULES_DIR}/doxygen)
 
     qtmediate_set_value(_name FUNC_NAME "${PROJECT_NAME}")
     qtmediate_set_value(_version FUNC_VERSION "${PROJECT_VERSION}")
@@ -439,6 +439,7 @@ function(qtmediate_setup_doxygen _target)
             execute_process(
                 COMMAND ${_install_command_quoted}
                 WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
+                OUTPUT_QUIET
             )
         ")
     endif()
@@ -447,15 +448,24 @@ endfunction()
 #[[
     Generate reference include directories.
 
-    qtmediate_gen_include(<src> <dest>
+    qtmediate_sync_include(<src> <dest>
         [INSTALL_DIR]
     )
 #]]
-function(qtmediate_gen_include _src_dir _dest_dir)
+function(qtmediate_sync_include _src_dir _dest_dir)
     set(options COPY)
     set(oneValueArgs INSTALL_DIR)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    # Get petool
+    set(_tool_target qtmediate-cmake-modules::incsync)
+
+    if(NOT TARGET ${_tool_target})
+        message(FATAL_ERROR "qtmediate_sync_include: tool \"incsync\" not found.")
+    else()
+        get_target_property(_tool ${_tool_target} LOCATION)
+    endif()
 
     if(NOT IS_ABSOLUTE ${_src_dir})
         get_filename_component(_src_dir ${_src_dir} ABSOLUTE)
@@ -473,11 +483,10 @@ function(qtmediate_gen_include _src_dir _dest_dir)
         file(GLOB_RECURSE header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
 
         execute_process(
-            COMMAND ${CMAKE_COMMAND}
-            -D "src=${_src_dir}"
-            -D "dest=${_dest_dir}"
-            -P "${QTMEDIATE_CMAKE_MODULES_DIR}/commands/GenInclude.cmake"
+            COMMAND ${_tool} ${_src_dir} ${_dest_dir}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMAND_ERROR_IS_FATAL ANY
+            OUTPUT_QUIET
         )
 
         if(FUNC_INSTALL_DIR)
@@ -485,17 +494,15 @@ function(qtmediate_gen_include _src_dir _dest_dir)
 
             install(CODE "
                 execute_process(
-                    COMMAND \"${CMAKE_COMMAND}\"
-                    -D \"src=${_src_dir}\"
-                    -D \"dest=${_install_dir}\"
-                    -D \"copy=TRUE\"
-                    -P \"${QTMEDIATE_CMAKE_MODULES_DIR}/commands/GenInclude.cmake\"
+                    COMMAND \"${_tool}\" -c \"${_src_dir}\" \"${_install_dir}\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
+                    COMMAND_ERROR_IS_FATAL ANY
+                    OUTPUT_QUIET
                 )
             ")
         endif()
     else()
-        message(FATAL_ERROR "qtmediate_gen_include_files: Source directory doesn't exist.")
+        message(FATAL_ERROR "qtmediate_sync_include: Source directory doesn't exist.")
     endif()
 endfunction()
 
@@ -572,6 +579,54 @@ function(qtmediate_configure_target _target)
             ${FUNC_SKIP_AUTOMOC_FILES} PROPERTIES SKIP_AUTOMOC ON
         )
     endif()
+
+    # Add library searching paths
+    if(WIN32)
+        get_target_property(_paths ${_target} LIBRARY_SEARCHING_PATHS)
+
+        if(NOT _paths)
+            set(_paths)
+        endif()
+
+        if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL Debug)
+            set(_config_upper DEBUG)
+        else()
+            string(TOUPPER ${CMAKE_BUILD_TYPE} _config_upper)
+        endif()
+
+        foreach(_item ${FUNC_LINKS} ${FUNC_LINKS_PRIVATE})
+            if(TARGET ${_item})
+                # Resolve location
+                get_target_property(_imported ${_item} IMPORTED)
+
+                if(_imported)
+                    get_target_property(_path ${_item} LOCATION_${_config_upper})
+
+                    if(NOT _path OR ${_path} IN_LIST _result)
+                        continue()
+                    endif()
+
+                    get_filename_component(_path ${_path} DIRECTORY)
+                else()
+                    get_target_property(_type ${_item} TYPE)
+
+                    if(NOT ${_type} MATCHES "SHARED_LIBRARY")
+                        continue()
+                    endif()
+
+                    set(_path $<TARGET_FILE_DIR:${_item}>)
+                endif()
+            endif()
+
+            if(${_path} IN_LIST _paths)
+                continue()
+            endif()
+
+            list(APPEND _paths ${_path})
+        endforeach()
+
+        set_target_properties(${_target} PROPERTIES LIBRARY_SEARCHING_PATHS "${_paths}")
+    endif()
 endfunction()
 
 #[[
@@ -618,3 +673,199 @@ macro(qtmediate_set_value _key _maybe_value _default)
         set(${_key} ${_default})
     endif()
 endmacro()
+
+#[[
+Add a definition to global scope or a given target.
+
+    qtmediate_add_definition(<key|key=value>
+        [TARGET <target>]
+        [PROPERTY <prop>]
+        [NUMERICAL]
+        [CONDITION <cond>]
+    )
+]] #
+macro(qtmediate_add_definition)
+    set(options GLOBAL NUMERICAL)
+    set(oneValueArgs TARGET PROPERTY CONDITION)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set(_result)
+    set(_is_pair off)
+    set(_defined off)
+
+    set(_list ${FUNC_UNPARSED_ARGUMENTS})
+    list(LENGTH _list _len)
+
+    set(_cond on)
+
+    if(FUNC_CONDITION)
+        if(NOT ${FUNC_CONDITION})
+            set(_cond off)
+        endif()
+    elseif(DEFINED FUNC_CONDITION)
+        set(_cond off)
+    endif()
+
+    if(${_len} EQUAL 1)
+        set(_result ${_list})
+        set(_defined on)
+
+        if(NOT _cond)
+            set(_defined off)
+        endif()
+    elseif(${_len} EQUAL 2)
+        # Get key
+        list(POP_FRONT _list _key)
+        list(POP_FRONT _list _val)
+
+        # Boolean
+        string(TOLOWER ${_val} _val_lower)
+
+        if(${_val_lower} STREQUAL "off" OR ${_val_lower} STREQUAL "false")
+            set(_result ${_key})
+            set(_defined off)
+
+            if(NOT _cond)
+                set(_defined on)
+            endif()
+        elseif(${_val_lower} STREQUAL "on" OR ${_val_lower} STREQUAL "true")
+            set(_result ${_key})
+            set(_defined on)
+
+            if(NOT _cond)
+                set(_defined off)
+            endif()
+        else()
+            set(_result "${_key}=${_val}")
+            set(_is_pair on)
+            set(_defined on)
+
+            if(NOT _cond)
+                set(_defined off)
+            endif()
+        endif()
+    else()
+        message(FATAL_ERROR "qtmediate_add_definition: called with incorrect number of arguments")
+    endif()
+
+    if(FUNC_NUMERICAL AND NOT _is_pair)
+        if(_defined)
+            set(_result "${_result}=1")
+        else()
+            set(_result "${_result}=-1")
+        endif()
+    elseif(NOT _defined)
+        return()
+    endif()
+
+    qtmediate_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
+
+    if(FUNC_TARGET)
+        set_property(TARGET ${FUNC_TARGET} APPEND PROPERTY ${_prop} "${_result}")
+    else()
+        set_property(GLOBAL APPEND PROPERTY ${_prop} "${_result}")
+    endif()
+endmacro()
+
+#[[
+Generate a configuration header.
+
+    ck_generate_config_header(<file>
+        [TARGET <target>]
+        [PROPERTY prop]
+    )
+]] #
+function(ck_generate_config_header _file)
+    set(options GLOBAL)
+    set(oneValueArgs TARGET PROPERTY)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    # Get petool
+    set(_tool_target qtmediate-cmake-modules::cfggen)
+
+    if(NOT TARGET ${_tool_target})
+        message(FATAL_ERROR "ck_generate_config_header: tool \"cfggen\" not found.")
+    else()
+        get_target_property(_tool ${_tool_target} LOCATION)
+    endif()
+
+    qtmediate_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
+
+    if(FUNC_TARGET)
+        get_target_property(_def_list ${FUNC_TARGET} ${_prop})
+    else()
+        get_property(_def_list GLOBAL PROPERTY ${_prop})
+    endif()
+
+    if(_def_list)
+        set(_args)
+
+        foreach(_item ${_def_list})
+            list(APPEND _args "-D${_item}")
+        endforeach()
+
+        execute_process(COMMAND ${_tool} ${_args} ${_file}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMAND_ERROR_IS_FATAL ANY
+            OUTPUT_QUIET
+        )
+    endif()
+endfunction()
+
+#[[
+Helper to define export macros.
+
+    qtmediate_win_applocal_deps(<target>
+        [TARGET <name>]
+        [EXTRA_SEARCHING_PATHS <paths...>]
+    )
+]] #
+function(qtmediate_win_applocal_deps _target)
+    set(options)
+    set(oneValueArgs TARGET)
+    set(multiValueArgs EXTRA_SEARCHING_PATHS)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    # Get petool
+    set(_tool_target qtmediate-cmake-modules::windeps)
+
+    if(NOT TARGET ${_tool_target})
+        message(FATAL_ERROR "qtmediate_win_applocal_deps: tool \"windeps\" not found.")
+    else()
+        get_target_property(_tool ${_tool_target} LOCATION)
+    endif()
+
+    if(FUNC_TARGET)
+        set(_deploy_target ${FUNC_TARGET})
+        add_custom_target(${_deploy_target})
+    else()
+        set(_deploy_target ${_target})
+    endif()
+
+    get_target_property(_paths ${_target} LIBRARY_SEARCHING_PATHS)
+
+    if(NOT _paths)
+        set(_paths)
+    endif()
+
+    if(FUNC_EXTRA_SEARCHING_PATHS)
+        list(APPEND _paths ${FUNC_EXTRA_SEARCHING_PATHS})
+    endif()
+
+    if(NOT _paths)
+        return()
+    endif()
+
+    set(_args)
+
+    foreach(_item ${_paths})
+        list(APPEND _args "-L${_item}")
+    endforeach()
+
+    add_custom_command(TARGET ${_deploy_target} POST_BUILD
+        COMMAND ${_tool} ${_args} $<TARGET_FILE:${_target}>
+        WORKING_DIRECTORY $<TARGET_FILE_DIR:${_target}>
+    )
+endfunction()
