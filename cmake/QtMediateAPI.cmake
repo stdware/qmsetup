@@ -679,6 +679,7 @@ endmacro()
     Add a definition to global scope or a given target.
 
     qtmediate_add_definition(<key|key=value>
+        [STRING_LITERAL]
         [TARGET <target>]
         [PROPERTY <prop>]
         [NUMERICAL]
@@ -686,7 +687,7 @@ endmacro()
     )
 ]] #
 macro(qtmediate_add_definition)
-    set(options GLOBAL NUMERICAL)
+    set(options GLOBAL NUMERICAL STRING_LITERAL)
     set(oneValueArgs TARGET PROPERTY CONDITION)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -719,6 +720,10 @@ macro(qtmediate_add_definition)
         # Get key
         list(POP_FRONT _list _key)
         list(POP_FRONT _list _val)
+
+        if(FUNC_STRING_LITERAL AND NOT ${_val} MATCHES "\".+\"")
+            set(_val "\"${_val}\"")
+        endif()
 
         # Boolean
         string(TOLOWER ${_val} _val_lower)
