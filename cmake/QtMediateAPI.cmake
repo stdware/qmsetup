@@ -403,7 +403,7 @@ function(qtmediate_setup_doxygen _target)
         COMMAND ${CMAKE_COMMAND} -E make_directory ${_doxy_output_dir}
         ${_make_tagfile_dir_cmd}
         COMMAND ${_build_command}
-        COMMENT "Build HTML documentation"
+        COMMENT "Building HTML documentation"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         VERBATIM
         ${_dependencies}
@@ -867,7 +867,9 @@ function(qtmediate_win_applocal_deps _target)
     endforeach()
 
     add_custom_command(TARGET ${_deploy_target} POST_BUILD
-        COMMAND ${_tool} ${_args} $<TARGET_FILE:${_target}>
+        COMMENT # COMMAND ${CMAKE_COMMAND} -E echo
+        "Deploying shared libraries for $<TARGET_FILE_NAME:${_target}>"
+        COMMAND ${_tool} ${_args} $<TARGET_FILE:${_target}> 1>NUL
         WORKING_DIRECTORY $<TARGET_FILE_DIR:${_target}>
     )
 endfunction()
