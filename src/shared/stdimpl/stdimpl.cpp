@@ -122,7 +122,7 @@ namespace StdImpl {
 #endif
     }
 
-    std::string to_hex_string(const std::vector<uint8_t> &data) {
+    std::string toHexString(const std::vector<uint8_t> &data) {
         std::stringstream ss;
         ss << std::hex << std::setfill('0');
         for (auto byte : data) {
@@ -131,7 +131,7 @@ namespace StdImpl {
         return ss.str();
     }
 
-    std::vector<uint8_t> from_hex_string(const std::string &str) {
+    std::vector<uint8_t> fromHexString(const std::string &str) {
         if (str.length() % 2 != 0) {
             throw std::invalid_argument("Invalid hex string length");
         }

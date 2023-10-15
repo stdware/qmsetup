@@ -18,9 +18,10 @@ using namespace StdImpl;
 
 #ifdef _WIN32
 #  include <Windows.h>
+#endif
 
 static std::string tstr2str(const TString &str) {
-#  ifdef _WIN32
+#ifdef _WIN32
     int len =
         WideCharToMultiByte(CP_UTF8, 0, str.data(), (int) str.size(), nullptr, 0, nullptr, nullptr);
     auto buf = new char[len + 1];
@@ -30,11 +31,10 @@ static std::string tstr2str(const TString &str) {
     std::string res(buf);
     delete[] buf;
     return res;
-#  else
+#else
     return str;
-#  endif
-}
 #endif
+}
 
 static std::string toHeaderGuard(const std::string &filename) {
     std::string guard = filename;
@@ -51,7 +51,7 @@ static std::string calculateHash(const std::string &data) {
     uint8_t buf[sha_size];
     calc_sha_256(buf, data.data(), data.size());
 
-    return to_hex_string({buf, buf + sha_size});
+    return toHexString({buf, buf + sha_size});
 }
 
 static int generateHeaderFile(const TString &filename, const std::vector<std::string> &defines) {
@@ -104,7 +104,7 @@ static int generateHeaderFile(const TString &filename, const std::vector<std::st
             }
         }
 
-        infile.close();
+        fclose(f);
 
         if (matched) {
             printf("Content matched. (%s)\n", hash.data());
@@ -184,7 +184,8 @@ int main(int argc, char *argv[]) {
     if (fileNames.size() != 1 || showHelp) {
         tprintf(_TSTR("Usage: %s [options] <output>\n"), appName().data());
         tprintf(_TSTR("Options:\n"));
-        tprintf(_TSTR("    %-20s    Define a variable\n"), _TSTR("-D/--define <exp>"));
+        tprintf(_TSTR("    %-20s    Define a variable, format: \"key\" or \"key=value\"\n"),
+                _TSTR("-D/--define <exp>"));
         tprintf(_TSTR("    %-20s    Show help message\n"), _TSTR("-h/--help"));
         return 0;
     }

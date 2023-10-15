@@ -42,9 +42,9 @@ namespace StdImpl {
         return tstrcmp(s.data(), p);
     }
 
-    std::string to_hex_string(const std::vector<uint8_t> &data);
+    std::string toHexString(const std::vector<uint8_t> &data);
 
-    std::vector<uint8_t> from_hex_string(const std::string &str);
+    std::vector<uint8_t> fromHexString(const std::string &str);
 
 }
 

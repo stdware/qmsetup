@@ -43,6 +43,7 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
     cmake -Dqtmediate-cmake-modules_DIR=/path/to/lib/cmake/qtmediate-cmake-modules ...
     ```
     ```cmake
+    # CMakeLists.txt
     find_package(qtmediate-cmake-modules REQUIRED)
     ```
 

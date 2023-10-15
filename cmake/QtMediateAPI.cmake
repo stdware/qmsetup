@@ -65,7 +65,7 @@ macro(qtmediate_include_qt_private _target _scope)
 endmacro()
 
 #[[
-Attach windows RC file to a target.
+    Attach windows RC file to a target.
 
     qtmediate_add_win_rc(<target>
         [NAME           name] 
@@ -110,7 +110,7 @@ function(qtmediate_add_win_rc _target)
 endfunction()
 
 #[[
-Attach windows manifest file to a target.
+    Attach windows manifest file to a target.
 
     qtmediate_add_win_manifest(<target>
         [NAME           name] 
@@ -141,7 +141,7 @@ function(qtmediate_add_win_manifest _target)
 endfunction()
 
 #[[
-Add Mac bundle info.
+    Add Mac bundle info.
 
     qtmediate_add_mac_bundle(<target>
         [NAME           <name>]
@@ -200,7 +200,7 @@ function(qtmediate_add_mac_bundle _target)
 endfunction()
 
 #[[
-Generate Windows shortcut after building target.
+    Generate Windows shortcut after building target.
 
     qtmediate_create_win_shortcut(<target> <dir>
         [OUTPUT_NAME <name]
@@ -240,7 +240,7 @@ function(qtmediate_create_win_shortcut _target _dir)
 endfunction()
 
 #[[
-Add Doxygen generate target.
+    Add Doxygen generate target.
 
     qtmediate_setup_doxygen(<target>
         [NAME           <name>]
@@ -446,7 +446,8 @@ function(qtmediate_setup_doxygen _target)
 endfunction()
 
 #[[
-Generate indirect reference files for header files to make the include statements more orderly. The generated file has the same timestamp as the source file, so there is no need .
+    Generate indirect reference files for header files to make the include statements more orderly.
+    The generated file has the same timestamp as the source file.
 
     qtmediate_sync_include(<src> <dest>
         [INSTALL_DIR]
@@ -507,7 +508,7 @@ function(qtmediate_sync_include _src_dir _dest_dir)
 endfunction()
 
 #[[
-Parse version and create seq vars with specified prefix.
+    Parse version and create seq vars with specified prefix.
 
     qtmediate_parse_version(<prefix> <version>)
 ]] #
@@ -526,7 +527,7 @@ function(qtmediate_parse_version _prefix _version)
 endfunction()
 
 #[[
-Helper to link libraries and include directories of a target.
+    Helper to link libraries and include directories of a target.
 
     qtmediate_configure_target(<target>
         [SOURCES          <files>]
@@ -630,7 +631,7 @@ function(qtmediate_configure_target _target)
 endfunction()
 
 #[[
-Helper to define export macros.
+    Helper to define export macros.
 
     qtmediate_export_defines(<target>
         [PREFIX     <prefix>]
@@ -662,7 +663,7 @@ function(qtmediate_export_defines _target)
 endfunction()
 
 #[[
-Set value if valid, otherwise use default.
+    Set value if valid, otherwise use default.
 
     qtmediate_set_value(<key> <maybe_value> <default>)
 ]] #
@@ -675,7 +676,7 @@ macro(qtmediate_set_value _key _maybe_value _default)
 endmacro()
 
 #[[
-Add a definition to global scope or a given target.
+    Add a definition to global scope or a given target.
 
     qtmediate_add_definition(<key|key=value>
         [TARGET <target>]
@@ -769,7 +770,8 @@ macro(qtmediate_add_definition)
 endmacro()
 
 #[[
-Generate a configuration header. If the configuration has not changed, the generated file's timestemp will not be updated when you reconfigure it.
+    Generate a configuration header. If the configuration has not changed, the generated file's
+    timestemp will not be updated when you reconfigure it.
 
     qtmediate_generate_config(<file>
         [TARGET <target>]
@@ -815,7 +817,7 @@ function(qtmediate_generate_config _file)
 endfunction()
 
 #[[
-Helper to define export macros.
+    Helper to define export macros.
 
     qtmediate_win_applocal_deps(<target>
         [TARGET <name>]

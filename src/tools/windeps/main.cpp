@@ -23,7 +23,6 @@ int main(int argc, char *argv[]) {
     TStringList searchingPaths;
     TString dest = _TSTR(".");
 
-    bool quiet = false;
     bool showHelp = false;
     for (int i = 1; i < args.size(); ++i) {
         if (!tstrcmp(args[i], _TSTR("--help")) || !tstrcmp(args[i], _TSTR("-h"))) {
@@ -35,10 +34,6 @@ int main(int argc, char *argv[]) {
                 excludes.emplace_back(args[i + 1]);
                 i++;
             }
-            continue;
-        }
-        if (!tstrcmp(args[i], _TSTR("--quiet")) || !tstrcmp(args[i], _TSTR("-q"))) {
-            quiet = true;
             continue;
         }
         if (!tstrcmp(args[i], _TSTR("--libdir"))) {
@@ -65,11 +60,10 @@ int main(int argc, char *argv[]) {
     if (fileNames.empty() || showHelp) {
         tprintf(_TSTR("Usage: %s <PE files ...>\n"), appName().data());
         tprintf(_TSTR("Options:\n"));
-        tprintf(_TSTR("    %-20s    Add a library searching path\n"), _TSTR("-L/--linkdir <dir>"));
         tprintf(_TSTR("    %-20s    Specify the output directory, defult to current directory\n"),
                 _TSTR("-o/--out <dir>"));
+        tprintf(_TSTR("    %-20s    Add a library searching path\n"), _TSTR("-L/--linkdir <dir>"));
         tprintf(_TSTR("    %-20s    Exclude a file name pattern\n"), _TSTR("-e/--exclude <regex>"));
-        tprintf(_TSTR("    %-20s    Skip print result\n"), _TSTR("-q/--quiet"));
         tprintf(_TSTR("    %-20s    Show help message\n"), _TSTR("-h/--help"));
         return 0;
     }
@@ -113,10 +107,8 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        if (!quiet) {
-            for (const auto &item : std::as_const(libraries)) {
-                std::cout << item << std::endl;
-            }
+        for (const auto &item : std::as_const(libraries)) {
+            std::cout << item << std::endl;
         }
     }
 
@@ -136,8 +128,7 @@ int main(int argc, char *argv[]) {
                 std::wstring fileName = std::filesystem::path(lib).wstring();
                 std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
                 if (fileName.starts_with(L"vcruntime") || fileName.starts_with(L"msvc") ||
-                    fileName.starts_with(L"api-ms-win-") ||
-                    fileName.starts_with(L"ext-ms-win-") ||
+                    fileName.starts_with(L"api-ms-win-") || fileName.starts_with(L"ext-ms-win-") ||
                     std::filesystem::exists(L"C:\\Windows\\" + fileName) ||
                     std::filesystem::exists(L"C:\\Windows\\system32\\" + fileName) ||
                     std::filesystem::exists(L"C:\\Windows\\SysWow64\\" + fileName) ||
