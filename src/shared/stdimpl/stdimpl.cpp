@@ -78,7 +78,7 @@ namespace StdImpl {
 #elif defined(__APPLE__)
         char buf[PATH_MAX];
         uint32_t size = sizeof(buf);
-        if (_NSGetExecutablePath(path, &size) != 0) {
+        if (_NSGetExecutablePath(buf, &size) != 0) {
             return {};
         }
         return buf;

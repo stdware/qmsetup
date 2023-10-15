@@ -14,7 +14,7 @@ using namespace StdImpl;
 namespace fs = std::filesystem;
 
 static void processHeaders(const fs::path &src, const fs::path &dest,
-                           const std::vector<std::wstring> &ignorePatterns, bool copy) {
+                           const TStringList &ignorePatterns, bool copy) {
     // Remove target directory
     if (fs::exists(dest)) {
         std::filesystem::remove_all(dest);
