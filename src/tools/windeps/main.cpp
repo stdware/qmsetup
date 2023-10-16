@@ -12,6 +12,8 @@
 
 using namespace StdImpl;
 
+namespace fs = std::filesystem;
+
 int main(int argc, char *argv[]) {
     (void) argc;
     (void) argv;
@@ -24,10 +26,15 @@ int main(int argc, char *argv[]) {
     TString dest = _TSTR(".");
 
     bool showHelp = false;
+    bool force = false;
     for (int i = 1; i < args.size(); ++i) {
         if (!tstrcmp(args[i], _TSTR("--help")) || !tstrcmp(args[i], _TSTR("-h"))) {
             showHelp = true;
             break;
+        }
+        if (!tstrcmp(args[i], _TSTR("--force")) || !tstrcmp(args[i], _TSTR("-f"))) {
+            force = true;
+            continue;
         }
         if (!tstrcmp(args[i], _TSTR("--exclude")) || !tstrcmp(args[i], _TSTR("-e"))) {
             if (i + 1 < args.size()) {
@@ -60,18 +67,37 @@ int main(int argc, char *argv[]) {
     if (fileNames.empty() || showHelp) {
         tprintf(_TSTR("Usage: %s <PE files ...>\n"), appName().data());
         tprintf(_TSTR("Options:\n"));
-        tprintf(_TSTR("    %-20s    Specify the output directory, defult to current directory\n"),
+        tprintf(_TSTR("    %-20s    Set the output directory, defult to current directory\n"),
                 _TSTR("-o/--out <dir>"));
         tprintf(_TSTR("    %-20s    Add a library searching path\n"), _TSTR("-L/--linkdir <dir>"));
         tprintf(_TSTR("    %-20s    Exclude a file name pattern\n"), _TSTR("-e/--exclude <regex>"));
+        tprintf(_TSTR("    %-20s    Always overwrite\n"), _TSTR("-f/--force"));
         tprintf(_TSTR("    %-20s    Show help message\n"), _TSTR("-h/--help"));
         return 0;
     }
 
-    auto getDeps = [](const std::vector<std::wstring> &fileNames,
-                      std::wstring *err) -> std::vector<std::string> {
+    // Remove duplications
+    {
+        TStringList tmp;
+        std::set<std::wstring> visited;
+        for (const auto &item: std::as_const(searchingPaths)) {
+            if (!fs::is_directory(item))
+                continue;
+
+            auto canonical = fs::canonical(item);
+            if (visited.count(canonical)) {
+                continue;
+            }
+            visited.insert(canonical);
+            tmp.push_back(canonical);
+        }
+
+        searchingPaths = std::move(tmp);
+    }
+
+    auto getDeps = [](const TStringList &fileNames, std::wstring *err) -> std::vector<std::string> {
         std::map<std::string, int> libs;
-        for (const auto &fileName : std::as_const(fileNames)) {
+        for (const auto &fileName: std::as_const(fileNames)) {
             std::wstring errorMessage;
             std::vector<std::string> dependentLibrariesIn;
             unsigned wordSizeIn;
@@ -85,7 +111,7 @@ int main(int argc, char *argv[]) {
                 return {};
             }
 
-            for (const auto &item : std::as_const(dependentLibrariesIn)) {
+            for (const auto &item: std::as_const(dependentLibrariesIn)) {
                 libs[item]++;
             }
         }
@@ -107,41 +133,43 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        for (const auto &item : std::as_const(libraries)) {
+        for (const auto &item: std::as_const(libraries)) {
             std::cout << item << std::endl;
         }
     }
 
     // Deploy
     {
-        std::set<std::wstring> name_set;
-        for (const auto &item : fileNames) {
-            name_set.insert(std::filesystem::path(item).filename());
+        std::set<std::wstring> visited;
+        for (const auto &item: fileNames) {
+            visited.insert(fs::path(item).filename());
         }
 
-        std::vector<std::wstring> stack = fileNames;
-        std::vector<std::wstring> dependencies;
+        TStringList stack = fileNames;
+        TStringList dependencies;
         while (!stack.empty()) {
             auto libs = getDeps(stack, nullptr);
             stack.clear();
-            for (const auto &lib : std::as_const(libs)) {
-                std::wstring fileName = std::filesystem::path(lib).wstring();
+            for (const auto &lib: std::as_const(libs)) {
+                std::wstring fileName = fs::path(lib);
                 std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
-                if (fileName.starts_with(L"vcruntime") || fileName.starts_with(L"msvc") ||
-                    fileName.starts_with(L"api-ms-win-") || fileName.starts_with(L"ext-ms-win-") ||
-                    std::filesystem::exists(L"C:\\Windows\\" + fileName) ||
-                    std::filesystem::exists(L"C:\\Windows\\system32\\" + fileName) ||
-                    std::filesystem::exists(L"C:\\Windows\\SysWow64\\" + fileName) ||
-                    fileName.starts_with(L"qt") || name_set.count(fileName)) {
+                if (fileName.starts_with(_TSTR("vcruntime")) ||
+                    fileName.starts_with(_TSTR("msvc")) ||
+                    fileName.starts_with(_TSTR("api-ms-win-")) ||
+                    fileName.starts_with(_TSTR("ext-ms-win-")) ||
+                    fileName.starts_with(_TSTR("qt")) ||
+                    fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
+                    fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
+                    fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) || visited.count(fileName)) {
                     continue;
                 }
-                name_set.insert(fileName);
+                visited.insert(fileName);
 
-                std::filesystem::path path;
-                for (const auto &dir : std::as_const(searchingPaths)) {
-                    std::filesystem::path temp_path = dir / std::filesystem::path(fileName);
-                    if (std::filesystem::exists(temp_path)) {
-                        path = temp_path;
+                fs::path path;
+                for (const auto &dir: std::as_const(searchingPaths)) {
+                    fs::path targetPath = dir / fs::path(fileName);
+                    if (fs::exists(targetPath)) {
+                        path = targetPath;
                         break;
                     }
                 }
@@ -150,7 +178,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 bool skip = false;
-                for (const auto &pattern : std::as_const(excludes)) {
+                for (const auto &pattern: std::as_const(excludes)) {
                     const TString &pathString = path;
                     if (std::regex_search(pathString.begin(), pathString.end(),
                                           std::basic_regex<TChar>(pattern))) {
@@ -167,8 +195,20 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        for (const auto &path : dependencies) {
-            std::filesystem::copy(path, dest, std::filesystem::copy_options::overwrite_existing);
+        for (const auto &file: std::as_const(dependencies)) {
+            auto target = dest / fs::path(file).filename();
+            if (!force && fs::exists(target) && fs::last_write_time(target) >= fs::last_write_time(file)) {
+                continue; // Replace if different
+            }
+
+            try {
+                fs::copy(file, dest, fs::copy_options::overwrite_existing);
+            } catch (const std::exception &e) {
+                std::cout << "Warning: copy file \"" << fs::path(file) << "\" failed: " << e.what()
+                          << std::endl;
+                continue;
+            }
+            fs::last_write_time(target, fs::last_write_time(file));
         }
     }
 

@@ -5,10 +5,8 @@
 #include <sstream>
 #include <cctype>
 #include <algorithm>
-#include <functional>
 #include <filesystem>
 #include <regex>
-#include <codecvt>
 
 #include <stdimpl.h>
 
@@ -17,13 +15,15 @@
 using namespace StdImpl;
 
 #ifdef _WIN32
+
 #  include <Windows.h>
+
 #endif
 
 static std::string tstr2str(const TString &str) {
 #ifdef _WIN32
     int len =
-        WideCharToMultiByte(CP_UTF8, 0, str.data(), (int) str.size(), nullptr, 0, nullptr, nullptr);
+            WideCharToMultiByte(CP_UTF8, 0, str.data(), (int) str.size(), nullptr, 0, nullptr, nullptr);
     auto buf = new char[len + 1];
     WideCharToMultiByte(CP_UTF8, 0, str.data(), (int) str.size(), buf, len, nullptr, nullptr);
     buf[len] = '\0';
@@ -39,8 +39,8 @@ static std::string tstr2str(const TString &str) {
 static std::string toHeaderGuard(const std::string &filename) {
     std::string guard = filename;
     std::replace(guard.begin(), guard.end(), '.', '_');
-    for (char &c : guard) {
-        c = std::toupper(c);
+    for (char &c: guard) {
+        c = char(std::toupper(c));
     }
     return guard;
 }
@@ -56,8 +56,8 @@ static std::string calculateHash(const std::string &data) {
 
 static int generateHeaderFile(const TString &filename, const std::vector<std::string> &defines) {
     std::stringstream definitions;
-    for (const auto &def : defines) {
-        size_t pos = def.find("=");
+    for (const auto &def: defines) {
+        size_t pos = def.find('=');
         if (pos != std::string::npos) {
             definitions << "#define " << def.substr(0, pos) << " " << def.substr(pos + 1) << "\n";
         } else {
@@ -110,7 +110,7 @@ static int generateHeaderFile(const TString &filename, const std::vector<std::st
             return 0; // Same hash found, no need to overwrite the file
         }
 
-    } while (0);
+    } while (false);
 
     // Create file
     {
@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (fileNames.size() != 1 || showHelp) {
-        tprintf(_TSTR("Usage: %s [options] <output>\n"), appName().data());
+        tprintf(_TSTR("Usage: %s [options] <output file>\n"), appName().data());
         tprintf(_TSTR("Options:\n"));
         tprintf(_TSTR("    %-20s    Define a variable, format: \"key\" or \"key=value\"\n"),
                 _TSTR("-D/--define <exp>"));

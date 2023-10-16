@@ -529,6 +529,44 @@ endfunction()
 #[[
     Helper to link libraries and include directories of a target.
 
+    qtmediate_get_shared_library_path(<target> <VAR>)
+]] #
+function(qtmediate_get_shared_library_path _target _out)
+    unset(${_out} PARENT_SCOPE)
+
+    if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL Debug)
+        set(_config_upper DEBUG)
+    else()
+        string(TOUPPER ${CMAKE_BUILD_TYPE} _config_upper)
+    endif()
+
+    # Resolve location
+    get_target_property(_imported ${_item} IMPORTED)
+
+    if(_imported)
+        get_target_property(_path ${_item} LOCATION_${_config_upper})
+
+        if(NOT _path OR ${_path} IN_LIST _result)
+            return()
+        endif()
+
+        get_filename_component(_path ${_path} DIRECTORY)
+    else()
+        get_target_property(_type ${_item} TYPE)
+
+        if(NOT ${_type} MATCHES "SHARED_LIBRARY")
+            return()
+        endif()
+
+        set(_path "$<TARGET_FILE_DIR:${_item}>")
+    endif()
+
+    set(${_out} ${_path} PARENT_SCOPE)
+endfunction()
+
+#[[
+    Helper to link libraries and include directories of a target.
+
     qtmediate_configure_target(<target>
         [SOURCES          <files>]
         [LINKS            <libs>]
@@ -583,50 +621,20 @@ function(qtmediate_configure_target _target)
 
     # Add library searching paths
     if(WIN32)
-        get_target_property(_paths ${_target} LIBRARY_SEARCHING_PATHS)
-
-        if(NOT _paths)
-            set(_paths)
-        endif()
-
-        if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL Debug)
-            set(_config_upper DEBUG)
-        else()
-            string(TOUPPER ${CMAKE_BUILD_TYPE} _config_upper)
-        endif()
-
         foreach(_item ${FUNC_LINKS} ${FUNC_LINKS_PRIVATE})
             if(TARGET ${_item})
-                # Resolve location
-                get_target_property(_imported ${_item} IMPORTED)
+                set(_path)
+                qtmediate_get_shared_library_path(${_item} _path)
 
-                if(_imported)
-                    get_target_property(_path ${_item} LOCATION_${_config_upper})
-
-                    if(NOT _path OR ${_path} IN_LIST _result)
-                        continue()
-                    endif()
-
-                    get_filename_component(_path ${_path} DIRECTORY)
-                else()
-                    get_target_property(_type ${_item} TYPE)
-
-                    if(NOT ${_type} MATCHES "SHARED_LIBRARY")
-                        continue()
-                    endif()
-
-                    set(_path $<TARGET_FILE_DIR:${_item}>)
+                if(NOT _path)
+                    continue()
                 endif()
-            endif()
 
-            if(${_path} IN_LIST _paths)
-                continue()
+                set_property(TARGET ${_target} APPEND PROPERTY LIBRARY_SEARCHING_PATHS ${_path})
+            else()
+                set_property(TARGET ${_target} APPEND PROPERTY DEFERRED_PARSED_LIBRARIES ${_item})
             endif()
-
-            list(APPEND _paths ${_path})
         endforeach()
-
-        set_target_properties(${_target} PROPERTIES LIBRARY_SEARCHING_PATHS "${_paths}")
     endif()
 endfunction()
 
@@ -851,20 +859,40 @@ function(qtmediate_win_applocal_deps _target)
         set(_deploy_target ${_target})
     endif()
 
+    # Get searching paths
     get_target_property(_paths ${_target} LIBRARY_SEARCHING_PATHS)
 
     if(NOT _paths)
         set(_paths)
     endif()
 
+    # Add extra searching paths
     if(FUNC_EXTRA_SEARCHING_PATHS)
         list(APPEND _paths ${FUNC_EXTRA_SEARCHING_PATHS})
+    endif()
+
+    # Parse deferred libraries
+    get_target_property(_deferred_libs ${_target} DEFERRED_PARSED_LIBRARIES)
+
+    if(_deferred_libs)
+        foreach(_item ${_deferred_libs})
+            set(_path)
+            qtmediate_get_shared_library_path(${_item} _path)
+
+            if(NOT _path)
+                message(WARNING "qtmediate_win_applocal_deps: dependency \"${_item}\" of target \"${_target}\" is not defined")
+                continue()
+            endif()
+
+            list(APPEND _paths ${_path})
+        endforeach()
     endif()
 
     if(NOT _paths)
         return()
     endif()
 
+    # Add command
     set(_args)
 
     foreach(_item ${_paths})
