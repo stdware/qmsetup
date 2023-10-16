@@ -30,13 +30,7 @@ namespace StdImpl {
 
     void tprintf(const TChar *format, ...);
 
-    inline int tstrcmp(const TChar *s, const TChar *p) {
-#ifdef _WIN32
-        return wcscmp(s, p);
-#else
-        return strcmp(s, p);
-#endif
-    }
+    int tstrcmp(const TChar *s, const TChar *p);
 
     inline int tstrcmp(const TString &s, const TChar *p) {
         return tstrcmp(s.data(), p);
