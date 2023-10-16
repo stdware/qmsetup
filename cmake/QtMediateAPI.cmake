@@ -484,7 +484,7 @@ function(qtmediate_sync_include _src_dir _dest_dir)
         file(GLOB_RECURSE header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
 
         execute_process(
-            COMMAND ${_tool} ${_src_dir} ${_dest_dir}
+            COMMAND ${_tool} -s ${_src_dir} ${_dest_dir}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMAND_ERROR_IS_FATAL ANY
             OUTPUT_QUIET
@@ -495,7 +495,7 @@ function(qtmediate_sync_include _src_dir _dest_dir)
 
             install(CODE "
                 execute_process(
-                    COMMAND \"${_tool}\" -c \"${_src_dir}\" \"${_install_dir}\"
+                    COMMAND \"${_tool}\" -c -s \"${_src_dir}\" \"${_install_dir}\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                     COMMAND_ERROR_IS_FATAL ANY
                     OUTPUT_QUIET
