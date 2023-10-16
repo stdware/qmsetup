@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <cstdarg>
+#include <cstring>
 #include <iomanip>
 #include <sstream>
 
@@ -119,6 +120,14 @@ namespace StdImpl {
         va_start(args, format);
         vprintf(format, args);
         va_end(args);
+#endif
+    }
+
+    int tstrcmp(const TChar *s, const TChar *p) {
+#ifdef _WIN32
+        return wcscmp(s, p);
+#else
+        return strcmp(s, p);
 #endif
     }
 
