@@ -22,3 +22,5 @@ add_subdirectory(incsync)
 if(WIN32)
     add_subdirectory(windeps)
 endif()
+
+add_subdirectory(corecmd)

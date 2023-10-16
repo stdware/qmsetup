@@ -54,17 +54,10 @@ namespace StdImpl {
         if (file.fail())
             return {};
         std::string s;
-        char c;
-        while (file.get(c)) {
-            if (c == '\0') {
-                if (!s.empty()) {
-                    res.push_back(s);
-                    s.clear();
-                }
-            } else {
-                s.push_back(c);
-            }
+        while (std::getline(file, s, '\0')) {
+            res.push_back(s);
         }
+        file.close();
 #endif
         return res;
     }

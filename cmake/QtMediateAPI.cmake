@@ -527,6 +527,24 @@ function(qtmediate_parse_version _prefix _version)
 endfunction()
 
 #[[
+    Get shorter version number.
+
+    qtmediate_crop_version(<VAR> <version> <count>)
+]] #
+function(qtmediate_crop_version _var _version _count)
+    qtmediate_parse_version(FUNC ${_version})
+
+    set(_list)
+
+    foreach(_i RANGE 1 ${_count})
+        list(APPEND _list ${FUNC_${_i}})
+    endforeach()
+
+    string(JOIN "." _short_version ${_list})
+    set(${_var} ${_short_version} PARENT_SCOPE)
+endfunction()
+
+#[[
     Helper to link libraries and include directories of a target.
 
     qtmediate_get_shared_library_path(<target> <VAR>)

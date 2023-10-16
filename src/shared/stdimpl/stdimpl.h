@@ -46,6 +46,21 @@ namespace StdImpl {
 
     std::vector<uint8_t> fromHexString(const std::string &str);
 
+    template <class T>
+    std::vector<std::basic_string<T>> split(const std::basic_string<T> &s,
+                                            const std::basic_string<T> &delimiter) {
+        std::vector<std::basic_string<T>> tokens;
+        typename std::basic_string<T>::size_type start = 0;
+        typename std::basic_string<T>::size_type end = s.find(delimiter);
+        while (end != std::basic_string<T>::npos) {
+            tokens.push_back(s.substr(start, end - start));
+            start = end + delimiter.size();
+            end = s.find(delimiter, start);
+        }
+        tokens.push_back(s.substr(start));
+        return tokens;
+    }
+
 }
 
 #endif // STDIMPL_H
