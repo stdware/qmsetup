@@ -21,7 +21,7 @@ static void processHeaders(const fs::path &src, const fs::path &dest,
         std::filesystem::remove_all(dest);
     }
 
-    for (const auto &entry: fs::recursive_directory_iterator(src)) {
+    for (const auto &entry : fs::recursive_directory_iterator(src)) {
         if (entry.is_regular_file()) {
             const auto &path = entry.path();
             if (!(path.extension() == _TSTR(".h") || path.extension() == _TSTR(".hpp"))) {
@@ -30,7 +30,7 @@ static void processHeaders(const fs::path &src, const fs::path &dest,
 
             // Get subdirectory
             std::filesystem::path subdir;
-            for (const auto &pair: includes) {
+            for (const auto &pair : includes) {
                 const TString &pathString = path;
                 if (std::regex_search(pathString.begin(), pathString.end(),
                                       std::basic_regex<TChar>(pair.first))) {
@@ -43,7 +43,7 @@ static void processHeaders(const fs::path &src, const fs::path &dest,
 
             // Check if should exclude
             bool skip = false;
-            for (const auto &pattern: excludes) {
+            for (const auto &pattern : excludes) {
                 const TString &pathString = path;
                 if (std::regex_search(pathString.begin(), pathString.end(),
                                       std::basic_regex<TChar>(pattern))) {
@@ -56,11 +56,11 @@ static void processHeaders(const fs::path &src, const fs::path &dest,
                 continue;
 
             const fs::path &targetDir = (TString(path.stem())
-                                                 .substr(path.stem().string().length() - 2, 2)
-                                                 .ends_with(_TSTR("_p")) &&
+                                             .substr(path.stem().string().length() - 2, 2)
+                                             .ends_with(_TSTR("_p")) &&
                                          !subdir.empty())
-                                        ? (dest / subdir)
-                                        : (dest);
+                                            ? (dest / subdir)
+                                            : (dest);
 
             // Create directory
             if (!fs::exists(targetDir)) {
@@ -73,8 +73,8 @@ static void processHeaders(const fs::path &src, const fs::path &dest,
                 try {
                     fs::copy(path, targetPath, fs::copy_options::overwrite_existing);
                 } catch (const std::exception &e) {
-                    std::cout << "Warning: copy file \"" << path << "\" failed: " << e.what()
-                              << std::endl;
+                    printf("Warning: copy file \"%s\" failed: %s\n", path.string().data(),
+                           e.what());
                     continue;
                 }
             } else {
@@ -91,7 +91,7 @@ static void processHeaders(const fs::path &src, const fs::path &dest,
             }
 
             // Set the timestamp
-            fs::last_write_time(targetPath, fs::last_write_time(path));
+            syncFileTime(targetPath, path);
         }
     }
 }
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
     try {
         processHeaders(src, dest, includes, excludes, copy, all);
     } catch (const std::exception &e) {
-        std::cout << "Error: " << e.what() << std::endl;
+        printf("Error: %s\n", e.what());
         return -1;
     }
     return 0;

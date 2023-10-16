@@ -1,6 +1,7 @@
 #ifndef STDIMPL_H
 #define STDIMPL_H
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -53,6 +54,20 @@ namespace StdImpl {
         }
         tokens.push_back(s.substr(start));
         return tokens;
+    }
+
+    struct FileTime {
+        std::chrono::system_clock::time_point accessTime;
+        std::chrono::system_clock::time_point modifyTime;
+        std::chrono::system_clock::time_point statusChangeTime; // Creation time on Windows
+    };
+
+    FileTime fileTime(const TString &path);
+
+    bool setFileTime(const TString &path, const FileTime &times);
+
+    inline bool syncFileTime(const TString &dest, const TString &src) {
+        return setFileTime(dest, fileTime(src));
     }
 
 }

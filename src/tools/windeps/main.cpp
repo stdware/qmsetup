@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     {
         TStringList tmp;
         std::set<std::wstring> visited;
-        for (const auto &item: std::as_const(searchingPaths)) {
+        for (const auto &item : std::as_const(searchingPaths)) {
             if (!fs::is_directory(item))
                 continue;
 
@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
 
     auto getDeps = [](const TStringList &fileNames, std::wstring *err) -> std::vector<std::string> {
         std::map<std::string, int> libs;
-        for (const auto &fileName: std::as_const(fileNames)) {
+        for (const auto &fileName : std::as_const(fileNames)) {
             std::wstring errorMessage;
             std::vector<std::string> dependentLibrariesIn;
             unsigned wordSizeIn;
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
                 return {};
             }
 
-            for (const auto &item: std::as_const(dependentLibrariesIn)) {
+            for (const auto &item : std::as_const(dependentLibrariesIn)) {
                 libs[item]++;
             }
         }
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        for (const auto &item: std::as_const(libraries)) {
+        for (const auto &item : std::as_const(libraries)) {
             std::cout << item << std::endl;
         }
     }
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
     // Deploy
     {
         std::set<std::wstring> visited;
-        for (const auto &item: fileNames) {
+        for (const auto &item : fileNames) {
             visited.insert(fs::path(item).filename());
         }
 
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
         while (!stack.empty()) {
             auto libs = getDeps(stack, nullptr);
             stack.clear();
-            for (const auto &lib: std::as_const(libs)) {
+            for (const auto &lib : std::as_const(libs)) {
                 std::wstring fileName = fs::path(lib);
                 std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
                 if (fileName.starts_with(_TSTR("vcruntime")) ||
@@ -160,13 +160,14 @@ int main(int argc, char *argv[]) {
                     fileName.starts_with(_TSTR("qt")) ||
                     fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
                     fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
-                    fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) || visited.count(fileName)) {
+                    fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
+                    visited.count(fileName)) {
                     continue;
                 }
                 visited.insert(fileName);
 
                 fs::path path;
-                for (const auto &dir: std::as_const(searchingPaths)) {
+                for (const auto &dir : std::as_const(searchingPaths)) {
                     fs::path targetPath = dir / fs::path(fileName);
                     if (fs::exists(targetPath)) {
                         path = targetPath;
@@ -178,7 +179,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 bool skip = false;
-                for (const auto &pattern: std::as_const(excludes)) {
+                for (const auto &pattern : std::as_const(excludes)) {
                     const TString &pathString = path;
                     if (std::regex_search(pathString.begin(), pathString.end(),
                                           std::basic_regex<TChar>(pattern))) {
@@ -195,20 +196,21 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        for (const auto &file: std::as_const(dependencies)) {
+        for (const auto &file : std::as_const(dependencies)) {
             auto target = dest / fs::path(file).filename();
-            if (!force && fs::exists(target) && fs::last_write_time(target) >= fs::last_write_time(file)) {
+            if (!force && fs::exists(target) &&
+                fs::last_write_time(target) >= fs::last_write_time(file)) {
                 continue; // Replace if different
             }
 
             try {
                 fs::copy(file, dest, fs::copy_options::overwrite_existing);
             } catch (const std::exception &e) {
-                std::cout << "Warning: copy file \"" << fs::path(file) << "\" failed: " << e.what()
-                          << std::endl;
+                printf("Warning: copy file \"%s\" failed: %s\n", fs::path(file).string().data(),
+                       e.what());
                 continue;
             }
-            fs::last_write_time(target, fs::last_write_time(file));
+            syncFileTime(target, file);
         }
     }
 
