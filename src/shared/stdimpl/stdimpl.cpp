@@ -222,7 +222,7 @@ namespace StdImpl {
 
 #else // For POSIX systems like Linux/Mac
 
-    FileTime fileTime(const std::filesystem::path &path) {
+    FileTime fileTime(const TString &path) {
         struct stat sb;
         if (stat(path.c_str(), &sb) == -1) {
             return {};
@@ -235,7 +235,7 @@ namespace StdImpl {
         return times;
     }
 
-    bool setFileTime(const std::filesystem::path &path, const FileTime &times) {
+    bool setFileTime(const TString &path, const FileTime &times) {
         struct utimbuf new_times;
         new_times.actime = std::chrono::system_clock::to_time_t(times.accessTime);
         new_times.modtime = std::chrono::system_clock::to_time_t(times.modifyTime);
