@@ -461,7 +461,7 @@ endmacro()
 ]] #
 function(qtmediate_win_applocal_deps _target)
     set(options)
-    set(oneValueArgs TARGET)
+    set(oneValueArgs TARGET INSTALL_DIR)
     set(multiValueArgs EXTRA_SEARCHING_PATHS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -538,7 +538,7 @@ function(qtmediate_win_applocal_deps _target)
         install(CODE "
             execute_process(
                 COMMAND \"${_tool}\" ${_quoted_args} \"$<TARGET_FILE:${_target}>\"
-                WORKING_DIRECTORY \"${FUNC_INSTALL_DIR}\}
+                WORKING_DIRECTORY \"${FUNC_INSTALL_DIR}\"
                 COMMAND_ERROR_IS_FATAL ANY
                 OUTPUT_QUIET
             )

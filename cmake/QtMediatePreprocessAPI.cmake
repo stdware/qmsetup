@@ -215,11 +215,11 @@ endfunction()
 
     qtmediate_generate_build_info(<dir> <prefix> <file>)
 
-    dir: Repository root directory (Run `git` at this)
+    dir: Repository root directory (CMake will try to run `git` at this directory)
     prefix: Macros prefix
     file: Output file
 ]] #
-function(qtmediate_generate_build_info _prefix _dir _file)
+function(qtmediate_generate_build_info _dir _prefix _file)
     # Get tool
     set(_tool_target qtmediate-cmake-modules::cfggen)
 
