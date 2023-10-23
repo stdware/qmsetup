@@ -68,6 +68,10 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
     find_package(qtmediate-cmake-modules REQUIRED)
     ```
 
+## References
+
++ https://github.com/jothepro/doxygen-awesome-css
+
 ## Thanks
 
 + RigoLigoRLC

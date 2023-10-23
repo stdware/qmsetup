@@ -167,7 +167,7 @@ endmacro()
 
     qtmediate_generate_config(<file>
         [TARGET <target>]
-        [PROPERTY prop]
+        [PROPERTY <prop>]
     )
 ]] #
 function(qtmediate_generate_config _file)
