@@ -240,274 +240,6 @@ function(qtmediate_create_win_shortcut _target _dir)
 endfunction()
 
 #[[
-    Add Doxygen generate target.
-
-    qtmediate_setup_doxygen(<target>
-        [NAME           <name>]
-        [VERSION        <version>]
-        [DESCRIPTION    <desc>]
-        [LOGO           <file>]
-        [MDFILE         <file>]
-        [OUTPUT_DIR     <dir>]
-        [INSTALL_DIR    <dir>]
-
-        [TAGFILES           <file> ...]
-        [GENERATE_TAGFILE   <file>]
-        
-        [INPUT                  <file> ...]
-        [INCLUDE_DIRECTORIES    <dir> ...]
-        [COMPILE_DEFINITIONS    <NAME=VALUE> ...]
-        [TARGETS                <target> ...]
-        [ENVIRONMENT_EXPORTS    <key> ...]
-        [NO_EXPAND_MACROS       <macro> ...]
-        [DEPENDS                <dependency> ...]
-    )
-]] #
-function(qtmediate_setup_doxygen _target)
-    set(options)
-    set(oneValueArgs NAME VERSION DESCRIPTION LOGO MDFILE OUTPUT_DIR INSTALL_DIR GENERATE_TAGFILE)
-    set(multiValueArgs INPUT TAGFILES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS TARGETS ENVIRONMENT_EXPORTS
-        NO_EXPAND_MACROS DEPENDS
-    )
-    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    if(NOT DOXYGEN_EXECUTABLE)
-        message(FATAL_ERROR "qtmediate_setup_doxygen: doxygen executable not defined!")
-    endif()
-
-    set(DOXYGEN_FILE_DIR ${QTMEDIATE_MODULES_DIR}/doxygen)
-
-    qtmediate_set_value(_name FUNC_NAME "${PROJECT_NAME}")
-    qtmediate_set_value(_version FUNC_VERSION "${PROJECT_VERSION}")
-    qtmediate_set_value(_desc FUNC_DESCRIPTION "${PROJECT_DESCRIPTION}")
-    qtmediate_set_value(_logo FUNC_LOGO "")
-    qtmediate_set_value(_mdfile FUNC_MDFILE "")
-    qtmediate_set_value(_tagfile FUNC_GENERATE_TAGFILE "")
-
-    if(_desc STREQUAL "")
-        set(${_desc} "${_name}")
-    endif()
-
-    set(_sep " \\\n    ")
-
-    # Generate include file
-    set(_doxy_includes "${CMAKE_CURRENT_BINARY_DIR}/cmake/doxygen_${_target}.inc")
-    set(_doxy_output_dir "${CMAKE_CURRENT_BINARY_DIR}/doxygen_${_target}")
-
-    set(_input "")
-    set(_tagfiles "")
-    set(_includes "")
-    set(_defines "")
-    set(_no_expand "")
-
-    if(FUNC_INPUT)
-        set(_input "INPUT = $<JOIN:${FUNC_INPUT},${_sep}>\n\n")
-    else()
-        set(_input "INPUT = \n\n")
-    endif()
-
-    if(FUNC_TAGFILES)
-        set(_tagfiles "TAGFILES = $<JOIN:${FUNC_TAGFILES},${_sep}>\n\n")
-    else()
-        set(_tagfiles "TAGFILES = \n\n")
-    endif()
-
-    if(FUNC_INCLUDE_DIRECTORIES)
-        set(_includes "INCLUDE_PATH = $<JOIN:${FUNC_INCLUDE_DIRECTORIES},${_sep}>\n\n")
-    else()
-        set(_includes "INCLUDE_PATH = \n\n")
-    endif()
-
-    if(FUNC_COMPILE_DEFINITIONS)
-        set(_defines "PREDEFINED = $<JOIN:${FUNC_COMPILE_DEFINITIONS},${_sep}>\n\n")
-    else()
-        set(_defines "PREDEFINED = \n\n")
-    endif()
-
-    if(FUNC_NO_EXPAND_MACROS)
-        set(_temp_list)
-
-        foreach(_item ${FUNC_NO_EXPAND_MACROS})
-            list(APPEND _temp_list "${_item}=")
-        endforeach()
-
-        set(_no_expand "PREDEFINED += $<JOIN:${_temp_list},${_sep}>\n\n")
-        unset(_temp_list)
-    endif()
-
-    # Extra
-    set(_extra_arguments)
-
-    if(FUNC_TARGETS)
-        foreach(item ${FUNC_TARGETS})
-            set(_extra_arguments
-                "${_extra_arguments}INCLUDE_PATH += $<JOIN:$<TARGET_PROPERTY:${item},INCLUDE_DIRECTORIES>,${_sep}>\n\n")
-            set(_extra_arguments
-                "${_extra_arguments}PREDEFINED += $<JOIN:$<TARGET_PROPERTY:${item},COMPILE_DEFINITIONS>,${_sep}>\n\n")
-        endforeach()
-    endif()
-
-    if(FUNC_OUTPUT_DIR)
-        set(_doxy_output_dir ${FUNC_OUTPUT_DIR})
-    endif()
-
-    if(_mdfile)
-        set(_extra_arguments "${_extra_arguments}INPUT += ${_mdfile}\n\n")
-    endif()
-
-    file(GENERATE
-        OUTPUT "${_doxy_includes}"
-        CONTENT "${_input}${_tagfiles}${_includes}${_defines}${_extra_arguments}${_no_expand}"
-    )
-
-    set(_env)
-
-    foreach(_export ${FUNC_ENVIRONMENT_EXPORTS})
-        if(NOT DEFINED "${_export}")
-            message(FATAL_ERROR "qtmediate_setup_doxygen: ${_export} is not known when trying to export it.")
-        endif()
-
-        list(APPEND _env "${_export}=${${_export}}")
-    endforeach()
-
-    list(APPEND _env "DOXY_FILE_DIR=${DOXYGEN_FILE_DIR}")
-    list(APPEND _env "DOXY_INCLUDE_FILE=${_doxy_includes}")
-
-    list(APPEND _env "DOXY_PROJECT_NAME=${_name}")
-    list(APPEND _env "DOXY_PROJECT_VERSION=${_version}")
-    list(APPEND _env "DOXY_PROJECT_BRIEF=${_desc}")
-    list(APPEND _env "DOXY_PROJECT_LOGO=${_logo}")
-    list(APPEND _env "DOXY_MAINPAGE_MD_FILE=${_mdfile}")
-
-    set(_build_command "${CMAKE_COMMAND}" "-E" "env"
-        ${_env}
-        "DOXY_OUTPUT_DIR=${_doxy_output_dir}"
-        "DOXY_GENERATE_TAGFILE=${_tagfile}"
-        "${DOXYGEN_EXECUTABLE}"
-        "${DOXYGEN_FILE_DIR}/Doxyfile"
-    )
-
-    if(FUNC_DEPENDS)
-        set(_dependencies DEPENDS ${FUNC_DEPENDS})
-    endif()
-
-    if(_tagfile)
-        get_filename_component(_tagfile_dir ${_tagfile} ABSOLUTE)
-        get_filename_component(_tagfile_dir ${_tagfile_dir} DIRECTORY)
-        set(_make_tagfile_dir_cmd COMMAND ${CMAKE_COMMAND} -E make_directory ${_tagfile_dir})
-    else()
-        set(_make_tagfile_dir_cmd)
-    endif()
-
-    add_custom_target(${_target}
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${_doxy_output_dir}
-        ${_make_tagfile_dir_cmd}
-        COMMAND ${_build_command}
-        COMMENT "Building HTML documentation"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        VERBATIM
-        ${_dependencies}
-    )
-
-    if(FUNC_INSTALL_DIR AND CMAKE_INSTALL_PREFIX)
-        get_filename_component(_install_dir ${FUNC_INSTALL_DIR} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
-
-        if(_tagfile)
-            get_filename_component(_name ${_tagfile} NAME)
-            set(_install_tagfile ${_install_dir}/${_name})
-        else()
-            set(_install_tagfile)
-        endif()
-
-        set(_install_command "${CMAKE_COMMAND}" "-E" "env"
-            ${_env}
-            "DOXY_OUTPUT_DIR=${_install_dir}"
-            "DOXY_GENERATE_TAGFILE=${_install_tagfile}"
-            "${DOXYGEN_EXECUTABLE}"
-            "${DOXYGEN_FILE_DIR}/Doxyfile"
-        )
-
-        set(_install_command_quoted)
-
-        foreach(_item ${_install_command})
-            set(_install_command_quoted "${_install_command_quoted}\"${_item}\" ")
-        endforeach()
-
-        install(CODE "
-            message(STATUS \"Install HTML documentation\")
-            file(MAKE_DIRECTORY \"${_install_dir}\")
-            execute_process(
-                COMMAND ${_install_command_quoted}
-                WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
-                OUTPUT_QUIET
-            )
-        ")
-    endif()
-endfunction()
-
-#[[
-    Generate indirect reference files for header files to make the include statements more orderly.
-    The generated file has the same timestamp as the source file.
-
-    qtmediate_sync_include(<src> <dest>
-        [INSTALL_DIR]
-    )
-#]]
-function(qtmediate_sync_include _src_dir _dest_dir)
-    set(options COPY)
-    set(oneValueArgs INSTALL_DIR)
-    set(multiValueArgs)
-    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    # Get petool
-    set(_tool_target qtmediate-cmake-modules::incsync)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_sync_include: tool \"incsync\" not found.")
-    else()
-        get_target_property(_tool ${_tool_target} LOCATION)
-    endif()
-
-    if(NOT IS_ABSOLUTE ${_src_dir})
-        get_filename_component(_src_dir ${_src_dir} ABSOLUTE)
-    else()
-        string(REPLACE "\\" "/" _src_dir ${_src_dir})
-    endif()
-
-    if(NOT IS_ABSOLUTE ${_dest_dir})
-        get_filename_component(_dest_dir ${_dest_dir} ABSOLUTE)
-    else()
-        string(REPLACE "\\" "/" _dest_dir ${_dest_dir})
-    endif()
-
-    if(IS_DIRECTORY ${_src_dir})
-        file(GLOB_RECURSE header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
-
-        execute_process(
-            COMMAND ${_tool} -s ${_src_dir} ${_dest_dir}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            COMMAND_ERROR_IS_FATAL ANY
-            OUTPUT_QUIET
-        )
-
-        if(FUNC_INSTALL_DIR)
-            get_filename_component(_install_dir ${FUNC_INSTALL_DIR} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
-
-            install(CODE "
-                execute_process(
-                    COMMAND \"${_tool}\" -c -s \"${_src_dir}\" \"${_install_dir}\"
-                    WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
-                    COMMAND_ERROR_IS_FATAL ANY
-                    OUTPUT_QUIET
-                )
-            ")
-        endif()
-    else()
-        message(FATAL_ERROR "qtmediate_sync_include: Source directory doesn't exist.")
-    endif()
-endfunction()
-
-#[[
     Parse version and create seq vars with specified prefix.
 
     qtmediate_parse_version(<prefix> <version>)
@@ -542,6 +274,23 @@ function(qtmediate_crop_version _var _version _count)
 
     string(JOIN "." _short_version ${_list})
     set(${_var} ${_short_version} PARENT_SCOPE)
+endfunction()
+
+#[[
+    Tell if there are any generator expressions in the string.
+
+    qtmediate_has_genex(<string> <output>)
+]] #
+function(qtmediate_has_genex _str _out)
+    string(GENEX_STRIP "${_str}" _no_genex)
+
+    if("${_str}" STREQUAL "${_no_genex}")
+        set(_res off)
+    else()
+        set(_res on)
+    endif()
+
+    set(${_out} ${_res} PARENT_SCOPE)
 endfunction()
 
 #[[
@@ -702,156 +451,11 @@ macro(qtmediate_set_value _key _maybe_value _default)
 endmacro()
 
 #[[
-    Add a definition to global scope or a given target.
-
-    qtmediate_add_definition(<key|key=value>
-        [STRING_LITERAL]
-        [TARGET <target>]
-        [PROPERTY <prop>]
-        [NUMERICAL]
-        [CONDITION <cond>]
-    )
-]] #
-macro(qtmediate_add_definition)
-    set(options GLOBAL NUMERICAL STRING_LITERAL)
-    set(oneValueArgs TARGET PROPERTY CONDITION)
-    set(multiValueArgs)
-    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    set(_result)
-    set(_is_pair off)
-    set(_defined off)
-
-    set(_list ${FUNC_UNPARSED_ARGUMENTS})
-    list(LENGTH _list _len)
-
-    set(_cond on)
-
-    if(FUNC_CONDITION)
-        if(NOT ${FUNC_CONDITION})
-            set(_cond off)
-        endif()
-    elseif(DEFINED FUNC_CONDITION)
-        set(_cond off)
-    endif()
-
-    if(${_len} EQUAL 1)
-        set(_result ${_list})
-        set(_defined on)
-
-        if(NOT _cond)
-            set(_defined off)
-        endif()
-    elseif(${_len} EQUAL 2)
-        # Get key
-        list(POP_FRONT _list _key)
-        list(POP_FRONT _list _val)
-
-        if(FUNC_STRING_LITERAL AND NOT ${_val} MATCHES "\".+\"")
-            set(_val "\"${_val}\"")
-        endif()
-
-        # Boolean
-        string(TOLOWER ${_val} _val_lower)
-
-        if(${_val_lower} STREQUAL "off" OR ${_val_lower} STREQUAL "false")
-            set(_result ${_key})
-            set(_defined off)
-
-            if(NOT _cond)
-                set(_defined on)
-            endif()
-        elseif(${_val_lower} STREQUAL "on" OR ${_val_lower} STREQUAL "true")
-            set(_result ${_key})
-            set(_defined on)
-
-            if(NOT _cond)
-                set(_defined off)
-            endif()
-        else()
-            set(_result "${_key}=${_val}")
-            set(_is_pair on)
-            set(_defined on)
-
-            if(NOT _cond)
-                set(_defined off)
-            endif()
-        endif()
-    else()
-        message(FATAL_ERROR "qtmediate_add_definition: called with incorrect number of arguments")
-    endif()
-
-    if(FUNC_NUMERICAL AND NOT _is_pair)
-        if(_defined)
-            set(_result "${_result}=1")
-        else()
-            set(_result "${_result}=-1")
-        endif()
-    elseif(NOT _defined)
-        return()
-    endif()
-
-    qtmediate_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
-
-    if(FUNC_TARGET)
-        set_property(TARGET ${FUNC_TARGET} APPEND PROPERTY ${_prop} "${_result}")
-    else()
-        set_property(GLOBAL APPEND PROPERTY ${_prop} "${_result}")
-    endif()
-endmacro()
-
-#[[
-    Generate a configuration header. If the configuration has not changed, the generated file's
-    timestemp will not be updated when you reconfigure it.
-
-    qtmediate_generate_config(<file>
-        [TARGET <target>]
-        [PROPERTY prop]
-    )
-]] #
-function(qtmediate_generate_config _file)
-    set(options GLOBAL)
-    set(oneValueArgs TARGET PROPERTY)
-    set(multiValueArgs)
-    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    # Get petool
-    set(_tool_target qtmediate-cmake-modules::cfggen)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_generate_config: tool \"cfggen\" not found.")
-    else()
-        get_target_property(_tool ${_tool_target} LOCATION)
-    endif()
-
-    qtmediate_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
-
-    if(FUNC_TARGET)
-        get_target_property(_def_list ${FUNC_TARGET} ${_prop})
-    else()
-        get_property(_def_list GLOBAL PROPERTY ${_prop})
-    endif()
-
-    if(_def_list)
-        set(_args)
-
-        foreach(_item ${_def_list})
-            list(APPEND _args "-D${_item}")
-        endforeach()
-
-        execute_process(COMMAND ${_tool} ${_args} ${_file}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            COMMAND_ERROR_IS_FATAL ANY
-            OUTPUT_QUIET
-        )
-    endif()
-endfunction()
-
-#[[
     Helper to define export macros.
 
     qtmediate_win_applocal_deps(<target>
         [TARGET <name>]
+        [INSTALL_DIR <dir>]
         [EXTRA_SEARCHING_PATHS <paths...>]
     )
 ]] #
@@ -861,7 +465,7 @@ function(qtmediate_win_applocal_deps _target)
     set(multiValueArgs EXTRA_SEARCHING_PATHS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Get petool
+    # Get tool
     set(_tool_target qtmediate-cmake-modules::windeps)
 
     if(NOT TARGET ${_tool_target})
@@ -923,4 +527,151 @@ function(qtmediate_win_applocal_deps _target)
         COMMAND ${_tool} ${_args} $<TARGET_FILE:${_target}> 1>NUL
         WORKING_DIRECTORY $<TARGET_FILE_DIR:${_target}>
     )
+
+    if(FUNC_INSTALL_DIR)
+        set(_quoted_args)
+
+        foreach(_item ${_args})
+            set(_quoted_args "${_quoted_args} \"${_item}\"")
+        endforeach()
+
+        install(CODE "
+            execute_process(
+                COMMAND \"${_tool}\" ${_quoted_args} \"$<TARGET_FILE:${_target}>\"
+                WORKING_DIRECTORY \"${FUNC_INSTALL_DIR}\}
+                COMMAND_ERROR_IS_FATAL ANY
+                OUTPUT_QUIET
+            )
+        ")
+    endif()
+endfunction()
+
+#[[
+    Collect targets of given types recursively in a directory.
+
+    qtmediate_collect_targets(<list> [DIR directory]
+                              [EXECUTABLE] [SHARED] [STATIC] [UTILITY])
+
+    If one or more types are specified, return targets matching the types.
+    If no type is specified, return all targets.
+]] #
+function(qtmediate_collect_targets _var)
+    set(options EXECUTABLE SHARED STATIC UTILITY)
+    set(oneValueArgs DIR)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(FUNC_DIR)
+        set(_dir ${FUNC_DIR})
+    else()
+        set(_dir ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+
+    set(_tmp_targets)
+    set(_targets)
+
+    # Get targets
+    ck_get_targets_recursive(_tmp_targets ${_dir})
+
+    if(NOT FUNC_EXECUTABLE AND NOT FUNC_SHARED AND NOT FUNC_STATIC AND NOT FUNC_UTILITY)
+        set(_targets ${_tmp_targets})
+    else()
+        # Filter targets
+        foreach(_item ${_tmp_targets})
+            get_target_property(_type ${_item} TYPE)
+
+            if(${_type} STREQUAL "EXECUTABLE")
+                if(FUNC_EXECUTABLE)
+                    list(APPEND _targets ${_item})
+                endif()
+            elseif(${_type} STREQUAL "SHARED_LIBRARY")
+                if(FUNC_SHARED)
+                    list(APPEND _targets ${_item})
+                endif()
+            elseif(${_type} STREQUAL "STATIC_LIBRARY")
+                if(FUNC_STATIC)
+                    list(APPEND _targets ${_item})
+                endif()
+            elseif(${_type} STREQUAL "UTILITY")
+                if(FUNC_UTILITY)
+                    list(APPEND _targets ${_item})
+                endif()
+            endif()
+        endforeach()
+    endif()
+
+    set(${_var} ${_targets} PARENT_SCOPE)
+endfunction()
+
+#[[
+    Get subdirectories' names or paths.
+
+    qtmediate_get_subdirs(<list>  
+        [DIRECTORY dir]
+        [EXCLUDE names...]
+        [REGEX_INCLUDE exps...]
+        [REGEX_EXLCUDE exps...]
+        [RELATIVE path]
+        [ABSOLUTE]
+    )
+
+    If `DIRECTORY` is not specified, consider `CMAKE_CURRENT_SOURCE_DIR`.
+    If `RELATIVE` is specified, return paths evaluated as a relative path to it.
+    If `ABSOLUTE` is specified, return absolute paths.
+    If neither of them is specified, return names.
+]] #
+function(qtmediate_get_subdirs _var)
+    set(options ABSOLUTE)
+    set(oneValueArgs DIRECTORY RELATIVE)
+    set(multiValueArgs EXCLUDE REGEX_EXLCUDE)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if(FUNC_DIRECTORY)
+        get_filename_component(_dir ${FUNC_DIRECTORY} ABSOLUTE)
+    else()
+        set(_dir ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
+
+    file(GLOB _subdirs LIST_DIRECTORIES true RELATIVE ${_dir} "${_dir}/*")
+
+    if(FUNC_EXCLUDE)
+        foreach(_exclude_dir ${FUNC_EXCLUDE})
+            list(REMOVE_ITEM _subdirs ${_exclude_dir})
+        endforeach()
+    endif()
+
+    if(FUNC_REGEX_INCLUDE)
+        foreach(_exp ${FUNC_REGEX_INCLUDE})
+            list(FILTER _subdirs INCLUDE REGEX ${_exp})
+        endforeach()
+    endif()
+
+    if(FUNC_REGEX_EXCLUDE)
+        foreach(_exp ${FUNC_REGEX_EXCLUDE})
+            list(FILTER _subdirs EXCLUDE REGEX ${_exp})
+        endforeach()
+    endif()
+
+    set(_res)
+
+    if(FUNC_RELATIVE)
+        get_filename_component(_relative ${FUNC_RELATIVE} ABSOLUTE)
+    else()
+        set(_relative)
+    endif()
+
+    foreach(_sub ${_subdirs})
+        if(IS_DIRECTORY ${_dir}/${_sub})
+            if(FUNC_ABSOLUTE)
+                list(APPEND _res ${_dir}/${_sub})
+            elseif(_relative)
+                file(RELATIVE_PATH _rel_path ${_relative} ${_dir}/${_sub})
+                list(APPEND _res ${_rel_path})
+            else()
+                list(APPEND _res ${_sub})
+            endif()
+        endif()
+    endforeach()
+
+    set(${_var} ${_res} PARENT_SCOPE)
 endfunction()
