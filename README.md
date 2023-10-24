@@ -39,10 +39,12 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
 ### Extra
 + Filesystem
     + TODO
+
 + Preprocess
     + `qtmediate_sync_include`
     + `qtmediate_add_definition`
     + `qtmediate_generate_config`
+    + `qtmediate_generate_build_info`
 
 + Doxygen
     + `qtmediate_setup_doxygen`

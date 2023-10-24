@@ -210,8 +210,6 @@ endfunction()
 
 #[[
     Generate build info information header.
-    This file contains configuration time so that it changes when you reconfigure the project.
-    You're not supporsed to include this file at any header file which may cause a large recompilation.
 
     qtmediate_generate_build_info(<dir> <prefix> <file>)
 
@@ -231,27 +229,19 @@ function(qtmediate_generate_build_info _dir _prefix _file)
 
     set(_git_branch "unknown")
     set(_git_hash "unknown")
+    set(_git_commit_time "unknown")
+    set(_git_commit_author "unknown")
+    set(_git_commit_email "unknown")
 
     find_package(Git QUIET)
 
     if(Git_FOUND)
         # message(STATUS "Git found: ${GIT_EXECUTABLE} (version ${GIT_VERSION_STRING})")
-        execute_process(
-            COMMAND ${GIT_EXECUTABLE} log -1 --pretty=format:%H
-            OUTPUT_VARIABLE _git_hash_temp
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            ERROR_QUIET
-            WORKING_DIRECTORY ${_dir}
-            RESULT_VARIABLE _code
-        )
 
-        if(${_code} EQUAL 0)
-            set(_git_hash ${_git_hash_temp})
-        endif()
-
+        # Branch
         execute_process(
             COMMAND ${GIT_EXECUTABLE} symbolic-ref --short -q HEAD
-            OUTPUT_VARIABLE _git_branch_temp
+            OUTPUT_VARIABLE _temp
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
             WORKING_DIRECTORY ${_dir}
@@ -259,7 +249,25 @@ function(qtmediate_generate_build_info _dir _prefix _file)
         )
 
         if(${_code} EQUAL 0)
-            set(_git_branch ${_git_branch_temp})
+            set(_git_branch ${_temp})
+        endif()
+
+        # Hash
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} log -1 "--pretty=format:%H\n%aI\n%aN\n%aE"
+            OUTPUT_VARIABLE _temp
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            WORKING_DIRECTORY ${_dir}
+            RESULT_VARIABLE _code
+        )
+
+        if(${_code} EQUAL 0)
+            string(REPLACE "\n" ";" _temp_list "${_temp}")
+            list(GET _temp_list 0 _git_hash)
+            list(GET _temp_list 1 _git_commit_time)
+            list(GET _temp_list 2 _git_commit_author)
+            list(GET _temp_list 3 _git_commit_email)
         endif()
     else()
         # message(WARNING "Git not found")
@@ -289,17 +297,20 @@ function(qtmediate_generate_build_info _dir _prefix _file)
         set(_compiler_version 0)
     endif()
 
-    string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
-    string(TIMESTAMP _build_year "%Y")
+    # string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
+    # string(TIMESTAMP _build_year "%Y")
 
     set(_def_list)
     list(APPEND _def_list ${_prefix}_BUILD_COMPILER_ID=\"${_compiler_name}\")
     list(APPEND _def_list ${_prefix}_BUILD_COMPILER_VERSION=\"${_compiler_version}\")
     list(APPEND _def_list ${_prefix}_BUILD_COMPILER_ARCH=\"${_compiler_arch}\")
-    list(APPEND _def_list ${_prefix}_BUILD_DATE_TIME=\"${_build_time}\")
-    list(APPEND _def_list ${_prefix}_BUILD_YEAR=\"${_build_year}\")
-    list(APPEND _def_list ${_prefix}_GIT_COMMIT_HASH=\"${_git_hash}\")
+    # list(APPEND _def_list ${_prefix}_BUILD_DATE_TIME=\"${_build_time}\")
+    # list(APPEND _def_list ${_prefix}_BUILD_YEAR=\"${_build_year}\")
     list(APPEND _def_list ${_prefix}_GIT_BRANCH=\"${_git_branch}\")
+    list(APPEND _def_list ${_prefix}_GIT_LAST_COMMIT_HASH=\"${_git_hash}\")
+    list(APPEND _def_list ${_prefix}_GIT_LAST_COMMIT_TIME=\"${_git_commit_time}\")
+    list(APPEND _def_list ${_prefix}_GIT_LAST_COMMIT_AUTHOR=\"${_git_commit_author}\")
+    list(APPEND _def_list ${_prefix}_GIT_LAST_COMMIT_EMAIL=\"${_git_commit_email}\")
 
     set(_args)
 
