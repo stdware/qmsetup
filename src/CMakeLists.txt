@@ -4,6 +4,18 @@ include(CMakePackageConfigHelpers)
 add_subdirectory(shared)
 add_subdirectory(tools)
 
+# Add headers
+add_library(global INTERFACE)
+target_include_directories(global INTERFACE
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${QTMEDIATE_MODULES_INSTALL_NAME}>"
+)
+
+install(TARGETS global
+    EXPORT ${QTMEDIATE_MODULES_INSTALL_NAME}Targets
+)
+
 if(TRUE)
     # Add install target
     set(_install_dir ${CMAKE_INSTALL_LIBDIR}/cmake/${QTMEDIATE_MODULES_INSTALL_NAME})
@@ -37,9 +49,13 @@ if(TRUE)
         DESTINATION ${_install_dir}
     )
 
+    # Install headers
+    install(DIRECTORY ../include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${QTMEDIATE_MODULES_INSTALL_NAME}
+    )
+
     # Install cmake modules
     install(DIRECTORY ../cmake/
         DESTINATION ${_install_dir}/cmake
-        PATTERN "__pycache__" EXCLUDE
     )
 endif()
