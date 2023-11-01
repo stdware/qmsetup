@@ -5,14 +5,15 @@ add_subdirectory(shared)
 add_subdirectory(tools)
 
 # Add headers
-add_library(global INTERFACE)
-target_include_directories(global INTERFACE
+set(_corelib_name library)
+add_library(${_corelib_name} INTERFACE)
+target_include_directories(${_corelib_name} INTERFACE
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/${QTMEDIATE_MODULES_INSTALL_NAME}>"
 )
 
-install(TARGETS global
+install(TARGETS ${_corelib_name}
     EXPORT ${QTMEDIATE_MODULES_INSTALL_NAME}Targets
 )
 
