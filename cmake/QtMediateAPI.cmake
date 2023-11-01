@@ -466,7 +466,7 @@ function(qtmediate_win_applocal_deps _target)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediate-cmake-modules::windeps)
+    set(_tool_target qtmediateCM::windeps)
 
     if(NOT TARGET ${_tool_target})
         message(FATAL_ERROR "qtmediate_win_applocal_deps: tool \"windeps\" not found.")

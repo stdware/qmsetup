@@ -46,13 +46,13 @@ if(TRUE)
     # Install cmake targets files
     install(EXPORT ${QTMEDIATE_MODULES_INSTALL_NAME}Targets
         FILE "${QTMEDIATE_MODULES_INSTALL_NAME}-targets.cmake"
-        NAMESPACE qtmediate-cmake-modules::
+        NAMESPACE qtmediateCM::
         DESTINATION ${_install_dir}
     )
 
     # Install headers
     install(DIRECTORY ../include/
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${QTMEDIATE_MODULES_INSTALL_NAME}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
 
     # Install cmake modules

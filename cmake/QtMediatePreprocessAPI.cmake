@@ -15,7 +15,7 @@ function(qtmediate_sync_include _src_dir _dest_dir)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediate-cmake-modules::incsync)
+    set(_tool_target qtmediateCM::incsync)
 
     if(NOT TARGET ${_tool_target})
         message(FATAL_ERROR "qtmediate_sync_include: tool \"incsync\" not found.")
@@ -177,7 +177,7 @@ function(qtmediate_generate_config _file)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediate-cmake-modules::cfggen)
+    set(_tool_target qtmediateCM::cfggen)
 
     if(NOT TARGET ${_tool_target})
         message(FATAL_ERROR "qtmediate_generate_config: tool \"cfggen\" not found.")
@@ -219,7 +219,7 @@ endfunction()
 ]] #
 function(qtmediate_generate_build_info _dir _prefix _file)
     # Get tool
-    set(_tool_target qtmediate-cmake-modules::cfggen)
+    set(_tool_target qtmediateCM::cfggen)
 
     if(NOT TARGET ${_tool_target})
         message(FATAL_ERROR "qtmediate_generate_config: tool \"cfggen\" not found.")

@@ -4,7 +4,7 @@
 #include <atomic>
 #include <utility>
 
-#include <qtmediate/qtmediate_global.h>
+#include <qtmediateCM/qtmediate_global.h>
 
 template <class T>
 class QMSharedDataPointer;
