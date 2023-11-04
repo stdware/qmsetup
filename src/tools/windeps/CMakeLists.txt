@@ -9,4 +9,4 @@ add_executable(${PROJECT_NAME} ${_src})
 
 configure_target(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE winutils stdimpl)
+target_link_libraries(${PROJECT_NAME} PRIVATE winutils stdimpl syscmdline::syscmdline)

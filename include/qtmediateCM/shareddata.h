@@ -15,10 +15,12 @@ public:
 
     inline QMSharedData() noexcept : ref(0){};
     inline QMSharedData(const QMSharedData &) noexcept : ref(0){};
+    virtual ~QMSharedData() = default;
 
     // using the assignment operator would lead to corruption in the ref-counting
     QMSharedData &operator=(const QMSharedData &) = delete;
-    virtual ~QMSharedData() = default;
+
+    // NOTICE: must define a function named `clone()` which returns a copy
 };
 
 template <class T>

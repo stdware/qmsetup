@@ -1,81 +1,75 @@
 // Usage: windeps <PE files...>
 // Output: Show and deploy shared libraries that specified EXEs depends
 
-#include <map>
-#include <iostream>
 #include <filesystem>
-#include <set>
+#include <iostream>
+#include <map>
 #include <regex>
+#include <set>
 
 #include <stdimpl.h>
 #include <winutils.h>
 
-using namespace StdImpl;
+#include <syscmdline/parser.h>
+#include <syscmdline/system.h>
+
+using StdImpl::TChar;
+using StdImpl::tprintf;
+using StdImpl::TString;
+using StdImpl::TStringList;
+
+namespace SCL = SysCmdLine;
 
 namespace fs = std::filesystem;
 
-int main(int argc, char *argv[]) {
-    (void) argc;
-    (void) argv;
+static inline std::string tstr2str(const TString &str) {
+#ifdef _WIN32
+    return SCL::wideToUtf8(str);
+#else
+    return str;
+#endif
+}
 
-    // Parse arguments
-    TStringList args = commandLineArguments();
-    TStringList fileNames;
-    TStringList excludes;
-    TStringList searchingPaths;
-    TString dest = _TSTR(".");
+static inline TString str2tstr(const std::string &str) {
+#ifdef _WIN32
+    return SCL::utf8ToWide(str);
+#else
+    return str;
+#endif
+}
 
-    bool showHelp = false;
-    bool force = false;
-    for (int i = 1; i < args.size(); ++i) {
-        if (!tstrcmp(args[i], _TSTR("--help")) || !tstrcmp(args[i], _TSTR("-h"))) {
-            showHelp = true;
-            break;
+static std::vector<std::string> getFilesDependencies(const TStringList &fileNames,
+                                                     std::wstring *err) {
+    std::map<std::string, int> libs;
+    for (const auto &fileName : std::as_const(fileNames)) {
+        std::wstring errorMessage;
+        std::vector<std::string> dependentLibrariesIn;
+        unsigned wordSizeIn;
+        bool isDebugIn;
+        bool isMinGW = false;
+        unsigned short machineArchIn;
+        if (!WinUtils::readPeExecutable(fileName, &errorMessage, &dependentLibrariesIn, &wordSizeIn,
+                                        &isDebugIn, isMinGW, &machineArchIn) &&
+            err) {
+            *err = errorMessage;
+            return {};
         }
-        if (!tstrcmp(args[i], _TSTR("--force")) || !tstrcmp(args[i], _TSTR("-f"))) {
-            force = true;
-            continue;
+
+        for (const auto &item : std::as_const(dependentLibrariesIn)) {
+            libs[item]++;
         }
-        if (!tstrcmp(args[i], _TSTR("--exclude")) || !tstrcmp(args[i], _TSTR("-e"))) {
-            if (i + 1 < args.size()) {
-                excludes.emplace_back(args[i + 1]);
-                i++;
-            }
-            continue;
-        }
-        if (!tstrcmp(args[i], _TSTR("--libdir"))) {
-            if (i + 1 < args.size()) {
-                dest = args[i + 1];
-                i++;
-            }
-            continue;
-        }
-        if (!tstrcmp(args[i], _TSTR("--linkdir")) || !tstrcmp(args[i], _TSTR("-L"))) {
-            if (i + 1 < args.size()) {
-                searchingPaths.emplace_back(args[i + 1]);
-                i++;
-            }
-            continue;
-        }
-        if (args[i].starts_with(_TSTR("-L")) && args[i].size() > 2) {
-            searchingPaths.emplace_back(args[i].substr(2));
-            continue;
-        }
-        fileNames.push_back(args[i]);
     }
 
-    if (fileNames.empty() || showHelp) {
-        tprintf(_TSTR("Usage: %s <PE files ...>\n"), appName().data());
-        tprintf(_TSTR("Options:\n"));
-        tprintf(_TSTR("    %-20s    Set the output directory, defult to current directory\n"),
-                _TSTR("-o/--out <dir>"));
-        tprintf(_TSTR("    %-20s    Add a library searching path\n"), _TSTR("-L/--linkdir <dir>"));
-        tprintf(_TSTR("    %-20s    Exclude a file name pattern\n"), _TSTR("-e/--exclude <regex>"));
-        tprintf(_TSTR("    %-20s    Always overwrite\n"), _TSTR("-f/--force"));
-        tprintf(_TSTR("    %-20s    Show help message\n"), _TSTR("-h/--help"));
-        return 0;
+    std::vector<std::string> res;
+    res.reserve(libs.size());
+    for (auto it = libs.begin(); it != libs.end(); ++it) {
+        res.emplace_back(it->first);
     }
+    return res;
+};
 
+static int deployDependencies(TStringList searchingPaths, const TStringList &fileNames,
+                              const TString &dest, const TStringList &excludes, bool force) {
     // Remove duplications
     {
         TStringList tmp;
@@ -95,39 +89,10 @@ int main(int argc, char *argv[]) {
         searchingPaths = std::move(tmp);
     }
 
-    auto getDeps = [](const TStringList &fileNames, std::wstring *err) -> std::vector<std::string> {
-        std::map<std::string, int> libs;
-        for (const auto &fileName : std::as_const(fileNames)) {
-            std::wstring errorMessage;
-            std::vector<std::string> dependentLibrariesIn;
-            unsigned wordSizeIn;
-            bool isDebugIn;
-            bool isMinGW = false;
-            unsigned short machineArchIn;
-            if (!WinUtils::readPeExecutable(fileName, &errorMessage, &dependentLibrariesIn,
-                                            &wordSizeIn, &isDebugIn, isMinGW, &machineArchIn) &&
-                err) {
-                *err = errorMessage;
-                return {};
-            }
-
-            for (const auto &item : std::as_const(dependentLibrariesIn)) {
-                libs[item]++;
-            }
-        }
-
-        std::vector<std::string> res;
-        res.reserve(libs.size());
-        for (auto it = libs.begin(); it != libs.end(); ++it) {
-            res.emplace_back(it->first);
-        }
-        return res;
-    };
-
     // Dry run
     {
         std::wstring errorMessage;
-        auto libraries = getDeps(fileNames, &errorMessage);
+        auto libraries = getFilesDependencies(fileNames, &errorMessage);
         if (!errorMessage.empty()) {
             tprintf(_TSTR("Error: %s\n"), errorMessage.data());
             return -1;
@@ -148,7 +113,7 @@ int main(int argc, char *argv[]) {
         TStringList stack = fileNames;
         TStringList dependencies;
         while (!stack.empty()) {
-            auto libs = getDeps(stack, nullptr);
+            auto libs = getFilesDependencies(stack, nullptr);
             stack.clear();
             for (const auto &lib : std::as_const(libs)) {
                 std::wstring fileName = fs::path(lib);
@@ -210,9 +175,51 @@ int main(int argc, char *argv[]) {
                        e.what());
                 continue;
             }
-            syncFileTime(target, file);
+            StdImpl::syncFileTime(target, file);
         }
     }
+    return 0;
+}
 
+int main(int argc, char *argv[]) {
+    SCL::Command command(SCL::appName(), "Resolve and deploy Windows PE files' dependencies.");
+    command.addArguments({
+        SCL::Argument("file", "Windows PE file(s)"),
+    });
+    command.addOptions({
+        SCL::Option({"-o", "--out"}, "Set the output directory, defult to current directory")
+            .arg("dir"),
+        SCL::Option({"-L", "--linkdir"}, "Add a library searching path")
+            .arg("dir")
+            .multi()
+            .short_match(SCL::Option::ShortMatchSingleChar),
+        SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+        SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
+    });
+    command.addVersionOption(TOOL_VERSION);
+    command.addHelpOption(true);
+    command.setHandler([](const SCL::ParseResult &result) -> int {
+        TStringList fileNames;
+        TStringList excludes;
+        TStringList searchingPaths;
+        TString dest = _TSTR(".");
+        bool force = result.optionIsSet("-f");
+        if (result.optionIsSet("-o")) {
+            dest = str2tstr(result.valueForOption("-o").toString());
+        }
+        return deployDependencies(searchingPaths, fileNames, dest, excludes, force);
+    });
+
+    SCL::Parser parser(command);
+    parser.setPrologue(TOOL_DESC);
+    parser.setDisplayOptions(SCL::Parser::ShowOptionsHintFront);
+
+#ifdef _WIN32
+    std::ignore = argc;
+    std::ignore = argv;
+    return parser.invoke(SCL::commandLineArguments());
+#else
+    return parser.invoke(argc, argv);
+#endif
     return 0;
 }

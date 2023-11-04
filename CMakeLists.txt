@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(qtmediateCM VERSION 0.0.0.1)
+project(qtmediateCM VERSION 0.0.1.2)
 
 # ----------------------------------
 # CMake Settings
@@ -33,6 +33,7 @@ endif()
 # ----------------------------------
 set(QTMEDIATE_MODULES_VERSION ${PROJECT_VERSION})
 set(QTMEDIATE_MODULES_INSTALL_NAME ${PROJECT_NAME})
+set(QTMEDIATE_MODULES_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(cmake/QtMediateAPI.cmake)
 

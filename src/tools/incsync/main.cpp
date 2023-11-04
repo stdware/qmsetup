@@ -1,17 +1,41 @@
 // Usage: incgen [-c] [-e <pattern> [-e ...]] <src dir> <dest dir>
 // Copy or make reference for include directory
 
-#include <iostream>
-#include <regex>
-#include <functional>
 #include <filesystem>
 #include <fstream>
+#include <functional>
+#include <iostream>
+#include <regex>
 
 #include <stdimpl.h>
 
-using namespace StdImpl;
+#include <syscmdline/parser.h>
+#include <syscmdline/system.h>
+
+using StdImpl::TChar;
+using StdImpl::tprintf;
+using StdImpl::TString;
+using StdImpl::TStringList;
+
+namespace SCL = SysCmdLine;
 
 namespace fs = std::filesystem;
+
+static inline std::string tstr2str(const TString &str) {
+#ifdef _WIN32
+    return SCL::wideToUtf8(str);
+#else
+    return str;
+#endif
+}
+
+static inline TString str2tstr(const std::string &str) {
+#ifdef _WIN32
+    return SCL::utf8ToWide(str);
+#else
+    return str;
+#endif
+}
 
 static void processHeaders(const fs::path &src, const fs::path &dest,
                            const std::vector<std::pair<TString, TString>> &includes,
@@ -91,90 +115,86 @@ static void processHeaders(const fs::path &src, const fs::path &dest,
             }
 
             // Set the timestamp
-            syncFileTime(targetPath, path);
+            StdImpl::syncFileTime(targetPath, path);
         }
     }
 }
 
 int main(int argc, char *argv[]) {
-    (void) argc;
-    (void) argv;
+    SCL::Command command(SCL::appName(), "Reorganize the header directory structure.");
+    command.addArguments({
+        SCL::Argument("src dir", "Source files directory"),
+        SCL::Argument("dest dir", "Destination directory"),
+    });
+    command.addOptions({
+        SCL::Option({"-i", "--include"}, "Add a path pattern and corresponding subdirectory")
+            .arg("regex")
+            .arg("subdir")
+            .multi(),
+        SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+        SCL::Option({"-s", "--standard"}, "Add standard public-private name pattern"),
+        SCL::Option({"-n", "--not-all"}, "Ignore unclassified files"),
+        SCL::Option({"-c", "--copy"}, "Copy files rather than indirect reference"),
+    });
+    command.addVersionOption(TOOL_VERSION);
+    command.addHelpOption(true);
+    command.setHandler([](const SCL::ParseResult &result) -> int {
+        bool copy = result.optionIsSet("-c");
+        bool all = !result.optionIsSet("-n");
+        bool standard = result.optionIsSet("-s");
 
-    // Parse arguments
-    TStringList args = commandLineArguments();
-    TStringList fileNames;
-    std::vector<std::pair<TString, TString>> includes;
-    TStringList excludes;
-    bool copy = false;
-    bool all = true;
-    bool standard = false;
-    bool showHelp = false;
+        const auto &src = str2tstr(result.value(0).toString());
+        const auto &dest = str2tstr(result.value(1).toString());
+        if (!fs::is_directory(src)) {
+            tprintf(_TSTR("Error: \"%s\" is not a directory.\n"), src.data());
+            return -1;
+        }
 
-    for (int i = 1; i < args.size(); ++i) {
-        if (!tstrcmp(args[i], _TSTR("--help")) || !tstrcmp(args[i], _TSTR("-h"))) {
-            showHelp = true;
-            break;
+        std::vector<std::pair<TString, TString>> includes;
+        TStringList excludes;
+
+        // Add standard
+        if (standard) {
+            includes.emplace_back(_TSTR(R"(.*?_p\..+$)"), _TSTR("private"));
         }
-        if (!tstrcmp(args[i], _TSTR("--not-all")) || !tstrcmp(args[i], _TSTR("-n"))) {
-            all = false;
-            continue;
-        }
-        if (!tstrcmp(args[i], _TSTR("--standard")) || !tstrcmp(args[i], _TSTR("-s"))) {
-            standard = true;
-            continue;
-        }
-        if (!tstrcmp(args[i], _TSTR("--exclude")) || !tstrcmp(args[i], _TSTR("-e"))) {
-            if (i + 1 < args.size()) {
-                excludes.emplace_back(args[i + 1]);
-                i++;
+
+        // Add includes
+        {
+            const auto &includeResult = result.option("-i");
+            int cnt = includeResult.count();
+            for (int i = 0; i < cnt; ++i) {
+                includes.emplace_back(str2tstr(includeResult.value(0, i).toString()),
+                                      str2tstr(includeResult.value(1, i).toString()));
             }
-            continue;
         }
-        if (!tstrcmp(args[i], _TSTR("--include")) || !tstrcmp(args[i], _TSTR("-i"))) {
-            if (i + 2 < args.size()) {
-                includes.emplace_back(args[i + 1], args[i + 2]);
-                i += 2;
-            }
-            continue;
-        }
-        if (!tstrcmp(args[i], _TSTR("--copy")) || !tstrcmp(args[i], _TSTR("-c"))) {
-            copy = true;
-            continue;
-        }
-        fileNames.push_back(args[i]);
-    }
 
-    if (fileNames.size() != 2 || showHelp) {
-        tprintf(_TSTR("Usage: %s [options] <src dir> <dest dir>\n"), appName().data());
-        tprintf(_TSTR("Options:\n"));
-        tprintf(_TSTR("    %-30s    Add a path pattern and corresponding subdirectory\n"),
-                _TSTR("-i/--include <regex> <subdir>"));
-        tprintf(_TSTR("    %-30s    Add standard public-private name pattern\n"),
-                _TSTR("-s/--standard"));
-        tprintf(_TSTR("    %-30s    Exclude a path pattern\n"), _TSTR("-e/--exclude <regex>"));
-        tprintf(_TSTR("    %-30s    Ignore unclassified files\n"), _TSTR("-n/--not-all"));
-        tprintf(_TSTR("    %-30s    Copy files rather than indirect reference\n"),
-                _TSTR("-c/--copy"));
-        tprintf(_TSTR("    %-30s    Show help message\n"), _TSTR("-h/--help"));
+        // Add excludes
+        {
+            const auto &excludeResult = result.option("-e");
+            for (const auto &item : excludeResult.allValues()) {
+                excludes.emplace_back(str2tstr(item.toString()));
+            }
+        }
+
+        try {
+            processHeaders(src, dest, includes, excludes, copy, all);
+        } catch (const std::exception &e) {
+            printf("Error: %s\n", e.what());
+            return -1;
+        }
+
         return 0;
-    }
+    });
 
-    const auto &src = fileNames.at(0);
-    const auto &dest = fileNames.at(1);
-    if (!fs::is_directory(src)) {
-        tprintf(_TSTR("Error: \"%s\" is not a directory.\n"), src.data());
-        return -1;
-    }
+    SCL::Parser parser(command);
+    parser.setPrologue(TOOL_DESC);
+    parser.setDisplayOptions(SCL::Parser::ShowOptionsHintFront);
 
-    if (standard) {
-        includes.emplace_back(_TSTR(R"(.*?_p\..+$)"), _TSTR("private"));
-    }
-
-    try {
-        processHeaders(src, dest, includes, excludes, copy, all);
-    } catch (const std::exception &e) {
-        printf("Error: %s\n", e.what());
-        return -1;
-    }
-    return 0;
+#ifdef _WIN32
+    std::ignore = argc;
+    std::ignore = argv;
+    return parser.invoke(SCL::commandLineArguments());
+#else
+    return parser.invoke(argc, argv);
+#endif
 }

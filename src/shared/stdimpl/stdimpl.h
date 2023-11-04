@@ -23,12 +23,6 @@ namespace StdImpl {
 
     using TStringList = std::vector<TString>;
 
-    TStringList commandLineArguments();
-
-    TString appPath();
-
-    TString appName();
-
     void tprintf(const TChar *format, ...);
 
     int tstrcmp(const TChar *s, const TChar *p);

@@ -54,6 +54,14 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
 
 ## Integrate
 
++ Clone
+    ```sh
+    git clone --recursive https://github.com/SineStriker/qtmediate-cmake-modules
+    ```
+    ```sh
+    git clone --recursive git@github.com:SineStriker/qtmediate-cmake-modules.git
+    ```
+
 + Build & Install
     ```sh
     cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to
@@ -72,6 +80,7 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
 
 ## References
 
++ https://github.com/SineStriker/syscmdline
 + https://github.com/jothepro/doxygen-awesome-css
 
 ## Thanks

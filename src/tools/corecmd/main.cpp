@@ -3,30 +3,48 @@
 
 #include <stdimpl.h>
 
-using namespace StdImpl;
+#include <syscmdline/parser.h>
+#include <syscmdline/system.h>
+
+using StdImpl::TChar;
+using StdImpl::tprintf;
+using StdImpl::TString;
+using StdImpl::TStringList;
+
+namespace SCL = SysCmdLine;
 
 namespace fs = std::filesystem;
 
-static int cmd_cpdir(const TStringList &args);
-static int cmd_rmdir(const TStringList &args);
-static int cmd_touch(const TStringList &args);
+static inline std::string tstr2str(const TString &str) {
+#ifdef _WIN32
+    return SCL::wideToUtf8(str);
+#else
+    return str;
+#endif
+}
 
-static void printHelp();
+static inline TString str2tstr(const std::string &str) {
+#ifdef _WIN32
+    return SCL::utf8ToWide(str);
+#else
+    return str;
+#endif
+}
 
 static bool removeEmptyDirectories(const fs::path &path) {
-    bool isCurrentDirEmpty = true;
+    bool cur_empty = true;
     for (const auto &entry : fs::directory_iterator(path)) {
         if (fs::is_directory(entry.path())) {
-            bool isSubDirEmpty = removeEmptyDirectories(entry.path());
-            isCurrentDirEmpty &= isSubDirEmpty;
-            if (isSubDirEmpty) {
+            bool sub_empty = removeEmptyDirectories(entry.path());
+            cur_empty &= sub_empty;
+            if (sub_empty) {
                 fs::remove(entry.path());
             }
         } else {
-            isCurrentDirEmpty = false;
+            cur_empty = false;
         }
     }
-    return isCurrentDirEmpty;
+    return cur_empty;
 }
 
 static void copyDirectory(const fs::path &sourceDir, const fs::path &destDir) {
@@ -44,7 +62,9 @@ static void copyDirectory(const fs::path &sourceDir, const fs::path &destDir) {
                 }
             } else {
                 fs::copy_file(sourcePath, destPath);
-                syncFileTime(destPath, sourcePath);
+
+                // Sync time
+                StdImpl::syncFileTime(destPath, sourcePath);
             }
         } else if (fs::is_directory(sourcePath)) {
             copyDirectory(sourcePath, destPath);
@@ -64,33 +84,12 @@ static void copyDirectory(const fs::path &sourceDir, const fs::path &destDir) {
     }
 }
 
-static struct {
-    const TChar *cmd;
-    const TChar *desc;
-    int (*entry)(const TStringList &);
-} commandEntries[] = {
-    {_TSTR("cpdir <src> <dest>"),      _TSTR("Copy directory if different"),  cmd_cpdir},
-    {_TSTR("rmdir <dir> [<dir> ...]"), _TSTR("Remove all empty directories"), cmd_rmdir},
-    {_TSTR("touch <file> [ref file]"), _TSTR("Update timestamp"),             cmd_touch},
-};
-
-static struct {
-    const TChar *opt;
-    const TChar *desc;
-    void (*entry)();
-} optionEntries[] = {
-    {_TSTR("-h/--help"), _TSTR("Show help message"), printHelp},
-};
-
-int cmd_cpdir(const TStringList &args) {
-    TStringList fileNames(args.begin() + 2, args.end());
-    if (fileNames.size() != 2) {
-        tprintf(_TSTR("Error: invalid number of arguments\n"));
-        return -1;
-    }
+int cmd_cpdir(const SCL::ParseResult &result) {
+    const auto &src = str2tstr(result.value(0).toString());
+    const auto &dest = str2tstr(result.value(1).toString());
 
     try {
-        copyDirectory(fileNames.at(0), fileNames.at(1));
+        copyDirectory(src, dest);
     } catch (const std::exception &e) {
         printf("Error: failed to copy directory: %s\n", e.what());
         return -1;
@@ -98,11 +97,10 @@ int cmd_cpdir(const TStringList &args) {
     return 0;
 }
 
-int cmd_rmdir(const TStringList &args) {
-    TStringList fileNames(args.begin() + 2, args.end());
-    if (fileNames.size() == 0) {
-        tprintf(_TSTR("Error: invalid number of arguments\n"));
-        return -1;
+int cmd_rmdir(const SCL::ParseResult &result) {
+    TStringList fileNames;
+    for (const auto &item : result.values(0)) {
+        fileNames.emplace_back(str2tstr(item.toString()));
     }
 
     for (const auto &item : std::as_const(fileNames)) {
@@ -120,33 +118,27 @@ int cmd_rmdir(const TStringList &args) {
     return 0;
 }
 
-int cmd_touch(const TStringList &args) {
-    TStringList fileNames(args.begin() + 2, args.end());
-    if (fileNames.size() == 0 || fileNames.size() > 2) {
-        tprintf(_TSTR("Error: invalid number of arguments\n"));
-        return -1;
-    }
-
-    const auto &src = fileNames.size() > 1 ? fileNames.at(1) : TString();
-    const auto &dest = fileNames.at(0);
+int cmd_touch(const SCL::ParseResult &result) {
+    const auto &file = str2tstr(result.value(0).toString());
+    const auto &refFile = str2tstr(result.value(1).toString());
 
     // Check existence
-    if (!src.empty() && !fs::is_regular_file(src)) {
-        tprintf(_TSTR("Error: \"%s\" is not a regular file\n"), src.data());
+    if (!fs::is_regular_file(file)) {
+        tprintf(_TSTR("Error: \"%s\" is not a regular file\n"), file.data());
         return -1;
     }
 
-    if (!fs::is_regular_file(dest)) {
-        tprintf(_TSTR("Error: \"%s\" is not a regular file\n"), dest.data());
+    if (!refFile.empty() && !fs::is_regular_file(refFile)) {
+        tprintf(_TSTR("Error: \"%s\" is not a regular file\n"), refFile.data());
         return -1;
     }
 
     // Get time
-    FileTime t;
-    if (!src.empty()) {
-        t = fileTime(src);
+    StdImpl::FileTime t;
+    if (!refFile.empty()) {
+        t = StdImpl::fileTime(refFile);
         if (t.modifyTime == std::chrono::system_clock::time_point()) {
-            tprintf(_TSTR("Error: failed to get time of \"%s\"\n"), src.data());
+            tprintf(_TSTR("Error: failed to get time of \"%s\"\n"), refFile.data());
             return -1;
         }
     } else {
@@ -155,55 +147,55 @@ int cmd_touch(const TStringList &args) {
     }
 
     // Set time
-    if (!setFileTime(dest, t)) {
+    if (!StdImpl::setFileTime(file, t)) {
         tprintf(_TSTR("Error: failed to sync time\n"));
         return -1;
     }
     return 0;
 }
 
-void printHelp() {
-    tprintf(_TSTR("Usage: %s [cmd] [options]\n"), appName().data());
-    tprintf(_TSTR("Commands:\n"));
-    for (const auto &item : std::as_const(commandEntries)) {
-        tprintf(_TSTR("    %-30s    %s\n"), item.cmd, item.desc);
-    }
-    tprintf(_TSTR("Options:\n"));
-    for (const auto &item : std::as_const(optionEntries)) {
-        tprintf(_TSTR("    %-30s    %s\n"), item.opt, item.desc);
-    }
-}
-
 int main(int argc, char *argv[]) {
-    (void) argc;
-    (void) argv;
+    SCL::Command cpdirCommand("cpdir", "Copy contents of a directory if different");
+    cpdirCommand.addArguments({
+        SCL::Argument("src", "Source directory"),
+        SCL::Argument("dest", "Destination directory"),
+    });
+    cpdirCommand.setHandler(cmd_cpdir);
 
-    TStringList args = commandLineArguments();
-    if (args.size() < 2) {
-        printHelp();
+    SCL::Command rmdirCommand("rmdir", "Remove all empty directories");
+    rmdirCommand.addArguments({
+        SCL::Argument("dir", "Directories").multi(),
+    });
+    rmdirCommand.setHandler(cmd_rmdir);
+
+    SCL::Command touchCommand("touch", "Update file timestamp");
+    touchCommand.addArguments({
+        SCL::Argument("file", "File to update time stamp"),
+        SCL::Argument("ref file", "Reference file", false),
+    });
+    touchCommand.setHandler(cmd_touch);
+
+    SCL::Command rootCommand(SCL::appName(), "Cross-platform core utility commands.");
+    rootCommand.addCommands({
+        cpdirCommand,
+        rmdirCommand,
+        touchCommand,
+    });
+    rootCommand.addVersionOption(TOOL_VERSION);
+    rootCommand.addHelpOption(true, true);
+    rootCommand.setHandler([](const SCL::ParseResult &result) -> int {
+        result.showHelpText();
         return 0;
-    }
+    });
 
-    const auto &first = args[1];
-    if (first.starts_with(_TSTR("-"))) {
-        for (const auto &item : std::as_const(optionEntries)) {
-            auto opts = split<TChar>(item.opt, _TSTR("/"));
-            for (const auto &opt : std::as_const(opts)) {
-                if (opt == first) {
-                    item.entry();
-                    return 0;
-                }
-            }
-        }
-        tprintf(_TSTR("Error: unknown option \"%s\"\n"), first.data());
-        return -1;
-    }
-    for (const auto &item : std::as_const(commandEntries)) {
-        auto cmd = TString(item.cmd);
-        if (first == cmd.substr(0, cmd.find(_TSTR(' ')))) {
-            return item.entry(args);
-        }
-    }
-    tprintf(_TSTR("Error: unknown command \"%s\"\n"), first.data());
-    return -1;
+    SCL::Parser parser(rootCommand);
+    parser.setPrologue(TOOL_DESC);
+
+#ifdef _WIN32
+    std::ignore = argc;
+    std::ignore = argv;
+    return parser.invoke(SCL::commandLineArguments());
+#else
+    return parser.invoke(argc, argv);
+#endif
 }

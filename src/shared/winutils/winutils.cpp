@@ -6,8 +6,9 @@
 
 #include <Windows.h>
 
-#include <sstream>
 #include <algorithm>
+#include <sstream>
+
 
 namespace WinUtils {
 
@@ -243,7 +244,7 @@ namespace WinUtils {
                                 OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
             if (hFile == INVALID_HANDLE_VALUE || hFile == NULL) {
                 std::wostringstream ss;
-                ss << L"Cannot open '" << peExecutableFileName << L"': "
+                ss << L"Cannot open \"" << peExecutableFileName << L"\": "
                    << winErrorMessage(::GetLastError());
                 *errorMessage = ss.str();
                 break;
@@ -252,7 +253,7 @@ namespace WinUtils {
             hFileMap = CreateFileMappingW(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
             if (hFileMap == NULL) {
                 std::wostringstream ss;
-                ss << L"Cannot create file mapping of '" << peExecutableFileName << L"': "
+                ss << L"Cannot create file mapping of \"" << peExecutableFileName << L"\": "
                    << winErrorMessage(::GetLastError());
                 *errorMessage = ss.str();
                 break;
@@ -261,7 +262,7 @@ namespace WinUtils {
             fileMemory = MapViewOfFile(hFileMap, FILE_MAP_READ, 0, 0, 0);
             if (!fileMemory) {
                 std::wostringstream ss;
-                ss << L"Cannot map '" << peExecutableFileName << L"': "
+                ss << L"Cannot map \"" << peExecutableFileName << L"\": "
                    << winErrorMessage(::GetLastError());
                 *errorMessage = ss.str();
                 break;

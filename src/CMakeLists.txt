@@ -1,6 +1,14 @@
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+# Get syscmdline
+find_package(syscmdline QUIET)
+
+if(NOT TARGET syscmdline::syscmdline)
+    add_subdirectory(syscmdline)
+endif()
+
+# Add subdirectories
 add_subdirectory(shared)
 add_subdirectory(tools)
 
