@@ -19,6 +19,7 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
     + `qtmediate_add_win_manifest`
     + `qtmediate_add_mac_bundle`
     + `qtmediate_create_win_shortcut`
++ Deploy shared libraries
     + `qtmediate_win_applocal_deps`
 + Qt related functions
     + `qtmediate_dir_skip_automoc`
@@ -54,29 +55,32 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
 
 ## Integrate
 
-+ Clone
-    ```sh
-    git clone --recursive https://github.com/SineStriker/qtmediate-cmake-modules
-    ```
-    ```sh
-    git clone --recursive git@github.com:SineStriker/qtmediate-cmake-modules.git
-    ```
+### Clone
 
-+ Build & Install
-    ```sh
-    cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to
-    cmake -B build --target all
-    cmake -B build --target install
-    ```
+Via Https
+```sh
+git clone --recursive https://github.com/SineStriker/qtmediate-cmake-modules
+```
+Via SSH
+```sh
+git clone --recursive git@github.com:SineStriker/qtmediate-cmake-modules.git
+```
 
-+ Integrate
-    ```sh
-    cmake -DqtmediateCM_DIR=/path/to/lib/cmake/qtmediateCM ...
-    ```
-    ```cmake
-    # CMakeLists.txt
-    find_package(qtmediateCM REQUIRED)
-    ```
+### Build & Install
+```sh
+cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to
+cmake -B build --target all
+cmake -B build --target install
+```
+
+### Integrate
+```sh
+cmake -DqtmediateCM_DIR=/path/to/lib/cmake/qtmediateCM ...
+```
+```cmake
+# CMakeLists.txt
+find_package(qtmediateCM REQUIRED)
+```
 
 ## References
 

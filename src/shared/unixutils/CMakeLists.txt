@@ -1,4 +1,4 @@
-project(stdimpl)
+project(unixutils)
 
 file(GLOB_RECURSE _src *.h *.cpp)
 add_library(${PROJECT_NAME} STATIC ${_src})

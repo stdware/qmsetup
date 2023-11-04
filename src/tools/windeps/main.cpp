@@ -1,6 +1,3 @@
-// Usage: windeps <PE files...>
-// Output: Show and deploy shared libraries that specified EXEs depends
-
 #include <filesystem>
 #include <iostream>
 #include <map>

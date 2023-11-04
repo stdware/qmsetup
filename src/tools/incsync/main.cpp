@@ -1,6 +1,3 @@
-// Usage: incgen [-c] [-e <pattern> [-e ...]] <src dir> <dest dir>
-// Copy or make reference for include directory
-
 #include <filesystem>
 #include <fstream>
 #include <functional>
