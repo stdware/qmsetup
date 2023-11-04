@@ -31,23 +31,23 @@ if(TRUE)
 
     # Add version file
     write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}-config-version.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}Config-version.cmake"
         VERSION ${QTMEDIATE_MODULES_VERSION}
         COMPATIBILITY AnyNewerVersion
     )
 
     # Add configuration file
     configure_package_config_file(
-        ${CMAKE_CURRENT_LIST_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}-config.cmake.in
-        "${CMAKE_CURRENT_BINARY_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}-config.cmake"
+        ${CMAKE_CURRENT_LIST_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}Config.cmake.in
+        "${CMAKE_CURRENT_BINARY_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}Config.cmake"
         INSTALL_DESTINATION ${_install_dir}
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
     )
 
     # Install cmake files
     install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}-config.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}-config-version.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${QTMEDIATE_MODULES_INSTALL_NAME}Config-version.cmake"
         DESTINATION ${_install_dir}
     )
 
