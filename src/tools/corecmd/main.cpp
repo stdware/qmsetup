@@ -84,7 +84,7 @@ static void copyDirectory(const fs::path &sourceDir, const fs::path &destDir) {
     }
 }
 
-int cmd_cpdir(const SCL::ParseResult &result) {
+static int cmd_cpdir(const SCL::ParseResult &result) {
     const auto &src = str2tstr(result.value(0).toString());
     const auto &dest = str2tstr(result.value(1).toString());
 
@@ -97,7 +97,7 @@ int cmd_cpdir(const SCL::ParseResult &result) {
     return 0;
 }
 
-int cmd_rmdir(const SCL::ParseResult &result) {
+static int cmd_rmdir(const SCL::ParseResult &result) {
     TStringList fileNames;
     for (const auto &item : result.values(0)) {
         fileNames.emplace_back(str2tstr(item.toString()));
@@ -118,7 +118,7 @@ int cmd_rmdir(const SCL::ParseResult &result) {
     return 0;
 }
 
-int cmd_touch(const SCL::ParseResult &result) {
+static int cmd_touch(const SCL::ParseResult &result) {
     const auto &file = str2tstr(result.value(0).toString());
     const auto &refFile = str2tstr(result.value(1).toString());
 

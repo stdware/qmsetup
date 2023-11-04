@@ -54,7 +54,7 @@ if(TRUE)
 
     # Install cmake targets files
     install(EXPORT ${QTMEDIATE_MODULES_INSTALL_NAME}Targets
-        FILE "${QTMEDIATE_MODULES_INSTALL_NAME}-targets.cmake"
+        FILE "${QTMEDIATE_MODULES_INSTALL_NAME}Targets.cmake"
         NAMESPACE qtmediateCM::
         DESTINATION ${_install_dir}
     )
