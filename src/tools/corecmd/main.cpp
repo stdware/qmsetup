@@ -99,8 +99,12 @@ static int cmd_cpdir(const SCL::ParseResult &result) {
 
 static int cmd_rmdir(const SCL::ParseResult &result) {
     TStringList fileNames;
-    for (const auto &item : result.values(0)) {
-        fileNames.emplace_back(str2tstr(item.toString()));
+    {
+        const auto &dirsResult = result.values(0);
+        fileNames.reserve(dirsResult.size());
+        for (const auto &item : dirsResult) {
+            fileNames.emplace_back(str2tstr(item.toString()));
+        }
     }
 
     for (const auto &item : std::as_const(fileNames)) {

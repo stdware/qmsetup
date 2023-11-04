@@ -160,11 +160,14 @@ int main(int argc, char *argv[]) {
     command.addVersionOption(TOOL_VERSION);
     command.addHelpOption(true);
     command.setHandler([](const SCL::ParseResult &result) -> int {
-        const auto &definesResult = result.option("-D").allValues();
+        // Add defines
         std::vector<std::string> defines;
-        defines.reserve(definesResult.size());
-        for (const auto &item : definesResult) {
-            defines.emplace_back(item.toString());
+        {
+            const auto &definesResult = result.option("-D").allValues();
+            defines.reserve(definesResult.size());
+            for (const auto &item : definesResult) {
+                defines.emplace_back(item.toString());
+            }
         }
         return generateHeaderFile(str2tstr(result.value(0).toString()), defines);
     });

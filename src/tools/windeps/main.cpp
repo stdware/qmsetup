@@ -4,38 +4,17 @@
 #include <regex>
 #include <set>
 
-#include <stdimpl.h>
 #include <winutils.h>
+#include <stdimpl.h>
 
 #include <syscmdline/parser.h>
 #include <syscmdline/system.h>
-
-using StdImpl::TChar;
-using StdImpl::tprintf;
-using StdImpl::TString;
-using StdImpl::TStringList;
 
 namespace SCL = SysCmdLine;
 
 namespace fs = std::filesystem;
 
-static inline std::string tstr2str(const TString &str) {
-#ifdef _WIN32
-    return SCL::wideToUtf8(str);
-#else
-    return str;
-#endif
-}
-
-static inline TString str2tstr(const std::string &str) {
-#ifdef _WIN32
-    return SCL::utf8ToWide(str);
-#else
-    return str;
-#endif
-}
-
-static std::vector<std::string> getFilesDependencies(const TStringList &fileNames,
+static std::vector<std::string> getFilesDependencies(const std::vector<std::wstring> &fileNames,
                                                      std::wstring *err) {
     std::map<std::string, int> libs;
     for (const auto &fileName : std::as_const(fileNames)) {
@@ -65,33 +44,15 @@ static std::vector<std::string> getFilesDependencies(const TStringList &fileName
     return res;
 };
 
-static int deployDependencies(TStringList searchingPaths, const TStringList &fileNames,
-                              const TString &dest, const TStringList &excludes, bool force) {
-    // Remove duplications
-    {
-        TStringList tmp;
-        std::set<std::wstring> visited;
-        for (const auto &item : std::as_const(searchingPaths)) {
-            if (!fs::is_directory(item))
-                continue;
-
-            auto canonical = fs::canonical(item);
-            if (visited.count(canonical)) {
-                continue;
-            }
-            visited.insert(canonical);
-            tmp.push_back(canonical);
-        }
-
-        searchingPaths = std::move(tmp);
-    }
-
+static int deployDependencies(const std::vector<std::wstring> &searchingPaths,
+                              const std::vector<std::wstring> &fileNames, const std::wstring &dest,
+                              const std::vector<std::wstring> &excludes, bool force) {
     // Dry run
     {
         std::wstring errorMessage;
         auto libraries = getFilesDependencies(fileNames, &errorMessage);
         if (!errorMessage.empty()) {
-            tprintf(_TSTR("Error: %s\n"), errorMessage.data());
+            wprintf(_TSTR("Error: %s\n"), errorMessage.data());
             return -1;
         }
 
@@ -107,8 +68,8 @@ static int deployDependencies(TStringList searchingPaths, const TStringList &fil
             visited.insert(fs::path(item).filename());
         }
 
-        TStringList stack = fileNames;
-        TStringList dependencies;
+        std::vector<std::wstring> stack = fileNames;
+        std::vector<std::wstring> dependencies;
         while (!stack.empty()) {
             auto libs = getFilesDependencies(stack, nullptr);
             stack.clear();
@@ -142,9 +103,9 @@ static int deployDependencies(TStringList searchingPaths, const TStringList &fil
 
                 bool skip = false;
                 for (const auto &pattern : std::as_const(excludes)) {
-                    const TString &pathString = path;
+                    const std::wstring &pathString = path;
                     if (std::regex_search(pathString.begin(), pathString.end(),
-                                          std::basic_regex<TChar>(pattern))) {
+                                          std::wregex(pattern))) {
                         skip = true;
                         break;
                     }
@@ -196,14 +157,58 @@ int main(int argc, char *argv[]) {
     command.addVersionOption(TOOL_VERSION);
     command.addHelpOption(true);
     command.setHandler([](const SCL::ParseResult &result) -> int {
-        TStringList fileNames;
-        TStringList excludes;
-        TStringList searchingPaths;
-        TString dest = _TSTR(".");
         bool force = result.optionIsSet("-f");
+        std::wstring dest = _TSTR(".");
         if (result.optionIsSet("-o")) {
-            dest = str2tstr(result.valueForOption("-o").toString());
+            dest = SCL::utf8ToWide(result.valueForOption("-o").toString());
         }
+
+        // Add file names
+        std::vector<std::wstring> fileNames;
+        {
+            const auto &files = result.values(0);
+            fileNames.reserve(files.size());
+            for (const auto &item : files) {
+                fileNames.emplace_back(SCL::utf8ToWide(item.toString()));
+            }
+        }
+
+        // Add searching paths
+        std::vector<std::wstring> searchingPaths;
+        {
+            const auto &linkResult = result.option("-L").allValues();
+            searchingPaths.reserve(linkResult.size());
+            for (const auto &item : linkResult) {
+                searchingPaths.emplace_back(SCL::utf8ToWide(item.toString()));
+            }
+
+            // Remove duplications
+            std::vector<std::wstring> tmp;
+            std::set<std::wstring> visited;
+            for (const auto &item : std::as_const(searchingPaths)) {
+                if (!fs::is_directory(item))
+                    continue;
+
+                auto canonical = fs::canonical(item);
+                if (visited.count(canonical)) {
+                    continue;
+                }
+                visited.insert(canonical);
+                tmp.emplace_back(canonical);
+            }
+            searchingPaths = std::move(tmp);
+        }
+
+        // Add excludes
+        std::vector<std::wstring> excludes;
+        {
+            const auto &excludeResult = result.option("-e").allValues();
+            excludes.reserve(excludeResult.size());
+            for (const auto &item : excludeResult) {
+                excludes.emplace_back(SCL::utf8ToWide(item.toString()));
+            }
+        }
+
         return deployDependencies(searchingPaths, fileNames, dest, excludes, force);
     });
 

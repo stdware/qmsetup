@@ -147,18 +147,18 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        std::vector<std::pair<TString, TString>> includes;
-        TStringList excludes;
-
-        // Add standard
-        if (standard) {
-            includes.emplace_back(_TSTR(R"(.*?_p\..+$)"), _TSTR("private"));
-        }
-
         // Add includes
+        std::vector<std::pair<TString, TString>> includes;
         {
             const auto &includeResult = result.option("-i");
             int cnt = includeResult.count();
+            includes.reserve(cnt + 1);
+
+            // Add standard
+            if (standard) {
+                includes.emplace_back(_TSTR(R"(.*?_p\..+$)"), _TSTR("private"));
+            }
+
             for (int i = 0; i < cnt; ++i) {
                 includes.emplace_back(str2tstr(includeResult.value(0, i).toString()),
                                       str2tstr(includeResult.value(1, i).toString()));
@@ -166,9 +166,11 @@ int main(int argc, char *argv[]) {
         }
 
         // Add excludes
+        TStringList excludes;
         {
-            const auto &excludeResult = result.option("-e");
-            for (const auto &item : excludeResult.allValues()) {
+            const auto &excludeResult = result.option("-e").allValues();
+            excludes.reserve(excludeResult.size());
+            for (const auto &item : excludeResult) {
                 excludes.emplace_back(str2tstr(item.toString()));
             }
         }
