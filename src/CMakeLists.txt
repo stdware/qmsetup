@@ -5,6 +5,7 @@ include(CMakePackageConfigHelpers)
 find_package(syscmdline QUIET)
 
 if(NOT TARGET syscmdline::syscmdline)
+    set(SYSCMDLINE_INSTALL off)
     add_subdirectory(syscmdline)
 endif()
 

@@ -11,7 +11,7 @@
 #endif
 
 // Qt style P-IMPL
-#define QTMEDIATE_DECL_PRIVATE(Class)                                                               \
+#define QTMEDIATE_DECL_PRIVATE(Class)                                                              \
     inline Class##Private *d_func() {                                                              \
         return reinterpret_cast<Class##Private *>(d_ptr.get());                                    \
     }                                                                                              \
@@ -20,7 +20,7 @@
     }                                                                                              \
     friend class Class##Private;
 
-#define QTMEDIATE_DECL_PUBLIC(Class)                                                                \
+#define QTMEDIATE_DECL_PUBLIC(Class)                                                               \
     inline Class *q_func() {                                                                       \
         return static_cast<Class *>(q_ptr);                                                        \
     }                                                                                              \
@@ -33,22 +33,22 @@
 #define QM_Q(Class) Class *const q = q_func()
 
 // Some classes do not permit copies to be made of an object.
-#define QTMEDIATE_DISABLE_COPY(Class)                                                               \
+#define QTMEDIATE_DISABLE_COPY(Class)                                                              \
     Class(const Class &) = delete;                                                                 \
     Class &operator=(const Class &) = delete;
 
-#define QTMEDIATE_DISABLE_MOVE(Class)                                                               \
+#define QTMEDIATE_DISABLE_MOVE(Class)                                                              \
     Class(Class &&) = delete;                                                                      \
     Class &operator=(Class &&) = delete;
 
-#define QTMEDIATE_DISABLE_COPY_MOVE(Class)                                                          \
-    QTMEDIATE_DISABLE_COPY(Class)                                                                   \
+#define QTMEDIATE_DISABLE_COPY_MOVE(Class)                                                         \
+    QTMEDIATE_DISABLE_COPY(Class)                                                                  \
     QTMEDIATE_DISABLE_MOVE(Class)
 
 // Logging functions
 #ifndef QTMEDIATE_TRACE
 #  ifdef QTMEDIATE_YES_TRACE
-#    define QTMEDIATE_TRACE_(fmt, ...)                                                              \
+#    define QTMEDIATE_TRACE_(fmt, ...)                                                             \
         printf("%s:%d:trace: " fmt "%s\n", __FILE__, __LINE__, __VA_ARGS__)
 #    define QTMEDIATE_TRACE(...) QTMEDIATE_TRACE_(__VA_ARGS__, "")
 #  else
@@ -58,7 +58,7 @@
 
 #ifndef QTMEDIATE_DEBUG
 #  ifndef QTMEDIATE_NO_DEBUG
-#    define QTMEDIATE_DEBUG_(fmt, ...)                                                              \
+#    define QTMEDIATE_DEBUG_(fmt, ...)                                                             \
         printf("%s:%d:debug: " fmt "%s\n", __FILE__, __LINE__, __VA_ARGS__)
 #    define QTMEDIATE_DEBUG(...) QTMEDIATE_DEBUG_(__VA_ARGS__, "")
 #  else
@@ -68,7 +68,7 @@
 
 #ifndef QTMEDIATE_WARNING
 #  ifndef QTMEDIATE_NO_WARNING
-#    define QTMEDIATE_WARNING_(fmt, ...)                                                            \
+#    define QTMEDIATE_WARNING_(fmt, ...)                                                           \
         printf("%s:%d:warning: " fmt "%s\n", __FILE__, __LINE__, __VA_ARGS__)
 #    define QTMEDIATE_WARNING(...) QTMEDIATE_WARNING_(__VA_ARGS__, "")
 #  else
@@ -78,7 +78,7 @@
 
 #ifndef QTMEDIATE_FATAL
 #  ifndef QTMEDIATE_NO_FATAL
-#    define QTMEDIATE_FATAL_(fmt, ...)                                                              \
+#    define QTMEDIATE_FATAL_(fmt, ...)                                                             \
         (fprintf(stderr, "%s:%d:fatal: " fmt "%s\n", __FILE__, __LINE__, __VA_ARGS__), std::abort())
 #    define QTMEDIATE_FATAL(...) QTMEDIATE_FATAL_(__VA_ARGS__, "")
 #  else
