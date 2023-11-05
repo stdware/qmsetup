@@ -6,7 +6,8 @@
 
 namespace UnixUtils {
 
-    bool readUnixExecutable(const std::string &fileName, std::string *errorMessage);
+    bool readUnixExecutable(const std::string &fileName, std::vector<std::string> *libs,
+                            std::string *errorMessage);
 
 }
 

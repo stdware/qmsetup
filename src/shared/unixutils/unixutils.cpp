@@ -5,6 +5,9 @@
 
 #include <iostream>
 #include <cstring>
+#include <sstream>
+#include <vector>
+#include <regex>
 
 static int executeCommand(const std::string &command, const std::vector<std::string> &args,
                           std::string *output) {
@@ -31,12 +34,12 @@ static int executeCommand(const std::string &command, const std::vector<std::str
         close(pipefd[1]);
 
         // 准备参数
-        char **argv = new char *[args.size() + 2]; // +2 for command and nullptr
-        argv[0] = new char[command.size() + 1];    // +1 for null terminator
-        strcpy(argv[0], command.c_str());
+        auto argv = new char *[args.size() + 2]; // +2 for command and nullptr
+        argv[0] = new char[command.size() + 1];  // +1 for null terminator
+        memcpy(argv[0], command.data(), command.size());
         for (size_t i = 0; i < args.size(); ++i) {
             argv[i + 1] = new char[args[i].size() + 1]; // +1 for null terminator
-            strcpy(argv[i + 1], args[i].c_str());
+            memcpy(argv[i + 1], args[i].data(), args[i].size());
         }
         argv[args.size() + 1] = nullptr;
 
@@ -79,9 +82,70 @@ static int executeCommand(const std::string &command, const std::vector<std::str
 
 namespace UnixUtils {
 
-    bool readUnixExecutable(const std::string &fileName, std::string *errorMessage) {
+#ifdef __APPLE__
+    // Mac
+    // Use `otool` and `install_name_tool`
 
+    struct DylibInfo {
+        std::string binaryPath;
+        std::string compatibilityVersion;
+        std::string currentVersion;
+    };
+
+    struct OtoolInfo {
+        std::string binaryPath;
+        std::string installName;
+        std::string compatibilityVersion;
+        std::string currentVersion;
+        std::vector<DylibInfo> dependencies;
+    };
+
+    bool readUnixExecutable(const std::string &fileName, std::vector<std::string> *libs,
+                            std::string *errorMessage) {
+        OtoolInfo info;
+        info.binaryPath = fileName;
+
+        std::string output;
+        if (executeCommand("otool", {"-L", fileName}, &output) != 0) {
+            *errorMessage = "Error executing otool command";
+            return false;
+        }
+
+        std::istringstream iss(output);
+        std::string line;
+
+        std::getline(iss, line); // Skip the line containing the binary path
+
+        static const std::regex regexp(
+            R"(^\t(.+) \(compatibility version (\d+\.\d+\.\d+), current version (\d+\.\d+\.\d+)(, weak)?\)$)");
+
+        while (std::getline(iss, line)) {
+            std::smatch match;
+            if (std::regex_match(line, match, regexp)) {
+                DylibInfo dylib;
+                dylib.binaryPath = match[1].str();
+                dylib.compatibilityVersion = match[2].str();
+                dylib.currentVersion = match[3].str();
+                info.dependencies.push_back(dylib);
+            } else {
+                *errorMessage = "Could not parse otool output line: " + line;
+                return false;
+            }
+        }
+
+        for (const auto &dep : info.dependencies) {
+            libs->push_back(dep.binaryPath);
+        }
         return true;
     }
+#else
+    // Linux
+    // Use `ldd` and `patchelf`
+
+    bool readUnixExecutable(const std::string &fileName, std::vector<std::string> *libs,
+                            std::string *errorMessage) {
+        return false;
+    }
+#endif
 
 }

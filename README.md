@@ -4,14 +4,37 @@ CMake Modules for QtMediate and other projects.
 
 This project is independent from Qt and other 3rdparty libraries. Due to the fact that it encompasses some tools that need to be compiled, it cannot be included as a subproject.
 
+## Support Platforms
+
++ Microsoft Windows
++ Apple Macintosh
++ GNU/Linux
+
 ## Preprocess Tools
 
 + cfggen
 + incsync
 + corecmd
 + windeps (Windows Only)
++ unixdeps (Unix Only)
 
-## Functions
+## Dependencies
+
+### Required Packages
+
+`windeps` acquires the shared library paths by reading the PE files and searching the specified paths so that it doesn't depend on `dumpbin` tool.
+
+`unixdeps` acquires the shared library paths by running `ldd`/`otool` command and fixes the *rpath*s by runing the `patchelf`/`install_name_tool` command, make sure you have installed them.
+
+```sh
+sudo apt install patchelf
+```
+
+### Open-Source Libraries
++ https://github.com/SineStriker/syscmdline
++ https://github.com/jothepro/doxygen-awesome-css
+
+<!-- ## Functions
 
 ### Basic
 + Windows & MacOS platform resources
@@ -51,7 +74,7 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
     + `qtmediate_setup_doxygen`
 
 + Qt linguist functions
-    + `qtmediate_add_translation`
+    + `qtmediate_add_translation` -->
 
 ## Integrate
 
@@ -59,7 +82,7 @@ This project is independent from Qt and other 3rdparty libraries. Due to the fac
 
 Via Https
 ```sh
-git clone --recursive https://github.com/SineStriker/qtmediate-cmake-modules
+git clone --recursive https://github.com/SineStriker/qtmediate-cmake-modules.git
 ```
 Via SSH
 ```sh
@@ -73,7 +96,7 @@ cmake -B build --target all
 cmake -B build --target install
 ```
 
-### Integrate
+### Import
 ```sh
 cmake -DqtmediateCM_DIR=/path/to/lib/cmake/qtmediateCM ...
 ```
@@ -81,11 +104,6 @@ cmake -DqtmediateCM_DIR=/path/to/lib/cmake/qtmediateCM ...
 # CMakeLists.txt
 find_package(qtmediateCM REQUIRED)
 ```
-
-## References
-
-+ https://github.com/SineStriker/syscmdline
-+ https://github.com/jothepro/doxygen-awesome-css
 
 ## Thanks
 
