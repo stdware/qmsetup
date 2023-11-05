@@ -127,9 +127,6 @@ namespace UnixUtils {
                 dylib.compatibilityVersion = match[2].str();
                 dylib.currentVersion = match[3].str();
                 info.dependencies.push_back(dylib);
-            } else {
-                *errorMessage = "Could not parse otool output line: " + line;
-                return false;
             }
         }
 
@@ -144,7 +141,27 @@ namespace UnixUtils {
 
     bool readUnixExecutable(const std::string &fileName, std::vector<std::string> *libs,
                             std::string *errorMessage) {
-        return false;
+        std::string output;
+        if (executeCommand("ldd", {fileName}, &output) != 0) {
+            *errorMessage = "Error executing ldd command";
+            return false;
+        }
+
+        std::istringstream iss(output);
+        std::string line;
+
+        static const std::regex regexp("^\\s*.+ => (.+) \\(.*");
+
+        std::vector<std::string> info;
+        while (std::getline(iss, line)) {
+            std::smatch match;
+            if (std::regex_match(line, match, regexp)) {
+                info.push_back(match[1].str());
+            }
+        }
+
+        *libs = std::move(info);
+        return true;
     }
 #endif
 
