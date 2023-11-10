@@ -1,6 +1,7 @@
 project(corecmd VERSION ${QTMEDIATE_MODULES_VERSION})
 
-set(RC_COPYRIGHT "Copyright ${CK_DEV_START_YEAR}-${_year} SineStriker")
+string(TIMESTAMP _year "%Y")
+set(RC_COPYRIGHT "Copyright ${_year} SineStriker")
 set(RC_DESCRIPTION "QtMediate CMake Modules Tool")
 
 set(_src
@@ -8,7 +9,6 @@ set(_src
     sha-256.h
     sha-256.cpp
     utils.h
-    utils.cpp
 )
 
 if(WIN32)
@@ -20,18 +20,17 @@ endif()
 add_executable(${PROJECT_NAME} ${_src})
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
-target_link_libraries(${PROJECT_NAME} PRIVATE stdimpl syscmdline::syscmdline)
+target_link_libraries(${PROJECT_NAME} PRIVATE syscmdline::syscmdline)
 
 if(WIN32)
-    string(TIMESTAMP _year "%Y")
+    target_link_libraries(${PROJECT_NAME} PRIVATE shlwapi)
+endif()
+
+if(WIN32)
     qtmediate_add_win_rc(${PROJECT_NAME}
         COPYRIGHT ${RC_COPYRIGHT}
         DESCRIPTION ${RC_DESCRIPTION}
     )
-endif()
-
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE shlwapi)
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_DESC="${RC_DESCRIPTION}, Version ${QTMEDIATE_MODULES_VERSION}")

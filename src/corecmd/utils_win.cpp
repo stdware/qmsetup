@@ -13,6 +13,8 @@
 
 #include <syscmdline/system.h>
 
+namespace SCL = SysCmdLine;
+
 namespace fs = std::filesystem;
 
 namespace Utils {
@@ -23,7 +25,7 @@ namespace Utils {
         // std::chrono::system_clock starts from January 1, 1970
         const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
         long long duration = (static_cast<long long>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
-        duration -= WIN_EPOCH; // convert to Unix epoch
+        duration -= WIN_EPOCH;                            // convert to Unix epoch
         return std::chrono::system_clock::from_time_t(duration / 10000000LL);
     }
 
@@ -83,7 +85,7 @@ namespace Utils {
 
     static const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
 
-    static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage) {
+    static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage = false) {
         std::wstring rc;
         wchar_t *lpMsgBuf;
 
@@ -379,9 +381,9 @@ namespace Utils {
         bool isDebugIn;
         bool isMinGW = false;
         unsigned short machineArchIn;
-        if (!WinUtils::readPeExecutable(fileName, &errorMessage, &dependentLibrariesIn, &wordSizeIn,
-                                        &isDebugIn, isMinGW, &machineArchIn)) {
-            throw std::runtime_error(SysCmdLine::wideToUtf8(errorMessage));
+        if (!readPeExecutable(path, &errorMessage, &dependentLibrariesIn, &wordSizeIn, &isDebugIn,
+                              isMinGW, &machineArchIn)) {
+            throw std::runtime_error(SCL::wideToUtf8(errorMessage));
         }
         return dependentLibrariesIn;
     }

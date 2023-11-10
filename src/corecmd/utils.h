@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <chrono>
 
 namespace Utils {
 
@@ -21,11 +22,6 @@ namespace Utils {
     inline void syncFileTime(const std::filesystem::path &dest, const std::filesystem::path &src) {
         setFileTime(dest, fileTime(src));
     }
-
-    bool removeEmptyDirectories(const std::filesystem::path &path);
-
-    void copyDirectory(const std::filesystem::path &sourceDir,
-                       const std::filesystem::path &destDir);
 
     // String Utils
     template <class T>

@@ -466,10 +466,10 @@ function(qtmediate_win_applocal_deps _target)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediateCM::windeps)
+    set(_tool_target qtmediateCM::corecmd)
 
     if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_win_applocal_deps: tool \"windeps\" not found.")
+        message(FATAL_ERROR "qtmediate_win_applocal_deps: tool \"corecmd\" not found.")
     else()
         get_target_property(_tool ${_tool_target} LOCATION)
     endif()
@@ -524,7 +524,7 @@ function(qtmediate_win_applocal_deps _target)
     add_custom_command(TARGET ${_deploy_target} POST_BUILD
         COMMENT # COMMAND ${CMAKE_COMMAND} -E echo
         "Deploying shared libraries for $<TARGET_FILE_NAME:${_target}>"
-        COMMAND ${_tool} ${_args} $<TARGET_FILE:${_target}> 1>NUL
+        COMMAND ${_tool} deploy ${_args} $<TARGET_FILE:${_target}> 1>NUL
         WORKING_DIRECTORY $<TARGET_FILE_DIR:${_target}>
     )
 
@@ -537,7 +537,7 @@ function(qtmediate_win_applocal_deps _target)
 
         install(CODE "
             execute_process(
-                COMMAND \"${_tool}\" ${_quoted_args} \"$<TARGET_FILE:${_target}>\"
+                COMMAND \"${_tool}\" deploy ${_quoted_args} \"$<TARGET_FILE:${_target}>\"
                 WORKING_DIRECTORY \"${FUNC_INSTALL_DIR}\"
                 COMMAND_ERROR_IS_FATAL ANY
                 OUTPUT_QUIET
