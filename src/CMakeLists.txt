@@ -10,8 +10,7 @@ if(NOT TARGET syscmdline::syscmdline)
 endif()
 
 # Add subdirectories
-add_subdirectory(shared)
-add_subdirectory(tools)
+add_subdirectory(corecmd)
 
 # Add headers
 set(_corelib_name library)

@@ -1,4 +1,4 @@
-#include "winutils.h"
+#include "utils.h"
 
 #include <shlwapi.h>
 
@@ -8,13 +8,82 @@
 
 #include <algorithm>
 #include <sstream>
+#include <filesystem>
+#include <stdexcept>
 
+#include <syscmdline/system.h>
 
-namespace WinUtils {
+namespace fs = std::filesystem;
+
+namespace Utils {
+
+    // Helper functions to convert between FILETIME and std::chrono::system_clock::time_point
+    static std::chrono::system_clock::time_point filetime_to_timepoint(const FILETIME &ft) {
+        // Windows file time starts from January 1, 1601
+        // std::chrono::system_clock starts from January 1, 1970
+        const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
+        long long duration = (static_cast<long long>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
+        duration -= WIN_EPOCH; // convert to Unix epoch
+        return std::chrono::system_clock::from_time_t(duration / 10000000LL);
+    }
+
+    static FILETIME timepoint_to_filetime(const std::chrono::system_clock::time_point &tp) {
+        FILETIME ft;
+        const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
+        long long duration =
+            std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch()).count();
+        duration = duration * 10 + WIN_EPOCH;
+        ft.dwLowDateTime = static_cast<DWORD>(duration & 0xFFFFFFFF);
+        ft.dwHighDateTime = static_cast<DWORD>((duration >> 32) & 0xFFFFFFFF);
+        return ft;
+    }
+
+    FileTime fileTime(const fs::path &path) {
+        HANDLE hFile = CreateFileW(path.wstring().data(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (hFile == INVALID_HANDLE_VALUE) {
+            return {};
+        }
+
+        FILETIME creationTime, lastAccessTime, lastWriteTime;
+        if (!GetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
+            CloseHandle(hFile);
+            return {};
+        }
+        CloseHandle(hFile);
+
+        FileTime times;
+        // ... (convert FILETIMEs to std::chrono::system_clock::time_point and store in times)
+        times.accessTime = filetime_to_timepoint(lastAccessTime);
+        times.modifyTime = filetime_to_timepoint(lastWriteTime);
+        times.statusChangeTime = filetime_to_timepoint(creationTime);
+
+        return times;
+    }
+
+    void setFileTime(const fs::path &path, const FileTime &times) {
+        HANDLE hFile = CreateFileW(path.wstring().data(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE,
+                                   nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (hFile == INVALID_HANDLE_VALUE) {
+            return;
+        }
+
+        FILETIME creationTime, lastAccessTime, lastWriteTime;
+        lastAccessTime = timepoint_to_filetime(times.accessTime);
+        lastWriteTime = timepoint_to_filetime(times.modifyTime);
+        creationTime = timepoint_to_filetime(times.statusChangeTime);
+
+        if (!SetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
+            CloseHandle(hFile);
+            throw std::runtime_error("failed to set file time: \"" +
+                                     SCL::wideToUtf8(path.wstring()) + "\"");
+        }
+        CloseHandle(hFile);
+    }
 
     static const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
 
-    std::wstring winErrorMessage(uint32_t error, bool nativeLanguage) {
+    static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage) {
         std::wstring rc;
         wchar_t *lpMsgBuf;
 
@@ -301,6 +370,20 @@ namespace WinUtils {
             CloseHandle(hFile);
 
         return result;
+    }
+
+    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
+        std::wstring errorMessage;
+        std::vector<std::string> dependentLibrariesIn;
+        unsigned wordSizeIn;
+        bool isDebugIn;
+        bool isMinGW = false;
+        unsigned short machineArchIn;
+        if (!WinUtils::readPeExecutable(fileName, &errorMessage, &dependentLibrariesIn, &wordSizeIn,
+                                        &isDebugIn, isMinGW, &machineArchIn)) {
+            throw std::runtime_error(SysCmdLine::wideToUtf8(errorMessage));
+        }
+        return dependentLibrariesIn;
     }
 
 }

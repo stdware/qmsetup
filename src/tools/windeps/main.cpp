@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
         bool force = result.optionIsSet("-f");
         std::wstring dest = _TSTR(".");
         if (result.optionIsSet("-o")) {
-            dest = SCL::utf8ToWide(result.valueForOption("-o").toString());
+            dest = fs::absolute(SCL::utf8ToWide(result.valueForOption("-o").toString())).wstring();
         }
 
         // Add file names
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
             const auto &files = result.values(0);
             fileNames.reserve(files.size());
             for (const auto &item : files) {
-                fileNames.emplace_back(SCL::utf8ToWide(item.toString()));
+                fileNames.emplace_back(fs::absolute(SCL::utf8ToWide(item.toString())));
             }
         }
 
@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
             const auto &linkResult = result.option("-L").allValues();
             searchingPaths.reserve(linkResult.size());
             for (const auto &item : linkResult) {
-                searchingPaths.emplace_back(SCL::utf8ToWide(item.toString()));
+                searchingPaths.emplace_back(fs::absolute(SCL::utf8ToWide(item.toString())));
             }
 
             // Remove duplications
