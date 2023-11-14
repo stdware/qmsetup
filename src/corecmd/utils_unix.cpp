@@ -87,7 +87,7 @@ namespace Utils {
     FileTime fileTime(const fs::path &path) {
         struct stat sb;
         if (stat(path.c_str(), &sb) == -1) {
-            return {};
+            throw std::runtime_error("failed to get file time: \"" + path.string() + "\"");
         }
 
         FileTime times;

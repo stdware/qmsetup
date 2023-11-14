@@ -44,13 +44,13 @@ namespace Utils {
         HANDLE hFile = CreateFileW(path.wstring().data(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            return {};
+            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path) + "\"");
         }
 
         FILETIME creationTime, lastAccessTime, lastWriteTime;
         if (!GetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
             CloseHandle(hFile);
-            return {};
+            throw std::runtime_error("failed to get file time: \"" + SCL::wideToUtf8(path) + "\"");
         }
         CloseHandle(hFile);
 
@@ -67,7 +67,7 @@ namespace Utils {
         HANDLE hFile = CreateFileW(path.wstring().data(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE,
                                    nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            return;
+            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path) + "\"");
         }
 
         FILETIME creationTime, lastAccessTime, lastWriteTime;
@@ -77,8 +77,7 @@ namespace Utils {
 
         if (!SetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
             CloseHandle(hFile);
-            throw std::runtime_error("failed to set file time: \"" +
-                                     SCL::wideToUtf8(path.wstring()) + "\"");
+            throw std::runtime_error("failed to set file time: \"" + SCL::wideToUtf8(path) + "\"");
         }
         CloseHandle(hFile);
     }

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <regex>
 #include <set>
+#include <stdexcept>
 #include <iomanip>
 
 #include <syscmdline/parser.h>
@@ -184,33 +185,27 @@ static int cmd_touch(const SCL::ParseResult &result) {
 
     // Check existence
     if (!fs::is_regular_file(file)) {
-        u8printf("Error: \"%s\" is not a regular file\n", tstr2str(file).data());
-        return -1;
+        throw std::runtime_error("not a regular file: \"" + tstr2str(file) + "\"");
     }
 
     if (!refFile.empty() && !fs::is_regular_file(refFile)) {
-        u8printf("Error: \"%s\" is not a regular file\n", tstr2str(refFile).data());
-        return -1;
+        throw std::runtime_error("not a regular file: \"" + tstr2str(refFile) + "\"");
     }
 
     // Get time
     Utils::FileTime t;
     if (!refFile.empty()) {
         t = Utils::fileTime(refFile);
-        if (t.modifyTime == std::chrono::system_clock::time_point()) {
-            u8printf("Error: failed to get time of \"%s\"\n", tstr2str(refFile).data());
-            return -1;
-        }
     } else {
-        std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+        auto now = std::chrono::system_clock::now();
         t = {now, now, now};
     }
 
     // Set time
     if (verbose) {
-        u8printf("Set atime: %s\n", time2str(t.accessTime).data());
-        u8printf("Set mtime: %s\n", time2str(t.modifyTime).data());
-        u8printf("Set ctime: %s\n", time2str(t.statusChangeTime).data());
+        u8printf("Set A-Time: %s\n", time2str(t.accessTime).data());
+        u8printf("Set M-Time: %s\n", time2str(t.modifyTime).data());
+        u8printf("Set C-Time: %s\n", time2str(t.statusChangeTime).data());
     }
     Utils::setFileTime(file, t);
     return 0;
@@ -312,9 +307,8 @@ static int cmd_configure(const SCL::ParseResult &result) {
     {
         std::ofstream outFile(fileName);
         if (!outFile.is_open()) {
-            u8printf("Failed to open file \"%s\": %s.", tstr2str(fileName).data(),
-                     std::error_code(errno, std::generic_category()).message().data());
-            return -1;
+            throw std::runtime_error("failed to open file \"" + tstr2str(fileName) + "\": " +
+                                     std::error_code(errno, std::generic_category()).message());
         }
 
         // Header guard
@@ -352,8 +346,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
     const fs::path &src = str2tstr(result.value(0).toString());
     const fs::path &dest = str2tstr(result.value(1).toString());
     if (!fs::is_directory(src)) {
-        u8printf("Error: \"%s\" is not a directory.\n", tstr2str(src).data());
-        return -1;
+        throw std::runtime_error("not a directory: \"" + tstr2str(src) + "\"");
     }
 
     // Add includes
@@ -423,12 +416,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
             if (skip)
                 continue;
 
-            const fs::path &targetDir = (TString(path.stem())
-                                             .substr(path.stem().string().length() - 2, 2)
-                                             .ends_with(_TSTR("_p")) &&
-                                         !subdir.empty())
-                                            ? (dest / subdir)
-                                            : (dest);
+            const fs::path &targetDir = subdir.empty() ? dest : (dest / subdir);
 
             // Create directory
             if (!fs::exists(targetDir)) {
@@ -445,8 +433,12 @@ static int cmd_incsync(const SCL::ParseResult &result) {
                 fs::copy(path, targetPath, fs::copy_options::overwrite_existing);
             } else {
                 // Make relative reference
-                auto rel = fs::relative(path, targetDir).string();
+                std::string rel = tstr2str(fs::relative(path, targetDir));
+
+#ifdef _WIN32
+                // Replace separator
                 std::replace(rel.begin(), rel.end(), '\\', '/');
+#endif
 
                 // Create file
                 std::ofstream outFile(targetPath);
@@ -456,7 +448,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
                 outFile.close();
             }
 
-            // Set the timestamp
+            // Set timestamp
             Utils::syncFileTime(targetPath, path);
         }
     }
@@ -552,6 +544,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
             if (
 #ifdef _WIN32
+                // Ignore API-Set, MSVC libraries, system libraries and Qt libraries
                 fileName.starts_with(_TSTR("vcruntime")) || fileName.starts_with(_TSTR("msvc")) ||
                 fileName.starts_with(_TSTR("api-ms-win-")) ||
                 fileName.starts_with(_TSTR("ext-ms-win-")) || fileName.starts_with(_TSTR("qt")) ||
@@ -565,6 +558,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             visited.insert(fileName);
 
 #ifdef _WIN32
+            // Search in specified searching paths
             fs::path path;
             for (const auto &dir : std::as_const(searchingPaths)) {
                 fs::path targetPath = dir / fs::path(fileName);
@@ -602,10 +596,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     for (const auto &file : std::as_const(dependencies)) {
         auto target = dest / fs::path(file).filename();
         if (!force && fs::exists(target) &&
-            fs::last_write_time(target) >= fs::last_write_time(file)) {
+            Utils::fileTime(target).modifyTime >= Utils::fileTime(file).modifyTime) {
             continue; // Replace if different
         }
-
 
         if (verbose) {
             u8printf("Deploy %s\n", tstr2str(target).data());
