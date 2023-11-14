@@ -42,6 +42,10 @@ namespace Utils {
     // OS Utils
     std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path);
 
+#ifdef _WIN32
+    std::string local8bit_to_utf8(const std::string &s);
+#endif
+
 }
 
 

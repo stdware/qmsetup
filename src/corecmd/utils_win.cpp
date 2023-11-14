@@ -387,4 +387,24 @@ namespace Utils {
         return dependentLibrariesIn;
     }
 
+    std::string local8bit_to_utf8(const std::string &s) {
+        if (s.empty()) {
+            return {};
+        }
+        const auto utf8Length = static_cast<int>(s.size());
+        if (utf8Length >= (std::numeric_limits<int>::max)()) {
+            return {};
+        }
+        const int utf16Length =
+            ::MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, s.data(), utf8Length, nullptr, 0);
+        if (utf16Length <= 0) {
+            return {};
+        }
+        std::wstring utf16Str;
+        utf16Str.resize(utf16Length);
+        ::MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, s.data(), utf8Length, utf16Str.data(),
+                              utf16Length);
+        return SCL::wideToUtf8(utf16Str);
+    }
+
 }

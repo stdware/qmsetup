@@ -305,6 +305,11 @@ static int cmd_configure(const SCL::ParseResult &result) {
 
     // Create file
     {
+        // Create directory if needed
+        if (auto dir = fs::path(fileName).parent_path(); !fs::is_directory(dir)) {
+            fs::create_directories(dir);
+        }
+
         std::ofstream outFile(fileName);
         if (!outFile.is_open()) {
             throw std::runtime_error("failed to open file \"" + tstr2str(fileName) + "\": " +
@@ -312,7 +317,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
         }
 
         // Header guard
-        std::string guard = tstr2str(fileName);
+        std::string guard = tstr2str(fs::path(fileName).filename());
         std::replace(guard.begin(), guard.end(), '.', '_');
         for (char &c : guard) {
             c = char(std::toupper(c));
@@ -604,6 +609,10 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             u8printf("Deploy %s\n", tstr2str(target).data());
         }
 
+        if (!fs::is_directory(dest)) {
+            fs::create_directories(dest);
+        }
+
         fs::copy(file, dest, fs::copy_options::overwrite_existing);
         Utils::syncFileTime(target, file);
     }
@@ -612,6 +621,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 }
 
 int main(int argc, char *argv[]) {
+    // std::setlocale(LC_ALL, "en_US.UTF-8");
+
     // Shared option
     static SCL::Option verbose({"-V", "--verbose"}, "Show verbose");
 
@@ -739,7 +750,15 @@ int main(int argc, char *argv[]) {
         ret = parser.invoke(argc, argv);
 #endif
     } catch (const std::exception &e) {
-        SCL::u8debug(SCL::MT_Critical, true, "Error: %s\n", e.what());
+        std::string msg = e.what();
+
+#ifdef _WIN32
+        if (typeid(e) == typeid(std::filesystem::filesystem_error)) {
+            msg = Utils::local8bit_to_utf8(msg);
+        }
+#endif
+
+        SCL::u8debug(SCL::MT_Critical, true, "Error: %s\n", msg.data());
         ret = -1;
     }
     return ret;
