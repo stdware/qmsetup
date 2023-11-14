@@ -612,13 +612,16 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 }
 
 int main(int argc, char *argv[]) {
+    // Shared option
+    static SCL::Option verbose({"-V", "--verbose"}, "Show verbose");
+
     SCL::Command cpdirCommand = []() {
         SCL::Command command("cpdir", "Copy contents of a directory if different");
         command.addArguments({
             SCL::Argument("src", "Source directory"),
             SCL::Argument("dest", "Destination directory"),
         });
-        command.addOption(SCL::Option({"-V", "--verbose"}, "Show verbose"));
+        command.addOption(verbose);
         command.setHandler(cmd_cpdir);
         return command;
     }();
@@ -628,7 +631,7 @@ int main(int argc, char *argv[]) {
         command.addArguments({
             SCL::Argument("dir", "Directories").multi(),
         });
-        command.addOption(SCL::Option({"-V", "--verbose"}, "Show verbose"));
+        command.addOption(verbose);
         command.setHandler(cmd_rmdir);
         return command;
     }();
@@ -639,7 +642,7 @@ int main(int argc, char *argv[]) {
             SCL::Argument("file", "File to update time stamp"),
             SCL::Argument("ref file", "Reference file", false),
         });
-        command.addOption(SCL::Option({"-V", "--verbose"}, "Show verbose"));
+        command.addOption(verbose);
         command.setHandler(cmd_touch);
         return command;
     }();
@@ -653,7 +656,7 @@ int main(int argc, char *argv[]) {
                 .multi()
                 .short_match(SCL::Option::ShortMatchSingleChar),
         });
-        command.addOption(SCL::Option({"-V", "--verbose"}, "Show verbose"));
+        command.addOption(verbose);
         command.setHandler(cmd_configure);
         return command;
     }();
@@ -674,7 +677,7 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-n", "--not-all"}, "Ignore unclassified files"),
             SCL::Option({"-c", "--copy"}, "Copy files rather than indirect reference"),
         });
-        command.addOption(SCL::Option({"-V", "--verbose"}, "Show verbose"));
+        command.addOption(verbose);
         command.setHandler(cmd_incsync);
         return command;
     }();
@@ -696,7 +699,7 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
-        command.addOption(SCL::Option({"-V", "--verbose"}, "Show verbose"));
+        command.addOption(verbose);
         command.setHandler(cmd_deploy);
         return command;
     }();
