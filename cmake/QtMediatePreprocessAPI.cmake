@@ -42,7 +42,6 @@ function(qtmediate_sync_include _src_dir _dest_dir)
             COMMAND ${_tool} incsync -s ${_src_dir} ${_dest_dir}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMAND_ERROR_IS_FATAL ANY
-            OUTPUT_QUIET
         )
 
         if(FUNC_INSTALL_DIR)
@@ -53,7 +52,6 @@ function(qtmediate_sync_include _src_dir _dest_dir)
                     COMMAND \"${_tool}\" incsync -c -s \"${_src_dir}\" \"${_install_dir}\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                     COMMAND_ERROR_IS_FATAL ANY
-                    OUTPUT_QUIET
                 )
             ")
         endif()
@@ -203,7 +201,6 @@ function(qtmediate_generate_config _file)
         execute_process(COMMAND ${_tool} configure ${_args} ${_file}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMAND_ERROR_IS_FATAL ANY
-            OUTPUT_QUIET
         )
     endif()
 endfunction()
@@ -321,6 +318,5 @@ function(qtmediate_generate_build_info _dir _prefix _file)
     execute_process(COMMAND ${_tool} configure ${_args} ${_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND_ERROR_IS_FATAL ANY
-        OUTPUT_QUIET
     )
 endfunction()

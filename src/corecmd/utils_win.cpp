@@ -84,7 +84,7 @@ namespace Utils {
 
     static const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
 
-    static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage = false) {
+    static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage = true) {
         std::wstring rc;
         wchar_t *lpMsgBuf;
 

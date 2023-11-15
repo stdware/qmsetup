@@ -147,6 +147,10 @@ static void copyDirectoryImpl(const fs::path &rootSourceDir, const fs::path &sou
     }
 }
 
+static std::string standardError(int code = errno) {
+    return std::error_code(code, std::generic_category()).message();
+}
+
 // ---------------------------------------- Commands ----------------------------------------
 
 static int cmd_cpdir(const SCL::ParseResult &result) {
@@ -312,8 +316,8 @@ static int cmd_configure(const SCL::ParseResult &result) {
 
         std::ofstream outFile(fileName);
         if (!outFile.is_open()) {
-            throw std::runtime_error("failed to open file \"" + tstr2str(fileName) + "\": " +
-                                     std::error_code(errno, std::generic_category()).message());
+            throw std::runtime_error("failed to open file \"" + tstr2str(fileName) +
+                                     "\": " + standardError());
         }
 
         // Header guard
@@ -486,7 +490,14 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         const auto &linkResult = result.option("-L").allValues();
 
         TStringList tmp;
-        tmp.reserve(linkResult.size());
+        tmp.reserve(linkResult.size() + fileNames.size());
+
+        // Add file paths
+        for (const auto &item : std::as_const(fileNames)) {
+            tmp.emplace_back(fs::path(item).parent_path());
+        }
+
+        // Add searching paths
         for (const auto &item : linkResult) {
             tmp.emplace_back(fs::absolute(str2tstr(item.toString())));
         }
@@ -566,12 +577,13 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             // Search in specified searching paths
             fs::path path;
             for (const auto &dir : std::as_const(searchingPaths)) {
-                fs::path targetPath = dir / fs::path(fileName);
+                fs::path targetPath = dir / fs::path(lib);
                 if (fs::exists(targetPath)) {
                     path = targetPath;
                     break;
                 }
             }
+
             if (path.empty()) {
                 continue;
             }
@@ -600,6 +612,10 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Deploy
     for (const auto &file : std::as_const(dependencies)) {
         auto target = dest / fs::path(file).filename();
+
+        if (fs::exists(target) && fs::exists(file) && fs::canonical(target) == fs::canonical(file))
+            continue; // Same file
+
         if (!force && fs::exists(target) &&
             Utils::fileTime(target).modifyTime >= Utils::fileTime(file).modifyTime) {
             continue; // Replace if different
@@ -621,8 +637,6 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 }
 
 int main(int argc, char *argv[]) {
-    // std::setlocale(LC_ALL, "en_US.UTF-8");
-
     // Shared option
     static SCL::Option verbose({"-V", "--verbose"}, "Show verbose");
 
@@ -754,7 +768,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef _WIN32
         if (typeid(e) == typeid(std::filesystem::filesystem_error)) {
-            msg = Utils::local8bit_to_utf8(msg);
+            auto err = static_cast<const std::filesystem::filesystem_error &>(e);
+            // msg = "\"" + tstr2str(err.path1()) + "\": " + standardError();
+            msg = Utils::local8bit_to_utf8(err.what());
         }
 #endif
 
