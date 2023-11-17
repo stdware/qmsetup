@@ -1,20 +1,90 @@
-#include "winutils.h"
+#include "utils.h"
 
 #include <shlwapi.h>
 
 #include <delayimp.h>
 
-#include <Windows.h>
+#include <windows.h>
 
 #include <algorithm>
 #include <sstream>
+#include <filesystem>
+#include <stdexcept>
 
+#include <syscmdline/system.h>
 
-namespace WinUtils {
+namespace SCL = SysCmdLine;
 
-    static const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+namespace fs = std::filesystem;
 
-    std::wstring winErrorMessage(uint32_t error, bool nativeLanguage) {
+namespace Utils {
+
+    // Helper functions to convert between FILETIME and std::chrono::system_clock::time_point
+    static std::chrono::system_clock::time_point filetime_to_timepoint(const FILETIME &ft) {
+        // Windows file time starts from January 1, 1601
+        // std::chrono::system_clock starts from January 1, 1970
+        static constexpr const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
+        long long duration = (static_cast<long long>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
+        duration -= WIN_EPOCH;                            // convert to Unix epoch
+        return std::chrono::system_clock::from_time_t(duration / 10000000LL);
+    }
+
+    static FILETIME timepoint_to_filetime(const std::chrono::system_clock::time_point &tp) {
+        FILETIME ft;
+        static constexpr const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
+        long long duration =
+            std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch()).count();
+        duration = duration * 10 + WIN_EPOCH;
+        ft.dwLowDateTime = static_cast<DWORD>(duration & 0xFFFFFFFF);
+        ft.dwHighDateTime = static_cast<DWORD>((duration >> 32) & 0xFFFFFFFF);
+        return ft;
+    }
+
+    FileTime fileTime(const fs::path &path) {
+        HANDLE hFile = CreateFileW(path.wstring().data(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                   OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (hFile == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path) + "\"");
+        }
+
+        FILETIME creationTime, lastAccessTime, lastWriteTime;
+        if (!GetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
+            CloseHandle(hFile);
+            throw std::runtime_error("failed to get file time: \"" + SCL::wideToUtf8(path) + "\"");
+        }
+        CloseHandle(hFile);
+
+        FileTime times;
+        // ... (convert FILETIMEs to std::chrono::system_clock::time_point and store in times)
+        times.accessTime = filetime_to_timepoint(lastAccessTime);
+        times.modifyTime = filetime_to_timepoint(lastWriteTime);
+        times.statusChangeTime = filetime_to_timepoint(creationTime);
+
+        return times;
+    }
+
+    void setFileTime(const fs::path &path, const FileTime &times) {
+        HANDLE hFile = CreateFileW(path.wstring().data(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE,
+                                   nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (hFile == INVALID_HANDLE_VALUE) {
+            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path) + "\"");
+        }
+
+        FILETIME creationTime, lastAccessTime, lastWriteTime;
+        lastAccessTime = timepoint_to_filetime(times.accessTime);
+        lastWriteTime = timepoint_to_filetime(times.modifyTime);
+        creationTime = timepoint_to_filetime(times.statusChangeTime);
+
+        if (!SetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
+            CloseHandle(hFile);
+            throw std::runtime_error("failed to set file time: \"" + SCL::wideToUtf8(path) + "\"");
+        }
+        CloseHandle(hFile);
+    }
+
+    static constexpr const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+
+    static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage = true) {
         std::wstring rc;
         wchar_t *lpMsgBuf;
 
@@ -162,70 +232,22 @@ namespace WinUtils {
         return result;
     }
 
-    // Check for MSCV runtime (MSVCP90D.dll/MSVCP90.dll, MSVCP120D.dll/MSVCP120.dll,
-    // VCRUNTIME140D.DLL/VCRUNTIME140.DLL (VS2015) or msvcp120d_app.dll/msvcp120_app.dll).
-    enum MsvcDebugRuntimeResult {
-        MsvcDebugRuntime,
-        MsvcReleaseRuntime,
-        NoMsvcRuntime,
-    };
-
-    static MsvcDebugRuntimeResult
-        checkMsvcDebugRuntime(const std::vector<std::string> &dependentLibraries) {
-        for (auto lib : dependentLibraries) {
-            int pos = 0;
-
-            std::transform(lib.begin(), lib.end(), lib.begin(), [](unsigned char c) {
-                return std::tolower(c); //
-            });
-
-            if (lib.starts_with("msvcr") || lib.starts_with("msvcp") ||
-                lib.starts_with("vcruntime")) {
-                int lastDotPos = lib.find_last_of('.');
-                pos = -1 == lastDotPos ? 0 : lastDotPos - 1;
-            }
-
-            if (pos > 0 && lib.find("_app") != std::string::npos)
-                pos -= 4;
-
-            if (pos) {
-                return lib.at(pos) == 'd' ? MsvcDebugRuntime : MsvcReleaseRuntime;
-            }
-        }
-        return NoMsvcRuntime;
-    }
-
     template <class ImageNtHeader>
-    static void determineDebugAndDependentLibs(const ImageNtHeader *nth, const void *fileMemory,
-                                               bool isMinGW,
-                                               std::vector<std::string> *dependentLibrariesIn,
-                                               bool *isDebugIn, std::wstring *errorMessage) {
-        const bool hasDebugEntry =
-            nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].Size;
+    static void determineDependentLibs(const ImageNtHeader *nth, const void *fileMemory,
+                                       bool isMinGW,
+                                       std::vector<std::string> *dependentLibrariesIn,
+                                       std::wstring *errorMessage) {
         std::vector<std::string> dependentLibraries;
-        if (dependentLibrariesIn || (isDebugIn != nullptr && hasDebugEntry && !isMinGW))
+        if (dependentLibrariesIn)
             dependentLibraries = readImportSections(nth, fileMemory, errorMessage);
-
         if (dependentLibrariesIn)
             *dependentLibrariesIn = dependentLibraries;
-        if (isDebugIn != nullptr) {
-            if (isMinGW) {
-                // Use logic that's used e.g. in objdump / pfd library
-                *isDebugIn = !(nth->FileHeader.Characteristics & IMAGE_FILE_DEBUG_STRIPPED);
-            } else {
-                // When an MSVC debug entry is present, check whether the debug runtime
-                // is actually used to detect -release / -force-debug-info builds.
-                *isDebugIn = hasDebugEntry &&
-                             checkMsvcDebugRuntime(dependentLibraries) != MsvcReleaseRuntime;
-            }
-        }
     }
 
-    // Read a PE executable and determine dependent libraries, word size
-    // and debug flags.
+    // Read a PE executable and determine dependent libraries, word size.
     bool readPeExecutable(const std::wstring &peExecutableFileName, std::wstring *errorMessage,
                           std::vector<std::string> *dependentLibrariesIn, unsigned *wordSizeIn,
-                          bool *isDebugIn, bool isMinGW, unsigned short *machineArchIn) {
+                          bool isMinGW, unsigned short *machineArchIn) {
         bool result = false;
         HANDLE hFile = NULL;
         HANDLE hFileMap = NULL;
@@ -235,8 +257,6 @@ namespace WinUtils {
             dependentLibrariesIn->clear();
         if (wordSizeIn)
             *wordSizeIn = 0;
-        if (isDebugIn)
-            *isDebugIn = false;
 
         do {
             // Create a memory mapping of the file
@@ -276,13 +296,13 @@ namespace WinUtils {
             if (wordSizeIn)
                 *wordSizeIn = wordSize;
             if (wordSize == 32) {
-                determineDebugAndDependentLibs(
+                determineDependentLibs(
                     reinterpret_cast<const IMAGE_NT_HEADERS32 *>(ntHeaders), fileMemory, isMinGW,
-                    dependentLibrariesIn, isDebugIn, errorMessage);
+                    dependentLibrariesIn, errorMessage);
             } else {
-                determineDebugAndDependentLibs(
+                determineDependentLibs(
                     reinterpret_cast<const IMAGE_NT_HEADERS64 *>(ntHeaders), fileMemory, isMinGW,
-                    dependentLibrariesIn, isDebugIn, errorMessage);
+                    dependentLibrariesIn, errorMessage);
             }
 
             if (machineArchIn)
@@ -301,6 +321,39 @@ namespace WinUtils {
             CloseHandle(hFile);
 
         return result;
+    }
+
+    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
+        std::wstring errorMessage;
+        std::vector<std::string> dependentLibrariesIn;
+        unsigned wordSizeIn;
+        bool isMinGW = false;
+        unsigned short machineArchIn;
+        if (!readPeExecutable(path, &errorMessage, &dependentLibrariesIn, &wordSizeIn,
+                              isMinGW, &machineArchIn)) {
+            throw std::runtime_error(SCL::wideToUtf8(errorMessage));
+        }
+        return dependentLibrariesIn;
+    }
+
+    std::string local8bit_to_utf8(const std::string &s) {
+        if (s.empty()) {
+            return {};
+        }
+        const auto utf8Length = static_cast<int>(s.size());
+        if (utf8Length >= (std::numeric_limits<int>::max)()) {
+            return {};
+        }
+        const int utf16Length =
+            ::MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, s.data(), utf8Length, nullptr, 0);
+        if (utf16Length <= 0) {
+            return {};
+        }
+        std::wstring utf16Str;
+        utf16Str.resize(utf16Length);
+        ::MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, s.data(), utf8Length, utf16Str.data(),
+                              utf16Length);
+        return SCL::wideToUtf8(utf16Str);
     }
 
 }

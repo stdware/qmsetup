@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(qtmediateCM VERSION 0.0.1.2)
+project(qtmediateCM VERSION 0.0.1.4)
+
+# ----------------------------------
+# Configure Options
+# ----------------------------------
+option(QTMEDIATE_MODULES_VCPKG_TOOLS_HINT "Install executables to tools directory" OFF)
 
 # ----------------------------------
 # CMake Settings

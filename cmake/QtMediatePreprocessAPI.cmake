@@ -15,10 +15,10 @@ function(qtmediate_sync_include _src_dir _dest_dir)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediateCM::incsync)
+    set(_tool_target qtmediateCM::corecmd)
 
     if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_sync_include: tool \"incsync\" not found.")
+        message(FATAL_ERROR "qtmediate_sync_include: tool \"corecmd\" not found.")
     else()
         get_target_property(_tool ${_tool_target} LOCATION)
     endif()
@@ -39,10 +39,9 @@ function(qtmediate_sync_include _src_dir _dest_dir)
         file(GLOB_RECURSE header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
 
         execute_process(
-            COMMAND ${_tool} -s ${_src_dir} ${_dest_dir}
+            COMMAND ${_tool} incsync -s ${_src_dir} ${_dest_dir}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMAND_ERROR_IS_FATAL ANY
-            OUTPUT_QUIET
         )
 
         if(FUNC_INSTALL_DIR)
@@ -50,10 +49,9 @@ function(qtmediate_sync_include _src_dir _dest_dir)
 
             install(CODE "
                 execute_process(
-                    COMMAND \"${_tool}\" -c -s \"${_src_dir}\" \"${_install_dir}\"
+                    COMMAND \"${_tool}\" incsync -c -s \"${_src_dir}\" \"${_install_dir}\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                     COMMAND_ERROR_IS_FATAL ANY
-                    OUTPUT_QUIET
                 )
             ")
         endif()
@@ -177,10 +175,10 @@ function(qtmediate_generate_config _file)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediateCM::cfggen)
+    set(_tool_target qtmediateCM::corecmd)
 
     if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_generate_config: tool \"cfggen\" not found.")
+        message(FATAL_ERROR "qtmediate_generate_config: tool \"corecmd\" not found.")
     else()
         get_target_property(_tool ${_tool_target} LOCATION)
     endif()
@@ -200,10 +198,9 @@ function(qtmediate_generate_config _file)
             list(APPEND _args "-D${_item}")
         endforeach()
 
-        execute_process(COMMAND ${_tool} ${_args} ${_file}
+        execute_process(COMMAND ${_tool} configure ${_args} ${_file}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMAND_ERROR_IS_FATAL ANY
-            OUTPUT_QUIET
         )
     endif()
 endfunction()
@@ -219,10 +216,10 @@ endfunction()
 ]] #
 function(qtmediate_generate_build_info _dir _prefix _file)
     # Get tool
-    set(_tool_target qtmediateCM::cfggen)
+    set(_tool_target qtmediateCM::corecmd)
 
     if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_generate_config: tool \"cfggen\" not found.")
+        message(FATAL_ERROR "qtmediate_generate_build_info: tool \"corecmd\" not found.")
     else()
         get_target_property(_tool ${_tool_target} LOCATION)
     endif()
@@ -318,9 +315,8 @@ function(qtmediate_generate_build_info _dir _prefix _file)
         list(APPEND _args "-D${_item}")
     endforeach()
 
-    execute_process(COMMAND ${_tool} ${_args} ${_file}
+    execute_process(COMMAND ${_tool} configure ${_args} ${_file}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND_ERROR_IS_FATAL ANY
-        OUTPUT_QUIET
     )
 endfunction()
