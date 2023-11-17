@@ -4,7 +4,7 @@
 
 #include <delayimp.h>
 
-#include <Windows.h>
+#include <windows.h>
 
 #include <algorithm>
 #include <sstream>
@@ -23,7 +23,7 @@ namespace Utils {
     static std::chrono::system_clock::time_point filetime_to_timepoint(const FILETIME &ft) {
         // Windows file time starts from January 1, 1601
         // std::chrono::system_clock starts from January 1, 1970
-        const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
+        static constexpr const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
         long long duration = (static_cast<long long>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
         duration -= WIN_EPOCH;                            // convert to Unix epoch
         return std::chrono::system_clock::from_time_t(duration / 10000000LL);
@@ -31,7 +31,7 @@ namespace Utils {
 
     static FILETIME timepoint_to_filetime(const std::chrono::system_clock::time_point &tp) {
         FILETIME ft;
-        const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
+        static constexpr const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
         long long duration =
             std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch()).count();
         duration = duration * 10 + WIN_EPOCH;
@@ -82,7 +82,7 @@ namespace Utils {
         CloseHandle(hFile);
     }
 
-    static const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+    static constexpr const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
 
     static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage = true) {
         std::wstring rc;

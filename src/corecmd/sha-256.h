@@ -3,8 +3,8 @@
 
 // https://github.com/notepad-plus-plus/notepad-plus-plus/blob/master/PowerEditor/src/MISC/sha2
 
-#include <stddef.h>
-#include <stdint.h>
+#include <cstddef>
+#include <cstdint>
 
 #ifdef __cplusplus
 extern "C" {
