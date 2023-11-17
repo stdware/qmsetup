@@ -232,70 +232,22 @@ namespace Utils {
         return result;
     }
 
-    // Check for MSCV runtime (MSVCP90D.dll/MSVCP90.dll, MSVCP120D.dll/MSVCP120.dll,
-    // VCRUNTIME140D.DLL/VCRUNTIME140.DLL (VS2015) or msvcp120d_app.dll/msvcp120_app.dll).
-    enum MsvcDebugRuntimeResult {
-        MsvcDebugRuntime,
-        MsvcReleaseRuntime,
-        NoMsvcRuntime,
-    };
-
-    static MsvcDebugRuntimeResult
-        checkMsvcDebugRuntime(const std::vector<std::string> &dependentLibraries) {
-        for (auto lib : dependentLibraries) {
-            int pos = 0;
-
-            std::transform(lib.begin(), lib.end(), lib.begin(), [](unsigned char c) {
-                return std::tolower(c); //
-            });
-
-            if (lib.starts_with("msvcr") || lib.starts_with("msvcp") ||
-                lib.starts_with("vcruntime")) {
-                int lastDotPos = lib.find_last_of('.');
-                pos = -1 == lastDotPos ? 0 : lastDotPos - 1;
-            }
-
-            if (pos > 0 && lib.find("_app") != std::string::npos)
-                pos -= 4;
-
-            if (pos) {
-                return lib.at(pos) == 'd' ? MsvcDebugRuntime : MsvcReleaseRuntime;
-            }
-        }
-        return NoMsvcRuntime;
-    }
-
     template <class ImageNtHeader>
-    static void determineDebugAndDependentLibs(const ImageNtHeader *nth, const void *fileMemory,
-                                               bool isMinGW,
-                                               std::vector<std::string> *dependentLibrariesIn,
-                                               bool *isDebugIn, std::wstring *errorMessage) {
-        const bool hasDebugEntry =
-            nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_DEBUG].Size;
+    static void determineDependentLibs(const ImageNtHeader *nth, const void *fileMemory,
+                                       bool isMinGW,
+                                       std::vector<std::string> *dependentLibrariesIn,
+                                       std::wstring *errorMessage) {
         std::vector<std::string> dependentLibraries;
-        if (dependentLibrariesIn || (isDebugIn != nullptr && hasDebugEntry && !isMinGW))
+        if (dependentLibrariesIn)
             dependentLibraries = readImportSections(nth, fileMemory, errorMessage);
-
         if (dependentLibrariesIn)
             *dependentLibrariesIn = dependentLibraries;
-        if (isDebugIn != nullptr) {
-            if (isMinGW) {
-                // Use logic that's used e.g. in objdump / pfd library
-                *isDebugIn = !(nth->FileHeader.Characteristics & IMAGE_FILE_DEBUG_STRIPPED);
-            } else {
-                // When an MSVC debug entry is present, check whether the debug runtime
-                // is actually used to detect -release / -force-debug-info builds.
-                *isDebugIn = hasDebugEntry &&
-                             checkMsvcDebugRuntime(dependentLibraries) != MsvcReleaseRuntime;
-            }
-        }
     }
 
-    // Read a PE executable and determine dependent libraries, word size
-    // and debug flags.
+    // Read a PE executable and determine dependent libraries, word size.
     bool readPeExecutable(const std::wstring &peExecutableFileName, std::wstring *errorMessage,
                           std::vector<std::string> *dependentLibrariesIn, unsigned *wordSizeIn,
-                          bool *isDebugIn, bool isMinGW, unsigned short *machineArchIn) {
+                          bool isMinGW, unsigned short *machineArchIn) {
         bool result = false;
         HANDLE hFile = NULL;
         HANDLE hFileMap = NULL;
@@ -305,8 +257,6 @@ namespace Utils {
             dependentLibrariesIn->clear();
         if (wordSizeIn)
             *wordSizeIn = 0;
-        if (isDebugIn)
-            *isDebugIn = false;
 
         do {
             // Create a memory mapping of the file
@@ -346,13 +296,13 @@ namespace Utils {
             if (wordSizeIn)
                 *wordSizeIn = wordSize;
             if (wordSize == 32) {
-                determineDebugAndDependentLibs(
+                determineDependentLibs(
                     reinterpret_cast<const IMAGE_NT_HEADERS32 *>(ntHeaders), fileMemory, isMinGW,
-                    dependentLibrariesIn, isDebugIn, errorMessage);
+                    dependentLibrariesIn, errorMessage);
             } else {
-                determineDebugAndDependentLibs(
+                determineDependentLibs(
                     reinterpret_cast<const IMAGE_NT_HEADERS64 *>(ntHeaders), fileMemory, isMinGW,
-                    dependentLibrariesIn, isDebugIn, errorMessage);
+                    dependentLibrariesIn, errorMessage);
             }
 
             if (machineArchIn)
@@ -377,10 +327,9 @@ namespace Utils {
         std::wstring errorMessage;
         std::vector<std::string> dependentLibrariesIn;
         unsigned wordSizeIn;
-        bool isDebugIn;
         bool isMinGW = false;
         unsigned short machineArchIn;
-        if (!readPeExecutable(path, &errorMessage, &dependentLibrariesIn, &wordSizeIn, &isDebugIn,
+        if (!readPeExecutable(path, &errorMessage, &dependentLibrariesIn, &wordSizeIn,
                               isMinGW, &machineArchIn)) {
             throw std::runtime_error(SCL::wideToUtf8(errorMessage));
         }
