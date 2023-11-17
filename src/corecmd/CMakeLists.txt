@@ -24,6 +24,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE syscmdline::syscmdline)
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE shlwapi)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 
 if(WIN32)
