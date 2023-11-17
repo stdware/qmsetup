@@ -21,6 +21,12 @@ namespace Utils {
         // }
         // printf("\n");
 
+        const auto &dupStr = [](char *&dest, const char *src, size_t size) {
+            dest = new char[size + 1];
+            memcpy(dest, src, size);
+            dest[size] = '\0';
+        };
+
         // Create pipe
         int pipefd[2];
         if (pipe(pipefd) == -1) {
@@ -47,17 +53,16 @@ namespace Utils {
 
             // Prepare arguments
             auto argv = new char *[args.size() + 2]; // +2 for command and nullptr
-            argv[0] = new char[command.size() + 1];  // +1 for null terminator
-            memcpy(argv[0], command.data(), command.size());
+            dupStr(argv[0], command.data(), command.size());
             for (size_t i = 0; i < args.size(); ++i) {
-                argv[i + 1] = new char[args[i].size() + 1]; // +1 for null terminator
-                memcpy(argv[i + 1], args[i].data(), args[i].size());
-                argv[i + 1][args[i].size()] = '\0'; // null
+                dupStr(argv[i + 1], args[i].data(), args[i].size());
             }
             argv[args.size() + 1] = nullptr;
 
             // Call "exec"
             execvp(argv[0], argv);
+
+            // If the control flow reaches here, there must be a mistake
 
             // Clean allocated memory
             for (size_t i = 0; i < args.size() + 2; ++i) {
@@ -66,7 +71,7 @@ namespace Utils {
             delete[] argv;
 
             // Fail
-            printf("execve failed: %s\n", strerror(errno));
+            printf("exec \"%s\" failed: %s\n", command.data(), strerror(errno));
             exit(EXIT_FAILURE);
         }
 

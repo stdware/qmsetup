@@ -468,6 +468,8 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 static int cmd_deploy(const SCL::ParseResult &result) {
     bool verbose = result.optionIsSet("--verbose");
     bool force = result.optionIsSet("-f");
+    bool standard = result.optionIsSet("-s");
+
     TString dest = fs::current_path(); // Default to current path
     if (result.optionIsSet("-o")) {
         dest = fs::absolute(str2tstr(result.valueForOption("-o").toString()));
@@ -558,17 +560,29 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             TString fileName = fs::path(lib);
             std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
 
-            if (
+            if ((standard &&
+                 (
 #ifdef _WIN32
-                // Ignore API-Set, MSVC libraries, system libraries and Qt libraries
-                fileName.starts_with(_TSTR("vcruntime")) || fileName.starts_with(_TSTR("msvcp")) ||
-                fileName.starts_with(_TSTR("concrt")) || fileName.starts_with(_TSTR("vccorlib")) ||
-                fileName.starts_with(_TSTR("ucrtbase")) || fileName.starts_with(_TSTR("api-ms-win-")) ||
-                fileName.starts_with(_TSTR("ext-ms-win-")) || fileName.starts_with(_TSTR("qt")) ||
-                fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
-                fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
-                fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
+                     // Ignore API-Set, MSVC libraries, system libraries and Qt libraries
+                     fileName.starts_with(_TSTR("vcruntime")) ||
+                     fileName.starts_with(_TSTR("msvcp")) ||
+                     fileName.starts_with(_TSTR("concrt")) ||
+                     fileName.starts_with(_TSTR("vccorlib")) ||
+                     fileName.starts_with(_TSTR("ucrtbase")) ||
+                     fileName.starts_with(_TSTR("api-ms-win-")) ||
+                     fileName.starts_with(_TSTR("ext-ms-win-")) ||
+                     // fileName.starts_with(_TSTR("qt")) ||
+                     fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
+                     fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
+                     fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
+#elif defined(__APPLE__)
+                     fileName.starts_with("libc++") || fileName.starts_with("libSystem")
+#else
+                     fileName.starts_with("libstdc++") || fileName.starts_with("libgcc") ||
+                     fileName.starts_with("libglib") || fileName.starts_with("libpthread") ||
+                     fileName.starts_with("libgthread") || fileName.starts_with("libicu")
 #endif
+                     )) ||
                 visited.count(fileName)) {
                 continue;
             }
@@ -723,6 +737,7 @@ int main(int argc, char *argv[]) {
                 .short_match(SCL::Option::ShortMatchSingleChar),
 #endif
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+            SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
         command.addOption(verbose);

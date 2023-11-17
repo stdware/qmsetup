@@ -1,4 +1,6 @@
 #include "sha-256.h"
+
+#include <cstring>
 #include <string>
 
 static constexpr const auto CHUNK_SIZE = 64;
