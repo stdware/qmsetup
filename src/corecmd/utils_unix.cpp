@@ -13,75 +13,102 @@ namespace fs = std::filesystem;
 
 namespace Utils {
 
-    static int executeCommand(const std::string &command, const std::vector<std::string> &args,
-                              std::string *output) {
-        // 创建管道
+    static std::string executeCommand(const std::string &command,
+                                      const std::vector<std::string> &args) {
+        // printf("Executing command: %s", command.data());
+        // for (const auto &arg : args) {
+        //     printf(" %s", arg.data());
+        // }
+        // printf("\n");
+
+        // Create pipe
         int pipefd[2];
         if (pipe(pipefd) == -1) {
-            perror("pipe");
-            return -1;
+            throw std::runtime_error("failed to call \"pipe\"");
         }
 
         pid_t pid = fork();
         if (pid < 0) {
-            // Fork失败
-            perror("fork");
-            return -1;
+            close(pipefd[0]);
+            close(pipefd[1]);
+            throw std::runtime_error("failed to call \"fork\"");
         }
 
         if (pid == 0) {
-            // 子进程
-            close(pipefd[0]); // 关闭读端
+            // --------
+            // Child process
+            // --------
 
-            // 重定向stdout到管道写端
+            close(pipefd[0]); // Close read pipe
+
+            // Redirect "stdout" to write pipe
             dup2(pipefd[1], STDOUT_FILENO);
             close(pipefd[1]);
 
-            // 准备参数
+            // Prepare arguments
             auto argv = new char *[args.size() + 2]; // +2 for command and nullptr
             argv[0] = new char[command.size() + 1];  // +1 for null terminator
             memcpy(argv[0], command.data(), command.size());
             for (size_t i = 0; i < args.size(); ++i) {
                 argv[i + 1] = new char[args[i].size() + 1]; // +1 for null terminator
                 memcpy(argv[i + 1], args[i].data(), args[i].size());
+                argv[i + 1][args[i].size()] = '\0'; // null
             }
             argv[args.size() + 1] = nullptr;
 
+            // Call "exec"
             execvp(argv[0], argv);
 
-            // 清理内存
+            // Clean allocated memory
             for (size_t i = 0; i < args.size() + 2; ++i) {
                 delete[] argv[i];
             }
             delete[] argv;
 
-            // 如果execvp失败
-            perror("execvp");
+            // Fail
+            printf("execve failed: %s\n", strerror(errno));
             exit(EXIT_FAILURE);
-        } else {
-            // 父进程
-            close(pipefd[1]); // 关闭写端
-
-            // 读取子进程输出
-            char buffer[256];
-            ssize_t bytes_read;
-            while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-                buffer[bytes_read] = '\0';
-                if (output) {
-                    *output += buffer;
-                }
-            }
-            close(pipefd[0]);
-
-            // 等待子进程结束
-            int status;
-            waitpid(pid, &status, 0);
-            if (WIFEXITED(status)) {
-                return WEXITSTATUS(status);
-            }
         }
 
-        return -1;
+        // --------
+        // Parent process
+        // --------
+
+        close(pipefd[1]); // Close write pipe
+
+        // Read child process output
+        std::string output;
+
+        char buffer[256];
+        ssize_t bytes_read;
+        while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+            buffer[bytes_read] = '\0';
+            output += buffer;
+        }
+        close(pipefd[0]);
+
+        // Wait for child process to terminate
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status)) {
+            auto exitCode = WEXITSTATUS(status);
+            if (exitCode == 0)
+                return output;
+
+            // Throw error
+            while (!output.empty() && output.back() == '\n') {
+                output.pop_back();
+            }
+            throw std::runtime_error(output);
+        }
+
+        if (WIFSIGNALED(status)) {
+            auto sig = WTERMSIG(status);
+            throw std::runtime_error("command \"" + command + "\" was terminated by signal " +
+                                     std::to_string(sig));
+        }
+
+        throw std::runtime_error("command \"" + command + "\" terminated abnormally");
     }
 
     FileTime fileTime(const fs::path &path) {
@@ -110,110 +137,102 @@ namespace Utils {
     // Mac
     // Use `otool` and `install_name_tool`
 
-    struct DylibInfo {
-        std::string binaryPath;
-        std::string compatibilityVersion;
-        std::string currentVersion;
-    };
-
-    struct OtoolInfo {
-        std::string binaryPath;
-        std::string installName;
-        std::string compatibilityVersion;
-        std::string currentVersion;
-        std::vector<DylibInfo> dependencies;
-    };
-
-    static bool readUnixExecutable(const std::string &fileName, std::vector<std::string> *libs,
-                                   std::string *errorMessage) {
-        OtoolInfo info;
-        info.binaryPath = fileName;
-
-        std::string output;
-        if (executeCommand("otool", {"-L", fileName}, &output) != 0) {
-            *errorMessage = "Error executing otool command";
-            return false;
-        }
-
-        std::istringstream iss(output);
-        std::string line;
-
-        std::getline(iss, line); // Skip the line containing the binary path
-
-        static const std::regex regexp(
-            R"(^\t(.+) \(compatibility version (\d+\.\d+\.\d+), current version (\d+\.\d+\.\d+)(, weak)?\)$)");
-
-        while (std::getline(iss, line)) {
-            std::smatch match;
-            if (std::regex_match(line, match, regexp) && match.size() >= 4) {
-                DylibInfo dylib;
-                dylib.binaryPath = match[1].str();
-                dylib.compatibilityVersion = match[2].str();
-                dylib.currentVersion = match[3].str();
-                info.dependencies.push_back(dylib);
+    std::vector<std::string> readMacExecutable(const std::string &path) {
+        const auto &replace = [](std::string &s, const std::string &pattern,
+                                 const std::string &text) {
+            size_t idx;
+            while ((idx = s.find(pattern)) != std::string::npos) {
+                s.replace(idx, pattern.size(), text);
             }
-        }
+        };
 
-        for (const auto &dep : info.dependencies) {
-            libs->push_back(dep.binaryPath);
-        }
-        return true;
-    }
-
-    static bool setFileRunPath(const std::string &fileName, const std::string &rpath,
-                               std::string *errorMessage) {
+        std::vector<std::string> rpaths;
+        std::vector<std::string> dependencies;
         std::string output;
-        if (executeCommand("otool", {"-l", fileName}, &output) != 0) {
-            *errorMessage = "Error executing otool command";
-            return false;
+
+        // Get RPATHs
+        try {
+            output = executeCommand("otool", {"-l", path});
+        } catch (const std::exception &e) {
+            throw std::runtime_error("Failed to get RPATHs: " + std::string(e.what()));
         }
-        std::stringstream ss(output);
-        std::string line;
 
-        static const std::regex regexp(R"(\s*path\s+(.*)\s+\(offset.*)");
+        {
+            static const std::regex rpathRegex(R"(\s*path\s+(.*)\s+\(offset.*)");
+            std::istringstream iss(output);
+            std::string line;
+            std::smatch match;
 
-        // 查找包含 "cmd LC_RPATH" 的行，并获取其下2行的内容作为 rpath
-        std::vector<std::string> orgRpaths;
-        while (std::getline(ss, line)) {
-            if (line.find("cmd LC_RPATH") != std::string::npos) {
-                std::getline(ss, line);
-                std::getline(ss, line);
-
-                std::smatch match;
-                if (std::regex_match(line, match, regexp) && match.size() >= 2) {
-                    orgRpaths.emplace_back(match[1].str());
+            while (std::getline(iss, line)) {
+                if (line.find("cmd LC_RPATH") != std::string::npos) {
+                    // skip 2 lines
+                    std::getline(iss, line);
+                    std::getline(iss, line);
+                    if (std::regex_match(line, match, rpathRegex) && match.size() >= 2) {
+                        rpaths.emplace_back(match[1].str());
+                    }
                 }
             }
         }
 
-        // 删除所有已有的 rpath
-        for (const auto &oldRpath : std::as_const(orgRpaths)) {
-            if (executeCommand("install_name_tool", {"-delete_rpath", oldRpath, fileName},
-                               nullptr) != 0) {
-                *errorMessage = "Error executing install_name_tool command";
-                return false;
+
+        // Get dependencies
+        try {
+            output = executeCommand("otool", {"-L", path});
+        } catch (const std::exception &e) {
+            throw std::runtime_error("Failed to get dependencies: " + std::string(e.what()));
+        }
+
+        {
+            static const std::regex depRegex(
+                R"(^\t(.+) \(compatibility version (\d+\.\d+\.\d+), current version (\d+\.\d+\.\d+)(, weak)?\)$)");
+            std::istringstream iss(output);
+            std::string line;
+            std::smatch match;
+
+            // skip first line
+            std::getline(iss, line);
+
+            const std::string &loaderPath = path;
+            while (std::getline(iss, line)) {
+                if (std::regex_search(line, match, depRegex) && match.size() >= 2) {
+                    std::string dep = match[1].str();
+
+                    // Replace @executable_path and @loader_path
+                    replace(dep, "@executable_path", loaderPath);
+                    replace(dep, "@loader_path", loaderPath);
+
+                    // Find dependency
+                    for (const auto &rpath : rpaths) {
+                        std::string fullPath = dep;
+                        replace(fullPath, "@rpath", rpath);
+                        if (fs::exists(fullPath) && fullPath != path) {
+                            dependencies.push_back(fullPath);
+                            break;
+                        }
+                    }
+                }
             }
         }
 
-        // 添加一个 rpath
-        if (executeCommand("install_name_tool", {"-add_rpath", rpath, fileName}, nullptr) != 0) {
-            *errorMessage = "Error executing install_name_tool command";
-            return false;
-        }
+        return dependencies;
+    }
 
-        return true;
+    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
+        return readMacExecutable(path);
     }
 
 #else
     // Linux
     // Use `ldd` and `patchelf`
 
-    static bool readUnixExecutable(const std::string &fileName, std::vector<std::string> *libs,
-                                   std::string *errorMessage) {
+    static std::vector<std::string> readLinuxExecutable(const std::string &fileName) {
         std::string output;
-        if (executeCommand("ldd", {fileName}, &output) != 0) {
-            *errorMessage = "Error executing ldd command";
-            return false;
+
+        try {
+            output = executeCommand("ldd", {fileName});
+        } catch (const std::exception &e) {
+            throw std::runtime_error("Failed to get dependencies: " + std::string(e.what()));
         }
 
         std::istringstream iss(output);
@@ -221,27 +240,21 @@ namespace Utils {
 
         static const std::regex regexp("^\\s*.+ => (.+) \\(.*");
 
-        std::vector<std::string> info;
+        std::vector<std::string> dependencies;
         while (std::getline(iss, line)) {
             std::smatch match;
             if (std::regex_match(line, match, regexp) && match.size() >= 2) {
-                info.push_back(match[1].str());
+                dependencies.push_back(match[1].str());
             }
         }
 
-        *libs = std::move(info);
-        return true;
+        return dependencies;
+    }
+
+    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
+        return readLinuxExecutable(path);
     }
 
 #endif
-
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
-        std::string errorMessage;
-        std::vector<std::string> dependentLibrariesIn;
-        if (!readUnixExecutable(path, &dependentLibrariesIn, &errorMessage)) {
-            throw std::runtime_error(errorMessage);
-        }
-        return dependentLibrariesIn;
-    }
 
 }

@@ -589,7 +589,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 continue;
             }
 #else
-            path = lib;
+            fs::path path = lib;
 #endif
 
             bool skip = false;
@@ -711,7 +711,7 @@ int main(int argc, char *argv[]) {
     SCL::Command deployCommand = []() {
         SCL::Command command("deploy", "Resolve and deploy " OS_EXECUTABLE " files' dependencies");
         command.addArguments({
-            SCL::Argument("file", OS_EXECUTABLE "(s)"),
+            SCL::Argument("file", OS_EXECUTABLE "(s)").multi(),
         });
         command.addOptions({
             SCL::Option({"-o", "--out"}, "Set the output directory, defult to current directory")
