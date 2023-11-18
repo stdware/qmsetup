@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <regex>
+#include <set>
 #include <sstream>
 
 namespace fs = std::filesystem;
@@ -27,6 +28,11 @@ namespace Utils {
             dest[size] = '\0';
         };
 
+        enum PipeNum {
+            PN_Read,
+            PN_Write,
+        };
+
         // Create pipe
         int pipefd[2];
         if (pipe(pipefd) == -1) {
@@ -35,8 +41,9 @@ namespace Utils {
 
         pid_t pid = fork();
         if (pid < 0) {
-            close(pipefd[0]);
-            close(pipefd[1]);
+            // Close pipes right away
+            close(pipefd[PN_Read]);
+            close(pipefd[PN_Write]);
             throw std::runtime_error("failed to call \"fork\"");
         }
 
@@ -45,11 +52,12 @@ namespace Utils {
             // Child process
             // --------
 
-            close(pipefd[0]); // Close read pipe
+            // Close read pipe
+            close(pipefd[PN_Read]);
 
-            // Redirect "stdout" to write pipe
-            dup2(pipefd[1], STDOUT_FILENO);
-            close(pipefd[1]);
+            // Redirect "stdout" and "stderr" to write pipe
+            dup2(pipefd[PN_Write], STDOUT_FILENO);
+            dup2(pipefd[PN_Write], STDERR_FILENO);
 
             // Prepare arguments
             auto argv = new char *[args.size() + 2]; // +2 for command and nullptr
@@ -72,6 +80,9 @@ namespace Utils {
 
             // Fail
             printf("exec \"%s\" failed: %s\n", command.data(), strerror(errno));
+
+            // No need to close write pipe, let the System handle everything
+            // Simply exit
             exit(EXIT_FAILURE);
         }
 
@@ -79,22 +90,26 @@ namespace Utils {
         // Parent process
         // --------
 
-        close(pipefd[1]); // Close write pipe
+        // Close write pipe
+        close(pipefd[PN_Write]);
 
         // Read child process output
-        std::string output;
-
         char buffer[256];
-        ssize_t bytes_read;
-        while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-            buffer[bytes_read] = '\0';
+        std::string output;
+        ssize_t bytesRead;
+        while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
+            buffer[bytesRead] = '\0';
             output += buffer;
         }
-        close(pipefd[0]);
+
+        // Close read pipe
+        close(pipefd[PN_Read]);
 
         // Wait for child process to terminate
         int status;
         waitpid(pid, &status, 0);
+
+        // Check exit status
         if (WIFEXITED(status)) {
             auto exitCode = WEXITSTATUS(status);
             if (exitCode == 0)
@@ -142,44 +157,39 @@ namespace Utils {
     // Mac
     // Use `otool` and `install_name_tool`
 
-    std::vector<std::string> readMacExecutable(const std::string &path) {
-        const auto &replace = [](std::string &s, const std::string &pattern,
-                                 const std::string &text) {
-            size_t idx;
-            while ((idx = s.find(pattern)) != std::string::npos) {
-                s.replace(idx, pattern.size(), text);
-            }
-        };
-
+    static std::vector<std::string> readMacBinaryRunPaths(const std::string &path) {
         std::vector<std::string> rpaths;
-        std::vector<std::string> dependencies;
         std::string output;
 
-        // Get RPATHs
         try {
             output = executeCommand("otool", {"-l", path});
         } catch (const std::exception &e) {
             throw std::runtime_error("Failed to get RPATHs: " + std::string(e.what()));
         }
 
-        {
-            static const std::regex rpathRegex(R"(\s*path\s+(.*)\s+\(offset.*)");
-            std::istringstream iss(output);
-            std::string line;
-            std::smatch match;
 
-            while (std::getline(iss, line)) {
-                if (line.find("cmd LC_RPATH") != std::string::npos) {
-                    // skip 2 lines
-                    std::getline(iss, line);
-                    std::getline(iss, line);
-                    if (std::regex_match(line, match, rpathRegex) && match.size() >= 2) {
-                        rpaths.emplace_back(match[1].str());
-                    }
+        static const std::regex rpathRegex(R"(\s*path\s+(.*)\s+\(offset.*)");
+        std::istringstream iss(output);
+        std::string line;
+        std::smatch match;
+
+        while (std::getline(iss, line)) {
+            if (line.find("cmd LC_RPATH") != std::string::npos) {
+                // skip 2 lines
+                std::getline(iss, line);
+                std::getline(iss, line);
+                if (std::regex_match(line, match, rpathRegex) && match.size() >= 2) {
+                    rpaths.emplace_back(match[1].str());
                 }
             }
         }
 
+        return rpaths;
+    }
+
+    static std::vector<std::string> readMacBinaryDependencies(const std::string &path) {
+        std::vector<std::string> dependencies;
+        std::string output;
 
         // Get dependencies
         try {
@@ -188,43 +198,100 @@ namespace Utils {
             throw std::runtime_error("Failed to get dependencies: " + std::string(e.what()));
         }
 
-        {
-            static const std::regex depRegex(
-                R"(^\t(.+) \(compatibility version (\d+\.\d+\.\d+), current version (\d+\.\d+\.\d+)(, weak)?\)$)");
-            std::istringstream iss(output);
-            std::string line;
-            std::smatch match;
+        static const std::regex depRegex(
+            R"(^\t(.+) \(compatibility version (\d+\.\d+\.\d+), current version (\d+\.\d+\.\d+)(, weak)?\)$)");
+        std::istringstream iss(output);
+        std::string line;
+        std::smatch match;
 
-            // skip first line
-            std::getline(iss, line);
+        // skip first line
+        std::getline(iss, line);
 
-            const std::string &loaderPath = path;
-            while (std::getline(iss, line)) {
-                if (std::regex_search(line, match, depRegex) && match.size() >= 2) {
-                    std::string dep = match[1].str();
-
-                    // Replace @executable_path and @loader_path
-                    replace(dep, "@executable_path", loaderPath);
-                    replace(dep, "@loader_path", loaderPath);
-
-                    // Find dependency
-                    for (const auto &rpath : rpaths) {
-                        std::string fullPath = dep;
-                        replace(fullPath, "@rpath", rpath);
-                        if (fs::exists(fullPath) && fullPath != path) {
-                            dependencies.push_back(fullPath);
-                            break;
-                        }
-                    }
-                }
+        const std::string &loaderPath = path;
+        while (std::getline(iss, line)) {
+            if (std::regex_search(line, match, depRegex) && match.size() >= 2) {
+                std::string dep = match[1].str();
+                dependencies.emplace_back(dep);
             }
         }
-
         return dependencies;
     }
 
     std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
-        return readMacExecutable(path);
+        const auto &replace = [](std::string &s, const std::string &pattern,
+                                 const std::string &text) {
+            size_t idx;
+            while ((idx = s.find(pattern)) != std::string::npos) {
+                s.replace(idx, pattern.size(), text);
+            }
+        };
+
+        auto rpaths = readMacBinaryRunPaths(path);
+        auto dependencies = readMacBinaryDependencies(path);
+        const std::string &loaderPath = path.string();
+
+        std::vector<std::string> res;
+        for (auto dep : std::as_const(dependencies)) {
+            // Replace @executable_path and @loader_path
+            replace(dep, "@executable_path", loaderPath);
+            replace(dep, "@loader_path", loaderPath);
+
+            // Find dependency
+            for (const auto &rpath : rpaths) {
+                std::string fullPath = dep;
+                replace(fullPath, "@rpath", rpath);
+                if (fs::exists(fullPath) && fullPath != path) {
+                    res.push_back(fullPath);
+                    break;
+                }
+            }
+        }
+
+        return res;
+    }
+
+    void setFileRunPaths(const std::string &file, const std::vector<std::string> &paths) {
+        // Remove rpaths
+        do {
+            auto rpaths = readMacBinaryRunPaths(file);
+            if (rpaths.empty())
+                break;
+            std::vector<std::string> args;
+            args.reserve(rpaths.size() * 2 + 1);
+            for (const auto &rpath : std::as_const(rpaths)) {
+                args.push_back("-delete_rpath");
+                args.push_back(rpath);
+            }
+            args.push_back(file);
+
+            try {
+                std::ignore = executeCommand("install_name_tool", args);
+            } catch (const std::exception &e) {
+                throw std::runtime_error("Failed to remove rpaths: " + std::string(e.what()));
+            }
+        } while (false);
+
+        // Add rpaths
+        if (!paths.empty()) {
+            std::set<std::string> visited;
+            std::vector<std::string> args;
+            args.reserve(paths.size() * 2 + 1);
+            for (const auto &rpath : std::as_const(paths)) {
+                if (visited.contains(rpath))
+                    continue;
+
+                visited.insert(rpath);
+                args.push_back("-add_rpath");
+                args.push_back(rpath);
+            }
+            args.push_back(file);
+
+            try {
+                std::ignore = executeCommand("install_name_tool", args);
+            } catch (const std::exception &e) {
+                throw std::runtime_error("Failed to add rpaths: " + std::string(e.what()));
+            }
+        }
     }
 
 #else

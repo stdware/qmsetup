@@ -96,53 +96,58 @@ static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
     return isEmpty;
 }
 
-static void copyDirectoryImpl(const fs::path &rootSourceDir, const fs::path &sourceDir,
-                              const fs::path &destDir, bool verbose) {
-    fs::create_directories(destDir); // Ensure destination directory exists
+static bool copyFile(const fs::path &file, const fs::path &dest, bool symlink, bool force,
+                     bool verbose) {
+    auto target = dest / fs::path(file).filename();
+    if (fs::exists(target)) {
+        if (fs::canonical(target) == fs::canonical(file))
+            return false; // Same file
+
+        if (!force && Utils::fileTime(target).modifyTime >= Utils::fileTime(file).modifyTime)
+            return false; // Not updated
+    } else if (!fs::is_directory(dest)) {
+        fs::create_directories(dest);
+    }
+
+    if (symlink && fs::is_symlink(file)) {
+        if (verbose) {
+            u8printf("Link %s\n", tstr2str(target).data());
+        }
+        fs::copy_symlink(file, target);
+    } else {
+        if (verbose) {
+            u8printf("Copy %s\n", tstr2str(target).data());
+        }
+        fs::copy(file, dest, fs::copy_options::overwrite_existing);
+        Utils::syncFileTime(target, file); // Sync time for each file
+    }
+    return true;
+}
+
+static void copyDirectory(const fs::path &rootSourceDir, const fs::path &sourceDir,
+                          const fs::path &destDir, bool force, bool verbose,
+                          const std::function<bool(const fs::path &)> &ignore = {}) {
+    fs::create_directories(destDir); // Ensure the destination directory exists
 
     for (const auto &dirEntry : fs::directory_iterator(sourceDir)) {
         const auto &sourcePath = dirEntry.path();
-        auto destPath = destDir / sourcePath.filename(); // Construct destination path
+        if (ignore && ignore(sourcePath))
+            continue;
 
-        if (fs::is_regular_file(sourcePath)) {
-            if (fs::exists(destPath)) {
-                // Only copy if the source file is newer than the destination file
-                if (fs::last_write_time(sourcePath) > fs::last_write_time(destPath)) {
-                    if (verbose) {
-                        u8printf("Copy %s\n", tstr2str(sourcePath).data());
-                    }
-                    fs::copy_file(sourcePath, destPath, fs::copy_options::overwrite_existing);
-                }
-            } else {
-                if (verbose) {
-                    u8printf("Copy %s\n", tstr2str(sourcePath).data());
-                }
-                fs::copy_file(sourcePath, destPath);
-
-                // Sync time
-                Utils::syncFileTime(destPath, sourcePath);
+        if (fs::is_symlink(sourcePath)) {
+            auto linkPath = fs::read_symlink(sourcePath);
+            if (linkPath.is_relative()) {
+                linkPath = sourcePath.parent_path() / linkPath;
             }
+
+            // Copy if symlink points inside the source directory
+            copyFile(sourcePath, destDir, linkPath.string().starts_with(rootSourceDir.string()),
+                     force, verbose);
+        } else if (fs::is_regular_file(sourcePath)) {
+            copyFile(sourcePath, destDir, false, force, verbose);
         } else if (fs::is_directory(sourcePath)) {
-            copyDirectoryImpl(rootSourceDir, sourcePath, destPath, verbose);
-        } else if (fs::is_symlink(sourcePath)) {
-            if (fs::exists(destPath)) {
-                fs::remove(destPath);
-            }
-
-            // Check if symlink points inside the source directory
-            if (rootSourceDir.compare(sourcePath.parent_path()) == 0) {
-                // Recreate symlink in the destination
-                if (verbose) {
-                    u8printf("Symlink %s\n", tstr2str(sourcePath).data());
-                }
-                fs::create_symlink(fs::read_symlink(sourcePath), destPath);
-            } else {
-                // Directly copy the symlink
-                if (verbose) {
-                    u8printf("Copy %s\n", tstr2str(sourcePath).data());
-                }
-                fs::copy(sourcePath, destPath);
-            }
+            copyDirectory(rootSourceDir, sourcePath, destDir / sourcePath.filename(), force,
+                          verbose, ignore);
         }
     }
 }
@@ -154,15 +159,16 @@ static std::string standardError(int code = errno) {
 // ---------------------------------------- Commands ----------------------------------------
 
 static int cmd_cpdir(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("--verbose");
+    bool force = result.optionIsSet("-f");
+    bool verbose = result.optionIsSet("-V");
     const auto &src = fs::absolute(str2tstr(result.value(0).toString()));
     const auto &dest = fs::absolute(str2tstr(result.value(1).toString()));
-    copyDirectoryImpl(src, src, dest, verbose);
+    copyDirectory(src, src, dest, force, verbose);
     return 0;
 }
 
 static int cmd_rmdir(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("--verbose");
+    bool verbose = result.optionIsSet("-V");
     TStringList fileNames;
     {
         const auto &dirsResult = result.values(0);
@@ -182,7 +188,7 @@ static int cmd_rmdir(const SCL::ParseResult &result) {
 }
 
 static int cmd_touch(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("--verbose");
+    bool verbose = result.optionIsSet("-V");
 
     const auto &file = str2tstr(result.value(0).toString());
     const auto &refFile = str2tstr(result.value(1).toString());
@@ -216,7 +222,7 @@ static int cmd_touch(const SCL::ParseResult &result) {
 }
 
 static int cmd_configure(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("--verbose");
+    bool verbose = result.optionIsSet("-V");
     const auto &fileName = str2tstr(result.value(0).toString());
 
     // Add defines
@@ -346,7 +352,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
 }
 
 static int cmd_incsync(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("--verbose");
+    bool verbose = result.optionIsSet("-V");
 
     bool copy = result.optionIsSet("-c");
     bool all = !result.optionIsSet("-n");
@@ -466,7 +472,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 }
 
 static int cmd_deploy(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("--verbose");
+    bool verbose = result.optionIsSet("-V");
     bool force = result.optionIsSet("-f");
     bool standard = result.optionIsSet("-s");
 
@@ -630,7 +636,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
     }
 
-// Deploy
+    // Deploy
+
 #ifdef _WIN32
     for (const auto &file : std::as_const(dependencies)) {
         auto target = dest / fs::path(file).filename();
@@ -656,80 +663,122 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 #elif defined(__APPLE__)
 
-    const auto &getFramework = [](const fs::path &path) -> std::string {
+    // Get framework path from the core path
+    const auto &getFramework = [](fs::path path) -> fs::path {
         // Ensure the path has at least three ancestors (including root)
-        if (path.has_relative_path() && path.relative_path().has_parent_path() &&
-            path.relative_path().parent_path().has_parent_path() &&
-            path.relative_path().parent_path().parent_path().has_parent_path()) {
-
-            // Get the ancestor that is three levels up
-            fs::path threeLevelsUp = path.parent_path().parent_path().parent_path();
-
-            // Check if the ancestor's extension is ".framework"
-            if (threeLevelsUp.extension() == ".framework")
-                return threeLevelsUp;
-            return {};
+        for (int i = 0; i < 3; ++i) {
+            if (!path.has_parent_path())
+                return {};
+            path = path.parent_path();
         }
+        // Check if the ancestor's extension is ".framework"
+        if (path.extension() == ".framework")
+            return path;
         return {};
     };
 
-    const auto &copyFramework = [](const fs::path &frameworkPath, const fs::path &dest) {
-        for (const auto &entry : fs::recursive_directory_iterator(frameworkPath)) {
-            if (entry.path().filename() == "Headers" &&
-                entry.path().parent_path().filename() == "Resources") {
-                continue;
-            }
-            fs::path destPath =
-                dest / frameworkPath.filename() / fs::relative(entry.path(), frameworkPath);
-            if (fs::is_directory(entry)) {
-                fs::create_directories(destPath);
-            } else {
-                fs::copy(entry, destPath, fs::copy_options::overwrite_existing);
-                syncFileTime(destPath, entry.path()); // Sync time for each file
-            }
-        }
-    };
+    // Copy dylib files and symlinks, returns the real dylib file
+    const auto &copyDylibFiles = [=](const fs::path &dylibPath, const fs::path &dest) -> fs::path {
+        static std::regex dylibRegex("(\\.\\d+)*\\.dylib"); // Regex to match similar dylibs
 
-    const auto &copyDylibFiles = [](const fs::path &dylibPath, const fs::path &dest) {
         std::string baseName = dylibPath.stem();
-        std::string extension = dylibPath.extension();
         fs::path dir = dylibPath.parent_path();
-
-        std::regex dylibRegex(baseName + "(\\.\\d+)*" + extension); // Regex to match similar dylibs
-
+        fs::path target;
         for (const auto &entry : fs::directory_iterator(dir)) {
             const auto &entryPath = entry.path();
-            if (std::regex_match(entryPath.filename().string(), dylibRegex)) {
-                fs::path destDylibPath = dest / entryPath.filename();
-                fs::copy(entry, destDylibPath, fs::copy_options::overwrite_existing);
-                syncFileTime(destDylibPath, entryPath); // Sync time for each dylib file
+            std::string entryName = entryPath.filename().string();
+            if (!entryName.starts_with(baseName))
+                continue;
+
+            entryName = entryName.substr(baseName.size());
+            if (std::regex_match(entryName, dylibRegex)) {
+                if (fs::is_symlink(entryPath)) {
+                    copyFile(entryPath, dest, true, force, verbose);
+                } else if (fs::is_regular_file(entryPath)) {
+                    copyFile(entryPath, dest, false, force, verbose);
+                    if (!target.empty()) {
+                        throw std::runtime_error("cannot determine dylib file: \"" +
+                                                 entryPath.filename().string() + "\", \"" +
+                                                 target.string() + "\"");
+                    }
+                    target = dest / entryPath.filename();
+                }
             }
         }
+        return target;
     };
 
     fs::path destPath(dest);
-    for (const auto &dep : std::as_const(dependencies)) {
-        fs::path depPath(dep);
-        if (depPath.extension() == ".dylib") {
-            copyDylibFiles(depPath, destPath);
-        } else if (auto frameworkPath = getFramework(depPath); !frameworkPath.empty()) {
-            copyFramework(frameworkPath, destPath);
-        } else {
-            continue;
-        }
 
-        // Update rpaths for the dependencies and filenames
-        setFileRunPaths(destPath / depPath.filename(), {"@loader_path"});
-    }
-
+    // Fix rpath for original files
     for (const auto &file : std::as_const(fileNames)) {
         fs::path filePath(file);
-        fs::path relativePath = fs::relative(filePath.parent_path(), destPath);
-        setFileRunPaths(file, {"@loader_path/" + relativePath.string()});
+        fs::path relativePath = fs::relative(destPath, filePath.parent_path());
+        if (verbose) {
+            u8printf("Fix run path: %s\n", file.data());
+        }
+        Utils::setFileRunPaths(file, {"@loader_path/" + relativePath.string()});
+    }
+
+    // Fix rpath for dependencies
+    for (const auto &dep : std::as_const(dependencies)) {
+        fs::path depPath = fs::canonical(dep);
+        if (depPath.extension() == ".dylib") {
+            std::string targetPath = copyDylibFiles(depPath, destPath);
+
+            // Fix library rpath
+            Utils::setFileRunPaths(targetPath, {
+                                                   "@loader_path",
+                                               });
+        } else if (auto frameworkPath = getFramework(depPath); !frameworkPath.empty()) {
+            fs::path targetPath =
+                destPath.string() +
+                depPath.string().substr(frameworkPath.parent_path()
+                                            .string()
+                                            .size()); // dest/XXX.framework/Versions/A/XXX
+            fs::path targetFrameworkDir = destPath / frameworkPath.filename(); // dest/XXX.framework
+            fs::path targetCoreDir = targetPath.parent_path(); // dest/XXX.framework/Versions/A
+
+            // Copy framework directory, ignore "Headers"
+            copyDirectory(frameworkPath, frameworkPath, targetFrameworkDir, force, verbose,
+                          [](const fs::path &path) -> bool {
+                              return fs::is_directory(path) && path.filename() == "Headers" &&
+                                     fs::is_directory(path.parent_path() / "Resources");
+                          });
+
+            // Fix library rpath
+            if (verbose) {
+                u8printf("Fix run path: %s\n", targetPath.string().data());
+            }
+            Utils::setFileRunPaths(targetPath, {
+                                                   "@executable_path/../Frameworks",
+                                                   "@loader_path/Frameworks",
+                                                   "@loader_path/../../..",
+                                               });
+
+            // Try fix another library
+            {
+                std::string libName = depPath.filename();
+                std::string anotherLib = libName.ends_with("_debug")
+                                             ? libName.substr(0, libName.size() - 5)
+                                             : libName + "_debug";
+                auto anotherLibFile =
+                    targetCoreDir / anotherLib; // dest/XXX.framework/Versions/A/XXX_debug
+                if (fs::is_regular_file(anotherLibFile)) {
+                    if (verbose) {
+                        u8printf("Fix run path: %s\n", anotherLibFile.string().data());
+                    }
+                    Utils::setFileRunPaths(anotherLibFile, {
+                                                               "@executable_path/../Frameworks",
+                                                               "@loader_path/Frameworks",
+                                                               "@loader_path/../../..",
+                                                           });
+                }
+            }
+        }
     }
 #else
 #endif
-
     return 0;
 }
 
@@ -738,12 +787,13 @@ int main(int argc, char *argv[]) {
     static SCL::Option verbose({"-V", "--verbose"}, "Show verbose");
 
     SCL::Command cpdirCommand = []() {
-        SCL::Command command("cpdir", "Copy contents of a directory if different");
+        SCL::Command command("cpdir", "Copy contents of a directory");
         command.addArguments({
             SCL::Argument("src", "Source directory"),
             SCL::Argument("dest", "Destination directory"),
         });
-        command.addOption(verbose);
+        command.addOption(SCL::Option({"-f", "--force"}, "Force overwrite existing files"));
+        command.addOptions({verbose});
         command.setHandler(cmd_cpdir);
         return command;
     }();
