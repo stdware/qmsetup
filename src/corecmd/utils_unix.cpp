@@ -222,13 +222,13 @@ namespace Utils {
         std::vector<std::string> res;
         for (auto dep : std::as_const(dependencies)) {
             // Replace @executable_path and @loader_path
-            replaceString(dep, "@executable_path", loaderPath);
-            replaceString(dep, "@loader_path", loaderPath);
+            replaceString(dep, std::string("@executable_path"), loaderPath);
+            replaceString(dep, std::string("@loader_path"), loaderPath);
 
             // Find dependency
             for (const auto &rpath : rpaths) {
                 std::string fullPath = dep;
-                replaceString(fullPath, "@rpath", rpath);
+                replaceString(fullPath, std::string("@rpath"), rpath);
                 if (fs::exists(fullPath) && fullPath != path) {
                     res.push_back(fullPath);
                     break;

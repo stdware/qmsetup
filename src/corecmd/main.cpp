@@ -656,8 +656,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     };
 
     // Copy library files and symlinks, returns the real library file
-    const auto &copySharedLibraries = [=](const fs::path &libPath,
-                                          const fs::path &dest) -> fs::path {
+    const auto &copySharedLibraries = [=](const fs::path &path, const fs::path &dest) -> fs::path {
         fs::path target;
         if (fs::is_symlink(path)) {
             auto linkPath = fs::canonical(path);
