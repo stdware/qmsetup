@@ -100,7 +100,7 @@ static bool copyFile(const fs::path &file, const fs::path &dest, bool symlink, b
                      bool verbose) {
     auto target = dest / fs::path(file).filename();
     if (fs::exists(target)) {
-        if (fs::canonical(target) == fs::canonical(file))
+        if (Utils::cleanPath(target) == Utils::cleanPath(file))
             return false; // Same file
 
         if (!force && Utils::fileTime(target).modifyTime >= Utils::fileTime(file).modifyTime)
@@ -121,6 +121,7 @@ static bool copyFile(const fs::path &file, const fs::path &dest, bool symlink, b
         fs::copy(file, dest, fs::copy_options::overwrite_existing);
         Utils::syncFileTime(target, file); // Sync time for each file
     }
+
     return true;
 }
 
@@ -135,10 +136,7 @@ static void copyDirectory(const fs::path &rootSourceDir, const fs::path &sourceD
             continue;
 
         if (fs::is_symlink(sourcePath)) {
-            auto linkPath = fs::read_symlink(sourcePath);
-            if (linkPath.is_relative()) {
-                linkPath = sourcePath.parent_path() / linkPath;
-            }
+            auto linkPath = fs::canonical(sourcePath);
 
             // Copy if symlink points inside the source directory
             copyFile(sourcePath, destDir, linkPath.string().starts_with(rootSourceDir.string()),
@@ -516,12 +514,12 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             if (!fs::is_directory(item))
                 continue;
 
-            TString canonical = fs::canonical(item);
-            if (visited.count(canonical)) {
+            TString simplified = Utils::cleanPath(item);
+            if (visited.contains(simplified)) {
                 continue;
             }
-            visited.insert(canonical);
-            searchingPaths.emplace_back(canonical);
+            visited.insert(simplified);
+            searchingPaths.emplace_back(simplified);
         }
     }
 #endif
@@ -563,13 +561,11 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
         // Search dependencies
         for (const auto &lib : std::as_const(libs)) {
-            TString fileName = fs::path(lib);
+            TString fileName = fs::path(lib).filename();
             std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
 
             if ((standard && (
-#ifdef _WIN32
-                                 // Ignore API-Set, MSVC libraries, system libraries and Qt
-                                 // libraries fileName.starts_with(_TSTR("qt")) ||
+#ifdef _WIN32xing
                                  fileName.starts_with(_TSTR("vcruntime")) ||
                                  fileName.starts_with(_TSTR("msvcp")) ||
                                  fileName.starts_with(_TSTR("concrt")) ||
@@ -585,7 +581,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                                  fileName.starts_with("libglib") ||
                                  fileName.starts_with("libpthread") ||
                                  fileName.starts_with("libgthread") ||
-                                 fileName.starts_with("libicu")
+                                 fileName.starts_with("libicu") ||
+                                 fileName.starts_with("libc.so") || fileName.starts_with("libc-") ||
+                                 fileName.starts_with("libdl.so") || fileName.starts_with("libdl-")
 #endif
                                      )) ||
 #ifdef _WIN32
@@ -595,7 +593,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                  fileName.starts_with(_TSTR("api-ms-win-")) ||
                  fileName.starts_with(_TSTR("ext-ms-win-"))) ||
 #endif
-                visited.count(fileName)) {
+                visited.contains(fileName)) {
                 continue;
             }
             visited.insert(fileName);
@@ -657,33 +655,18 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         return {};
     };
 
-    // Copy dylib files and symlinks, returns the real dylib file
-    const auto &copyDylibFiles = [=](const fs::path &dylibPath, const fs::path &dest) -> fs::path {
-        static std::regex dylibRegex("(\\.\\d+)*\\.dylib"); // Regex to match similar dylibs
-
-        std::string baseName = dylibPath.stem();
-        fs::path dir = dylibPath.parent_path();
+    // Copy library files and symlinks, returns the real library file
+    const auto &copySharedLibraries = [=](const fs::path &libPath,
+                                          const fs::path &dest) -> fs::path {
         fs::path target;
-        for (const auto &entry : fs::directory_iterator(dir)) {
-            const auto &entryPath = entry.path();
-            std::string entryName = entryPath.filename().string();
-            if (!entryName.starts_with(baseName))
-                continue;
-
-            entryName = entryName.substr(baseName.size());
-            if (std::regex_match(entryName, dylibRegex)) {
-                if (fs::is_symlink(entryPath)) {
-                    copyFile(entryPath, dest, true, force, verbose);
-                } else if (fs::is_regular_file(entryPath)) {
-                    copyFile(entryPath, dest, false, force, verbose);
-                    if (!target.empty()) {
-                        throw std::runtime_error("cannot determine dylib file: \"" +
-                                                 entryPath.filename().string() + "\", \"" +
-                                                 target.string() + "\"");
-                    }
-                    target = dest / entryPath.filename();
-                }
-            }
+        if (fs::is_symlink(path)) {
+            auto linkPath = fs::canonical(path);
+            copyFile(linkPath, dest, false, force, verbose);
+            copyFile(path, dest, true, force, verbose);
+            target = dest / linkPath.filename();
+        } else {
+            copyFile(path, dest, false, force, verbose);
+            target = dest / path.filename();
         }
         return target;
     };
@@ -691,23 +674,30 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Fix rpath for original files
     for (const auto &file : std::as_const(fileNames)) {
         fs::path filePath(file);
-        fs::path relativePath = fs::relative(dest, filePath.parent_path());
         if (verbose) {
-            u8printf("Fix run path: %s\n", file.data());
+            u8printf("Fix rpath: %s\n", file.data());
         }
-        Utils::setFileRunPaths(file, {"@loader_path/" + relativePath.string()});
+        Utils::setFileRPaths(
+            file, {"@loader_path/" + fs::relative(dest, filePath.parent_path()).string()});
     }
 
     // Fix rpath for dependencies
     for (const auto &dep : std::as_const(dependencies)) {
-        fs::path depPath = fs::canonical(dep);
+        fs::path depPath = Utils::cleanPath(dep);
         if (depPath.extension() == ".dylib") {
-            std::string targetPath = copyDylibFiles(depPath, dest);
+            std::string targetPath = copySharedLibraries(depPath, dest);
+            if (targetPath.empty()) {
+                throw std::runtime_error("cannot determine shared library: \"" + depPath.string() +
+                                         "\"");
+            }
 
             // Fix library rpath
-            Utils::setFileRunPaths(targetPath, {
-                                                   "@loader_path",
-                                               });
+            if (verbose) {
+                u8printf("Fix rpath: %s\n", targetPath.data());
+            }
+            Utils::setFileRPaths(targetPath, {
+                                                 "@loader_path",
+                                             });
         } else if (auto frameworkPath = getFramework(depPath); !frameworkPath.empty()) {
             fs::path targetPath =
                 dest.string() +
@@ -726,15 +716,15 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
             // Fix library rpath
             if (verbose) {
-                u8printf("Fix run path: %s\n", targetPath.string().data());
+                u8printf("Fix rpath: %s\n", targetPath.string().data());
             }
-            Utils::setFileRunPaths(targetPath, {
-                                                   "@executable_path/../Frameworks",
-                                                   "@loader_path/Frameworks",
-                                                   "@loader_path/../../..",
-                                               });
+            Utils::setFileRPaths(targetPath, {
+                                                 "@executable_path/../Frameworks",
+                                                 "@loader_path/Frameworks",
+                                                 "@loader_path/../../..",
+                                             });
 
-            // Try fix another library
+            // Try fixing another library
             {
                 std::string libName = depPath.filename();
                 std::string anotherLib = libName.ends_with("_debug")
@@ -744,18 +734,142 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                     targetCoreDir / anotherLib; // dest/XXX.framework/Versions/A/XXX_debug
                 if (fs::is_regular_file(anotherLibFile)) {
                     if (verbose) {
-                        u8printf("Fix run path: %s\n", anotherLibFile.string().data());
+                        u8printf("Fix rpath: %s\n", anotherLibFile.string().data());
                     }
-                    Utils::setFileRunPaths(anotherLibFile, {
-                                                               "@executable_path/../Frameworks",
-                                                               "@loader_path/Frameworks",
-                                                               "@loader_path/../../..",
-                                                           });
+                    Utils::setFileRPaths(anotherLibFile, {
+                                                             "@executable_path/../Frameworks",
+                                                             "@loader_path/Frameworks",
+                                                             "@loader_path/../../..",
+                                                         });
                 }
             }
         }
     }
 #else
+    // Copy library files and symlinks, returns the real library file
+    const auto &copySharedLibraries = [=](const fs::path &path, const fs::path &dest) -> fs::path {
+        fs::path target;
+        if (fs::is_symlink(path)) {
+            auto linkPath = fs::canonical(path);
+            copyFile(linkPath, dest, false, force, verbose);
+            copyFile(path, dest, true, force, verbose);
+            target = dest / linkPath.filename();
+        } else {
+            copyFile(path, dest, false, force, verbose);
+            target = dest / path.filename();
+        }
+        return target;
+    };
+
+    // Copy dependencies
+    std::set<std::string> targetDependencies;
+    for (const auto &dep : std::as_const(dependencies)) {
+        fs::path depPath = Utils::cleanPath(dep);
+        std::string targetPath = copySharedLibraries(depPath, dest);
+        if (targetPath.empty()) {
+            throw std::runtime_error("cannot determine shared library: \"" + depPath.string() +
+                                     "\"");
+        }
+        // libc.so is a shell script
+        if (fs::path(targetPath).filename() != "libc.so") {
+            targetDependencies.insert(targetPath);
+        }
+    }
+
+    // Fix rpath for original files
+    for (const auto &file : std::as_const(fileNames)) {
+        fs::path filePath(file);
+        if (verbose) {
+            u8printf("Fix rpath: %s\n", file.data());
+        }
+        Utils::setFileRPaths(file,
+                             {"$ORIGIN/" + fs::relative(dest, filePath.parent_path()).string()});
+    }
+
+    // Fix rpath for dependencies
+    for (const auto &dep : std::as_const(targetDependencies)) {
+        if (verbose) {
+            u8printf("Fix rpath: %s\n", dep.data());
+        }
+        Utils::setFileRPaths(dep, {"$ORIGIN"});
+    }
+
+    do {
+        if (standard) {
+            break;
+        }
+
+        const auto &interpNotFound = [](const std::string &what) {
+            return what.find("cannot find section '.interp'") != std::string::npos;
+        };
+
+        // Get Linux Executable interpreter
+        fs::path interpreter;
+        for (const auto &file : std::as_const(fileNames)) {
+            try {
+                interpreter = Utils::getInterpreter(file);
+            } catch (const std::exception &e) {
+                if (!interpNotFound(e.what()))
+                    throw;
+                continue;
+            }
+            break;
+        }
+        if (interpreter.empty()) {
+            for (const auto &dep : std::as_const(targetDependencies)) {
+                try {
+                    interpreter = Utils::getInterpreter(dep);
+                } catch (const std::exception &e) {
+                    if (!interpNotFound(e.what()))
+                        throw;
+                    continue;
+                }
+                break;
+            }
+        }
+        if (interpreter.empty())
+            break;
+
+        if (fs::is_symlink(interpreter)) {
+            auto linkPath = fs::canonical(interpreter);
+            copyFile(linkPath, dest, false, force, verbose);
+            copyFile(interpreter, dest, true, force, verbose);
+        } else {
+            copyFile(interpreter, dest, false, force, verbose);
+        }
+
+        std::string interpreterName = interpreter.filename();
+        interpreter = dest / interpreterName;
+
+        // Set interpreter for original files
+        for (const auto &file : std::as_const(fileNames)) {
+            fs::path filePath(file);
+            fs::path relativePath = fs::relative(interpreter, filePath.parent_path());
+            if (verbose) {
+                u8printf("Set interpreter: %s\n", file.data());
+            }
+
+            try {
+                Utils::setFileInterpreter(file, "$ORIGIN/" + relativePath.string());
+            } catch (const std::exception &e) {
+                if (!interpNotFound(e.what()))
+                    throw;
+            }
+        }
+
+        // Set interpreter for dependencies
+        for (const auto &dep : std::as_const(targetDependencies)) {
+            if (verbose) {
+                u8printf("Set interpreter: %s\n", dep.data());
+            }
+            try {
+                Utils::setFileInterpreter(dep, "$ORIGIN/" + interpreterName);
+            } catch (const std::exception &e) {
+                if (!interpNotFound(e.what()))
+                    throw;
+            }
+        }
+    } while (false);
 #endif
     return 0;
 }

@@ -116,10 +116,7 @@ namespace Utils {
                 return output;
 
             // Throw error
-            while (!output.empty() && output.back() == '\n') {
-                output.pop_back();
-            }
-            throw std::runtime_error(output);
+            throw std::runtime_error(trim(output));
         }
 
         if (WIFSIGNALED(status)) {
@@ -157,7 +154,7 @@ namespace Utils {
     // Mac
     // Use `otool` and `install_name_tool`
 
-    static std::vector<std::string> readMacBinaryRunPaths(const std::string &path) {
+    static std::vector<std::string> readMacBinaryRPaths(const std::string &path) {
         std::vector<std::string> rpaths;
         std::string output;
 
@@ -218,28 +215,20 @@ namespace Utils {
     }
 
     std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
-        const auto &replace = [](std::string &s, const std::string &pattern,
-                                 const std::string &text) {
-            size_t idx;
-            while ((idx = s.find(pattern)) != std::string::npos) {
-                s.replace(idx, pattern.size(), text);
-            }
-        };
-
-        auto rpaths = readMacBinaryRunPaths(path);
+        auto rpaths = readMacBinaryRPaths(path);
         auto dependencies = readMacBinaryDependencies(path);
         const std::string &loaderPath = path.string();
 
         std::vector<std::string> res;
         for (auto dep : std::as_const(dependencies)) {
             // Replace @executable_path and @loader_path
-            replace(dep, "@executable_path", loaderPath);
-            replace(dep, "@loader_path", loaderPath);
+            replaceString(dep, "@executable_path", loaderPath);
+            replaceString(dep, "@loader_path", loaderPath);
 
             // Find dependency
             for (const auto &rpath : rpaths) {
                 std::string fullPath = dep;
-                replace(fullPath, "@rpath", rpath);
+                replaceString(fullPath, "@rpath", rpath);
                 if (fs::exists(fullPath) && fullPath != path) {
                     res.push_back(fullPath);
                     break;
@@ -250,10 +239,10 @@ namespace Utils {
         return res;
     }
 
-    void setFileRunPaths(const std::string &file, const std::vector<std::string> &paths) {
+    void setFileRPaths(const std::string &file, const std::vector<std::string> &paths) {
         // Remove rpaths
         do {
-            auto rpaths = readMacBinaryRunPaths(file);
+            auto rpaths = readMacBinaryRPaths(file);
             if (rpaths.empty())
                 break;
             std::vector<std::string> args;
@@ -298,7 +287,7 @@ namespace Utils {
     // Linux
     // Use `ldd` and `patchelf`
 
-    static std::vector<std::string> readLinuxExecutable(const std::string &fileName) {
+    static std::vector<std::string> readLddOutput(const std::string &fileName) {
         std::string output;
 
         try {
@@ -324,9 +313,64 @@ namespace Utils {
     }
 
     std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
-        return readLinuxExecutable(path);
+        return readLddOutput(path);
     }
 
+    void setFileRPaths(const std::string &file, const std::vector<std::string> &paths) {
+        if (paths.empty()) {
+            try {
+                std::ignore = executeCommand("patchelf", {
+                                                             "--remove-rpath",
+                                                             file,
+                                                         });
+            } catch (const std::exception &e) {
+                throw std::runtime_error("Failed to remove rpaths: " + std::string(e.what()));
+            }
+            return;
+        }
+
+        try {
+            std::ignore = executeCommand("patchelf", {
+                                                         "--set-rpath",
+                                                         join(paths, std::string(":")),
+                                                         file,
+                                                     });
+        } catch (const std::exception &e) {
+            throw std::runtime_error("Failed to replace rpaths: " + std::string(e.what()));
+        }
+    }
+
+#endif
+
+
+#ifdef __linux__
+    std::string getInterpreter(const std::string &file) {
+        std::string output;
+        try {
+            output = executeCommand("patchelf", {
+                                                    "--print-interpreter",
+                                                    file,
+                                                });
+        } catch (const std::exception &e) {
+            throw std::runtime_error("Failed to get interpreter: " + std::string(e.what()));
+        }
+
+        output = trim(output);
+        replaceString(output, std::string("$ORIGIN"), fs::path(file).parent_path().string());
+        return output;
+    }
+
+    void setFileInterpreter(const std::string &file, const std::string &interpreter) {
+        try {
+            std::ignore = executeCommand("patchelf", {
+                                                         "--set-interpreter",
+                                                         interpreter,
+                                                         file,
+                                                     });
+        } catch (const std::exception &e) {
+            throw std::runtime_error("Failed to set interpreter: " + std::string(e.what()));
+        }
+    }
 #endif
 
 }

@@ -9,6 +9,7 @@ set(_src
     sha-256.h
     sha-256.cpp
     utils.h
+    utils.cpp
 )
 
 if(WIN32)
