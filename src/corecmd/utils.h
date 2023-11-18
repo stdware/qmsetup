@@ -42,6 +42,20 @@ namespace Utils {
     // OS Utils
     std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path);
 
+    std::string trim(const std::string &str) {
+        auto start = str.begin();
+        while (start != str.end() && std::isspace(*start)) {
+            start++;
+        }
+
+        auto end = str.end();
+        do {
+            end--;
+        } while (std::distance(start, end) > 0 && std::isspace(*end));
+
+        return std::string(start, end + 1);
+    }
+
 #ifdef _WIN32
     std::string local8bit_to_utf8(const std::string &s);
 #else
