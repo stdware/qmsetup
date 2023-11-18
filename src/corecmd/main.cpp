@@ -535,6 +535,18 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
     }
 
+    // Add copy patterns
+    std::vector<std::pair<TString, TString>> copies;
+    {
+        const auto &copiesResult = result.option("-c");
+        int cnt = copiesResult.count();
+        copies.reserve(cnt);
+        for (int i = 0; i < cnt; ++i) {
+            copies.emplace_back(str2tstr(copiesResult.value(0, i).toString()),
+                                str2tstr(copiesResult.value(1, i).toString()));
+        }
+    }
+
     // Deploy
     TStringSet visited;
     for (const auto &item : std::as_const(fileNames)) {
@@ -637,23 +649,27 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Deploy
 
 #ifdef _WIN32
+    // Windows
+    // Only need to copy the libraries.
+
+    // Copy original files
+    for (const auto &file : std::as_const(fileNames)) {
+        for (const auto &pattern : std::as_const(copies)) {
+            if (std::regex_search(file.begin(), file.end(),
+                                  std::basic_regex<TChar>(pattern.first))) {
+                copyFile(file, pattern.second, false, force, verbose);
+                break;
+            }
+        }
+    }
+
+    // Copy dependencies
     for (const auto &file : std::as_const(dependencies)) {
         copyFile(file, dest, false, force, verbose);
     }
-#elif defined(__APPLE__)
-    // Get framework path from the core path
-    const auto &getFramework = [](fs::path path) -> fs::path {
-        // Ensure the path has at least three ancestors (including root)
-        for (int i = 0; i < 3; ++i) {
-            if (!path.has_parent_path())
-                return {};
-            path = path.parent_path();
-        }
-        // Check if the ancestor's extension is ".framework"
-        if (path.extension() == ".framework")
-            return path;
-        return {};
-    };
+#else
+    // Unix
+    // Copy libraries and fix rpaths, and may need to deploy interpreter on Linux.
 
     // Copy library files and symlinks, returns the real library file
     const auto &copySharedLibraries = [=](const fs::path &path, const fs::path &dest) -> fs::path {
@@ -670,8 +686,46 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         return target;
     };
 
-    // Fix rpath for original files
+    // Copy original files
+    std::vector<std::string> targetOrgFiles;
+    targetOrgFiles.reserve(fileNames.size());
     for (const auto &file : std::as_const(fileNames)) {
+        fs::path targetDir;
+        for (const auto &pattern : std::as_const(copies)) {
+            if (std::regex_search(file.begin(), file.end(),
+                                  std::basic_regex<TChar>(pattern.first))) {
+                targetDir = pattern.second;
+                break;
+            }
+        }
+
+        if (targetDir.empty()) {
+            targetOrgFiles.push_back(file);
+            continue;
+        }
+
+        fs::path filePath(file);
+        copyFile(file, targetDir, false, force, verbose);
+        targetOrgFiles.push_back(targetDir / filePath.filename());
+    }
+
+#  if defined(__APPLE__)
+    // Get framework path from the core path
+    const auto &getFramework = [](fs::path path) -> fs::path {
+        // Ensure the path has at least three ancestors (including root)
+        for (int i = 0; i < 3; ++i) {
+            if (!path.has_parent_path())
+                return {};
+            path = path.parent_path();
+        }
+        // Check if the ancestor's extension is ".framework"
+        if (path.extension() == ".framework")
+            return path;
+        return {};
+    };
+
+    // Fix rpath for original files
+    for (const auto &file : std::as_const(targetOrgFiles)) {
         fs::path filePath(file);
         if (verbose) {
             u8printf("Fix rpath: %s\n", file.data());
@@ -744,22 +798,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             }
         }
     }
-#else
-    // Copy library files and symlinks, returns the real library file
-    const auto &copySharedLibraries = [=](const fs::path &path, const fs::path &dest) -> fs::path {
-        fs::path target;
-        if (fs::is_symlink(path)) {
-            auto linkPath = fs::canonical(path);
-            copyFile(linkPath, dest, false, force, verbose);
-            copyFile(path, dest, true, force, verbose);
-            target = dest / linkPath.filename();
-        } else {
-            copyFile(path, dest, false, force, verbose);
-            target = dest / path.filename();
-        }
-        return target;
-    };
-
+#  else
     // Copy dependencies
     std::set<std::string> targetDependencies;
     for (const auto &dep : std::as_const(dependencies)) {
@@ -776,7 +815,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 
     // Fix rpath for original files
-    for (const auto &file : std::as_const(fileNames)) {
+    for (const auto &file : std::as_const(targetOrgFiles)) {
         fs::path filePath(file);
         if (verbose) {
             u8printf("Fix rpath: %s\n", file.data());
@@ -804,7 +843,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
         // Get Linux Executable interpreter
         fs::path interpreter;
-        for (const auto &file : std::as_const(fileNames)) {
+        for (const auto &file : std::as_const(targetOrgFiles)) {
             try {
                 interpreter = Utils::getInterpreter(file);
             } catch (const std::exception &e) {
@@ -841,7 +880,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         interpreter = dest / interpreterName;
 
         // Set interpreter for original files
-        for (const auto &file : std::as_const(fileNames)) {
+        for (const auto &file : std::as_const(targetOrgFiles)) {
             fs::path filePath(file);
             fs::path relativePath = fs::relative(interpreter, filePath.parent_path());
             if (verbose) {
@@ -869,6 +908,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             }
         }
     } while (false);
+#  endif
 #endif
     return 0;
 }
@@ -951,7 +991,8 @@ int main(int argc, char *argv[]) {
             SCL::Argument("file", OS_EXECUTABLE "(s)").multi(),
         });
         command.addOptions({
-            SCL::Option({"-o", "--out"}, "Set the output directory, defult to current directory")
+            SCL::Option({"-o", "--out"},
+                        "Set output directory of dependencies, defult to current directory")
                 .arg("dir"),
 #ifdef _WIN32
             SCL::Option({"-L", "--linkdir"}, "Add a library searching path")
@@ -960,6 +1001,10 @@ int main(int argc, char *argv[]) {
                 .short_match(SCL::Option::ShortMatchSingleChar),
 #endif
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+            SCL::Option({"-c", "--copy"}, "Copy files of given pattern to corresponding directory")
+                .arg("regex")
+                .arg("dir")
+                .multi(),
             SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
