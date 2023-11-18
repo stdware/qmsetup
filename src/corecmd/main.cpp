@@ -533,7 +533,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
     // Deploy
     TStringSet visited;
-    for (const auto &item : fileNames) {
+    for (const auto &item : std::as_const(fileNames)) {
         visited.insert(fs::path(item).filename());
     }
 
@@ -568,9 +568,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                                  fileName.starts_with(_TSTR("msvcp")) ||
                                  fileName.starts_with(_TSTR("concrt")) ||
                                  fileName.starts_with(_TSTR("vccorlib")) ||
-                                 fileName.starts_with(_TSTR("ucrtbase")) ||
-                                 fileName.starts_with(_TSTR("api-ms-win-")) ||
-                                 fileName.starts_with(_TSTR("ext-ms-win-"))
+                                 fileName.starts_with(_TSTR("ucrtbase"))
 #elif defined(__APPLE__)
                                  fileName.starts_with("libc++") || fileName.starts_with("libSystem")
 #else
@@ -583,9 +581,13 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #endif
                                      )) ||
 #ifdef _WIN32
-                (fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
-                 fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
-                 fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName)) ||
+                ( //
+                    fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
+                    fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
+                    fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
+                    fileName.starts_with(_TSTR("api-ms-win-")) ||
+                    fileName.starts_with(_TSTR("ext-ms-win-")) //
+                    ) ||
 #endif
                 visited.count(fileName)) {
                 continue;
@@ -628,7 +630,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
     }
 
-    // Deploy
+// Deploy
+#ifdef _WIN32
     for (const auto &file : std::as_const(dependencies)) {
         auto target = dest / fs::path(file).filename();
 
@@ -651,6 +654,81 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         fs::copy(file, dest, fs::copy_options::overwrite_existing);
         Utils::syncFileTime(target, file);
     }
+#elif defined(__APPLE__)
+
+    const auto &getFramework = [](const fs::path &path) -> std::string {
+        // Ensure the path has at least three ancestors (including root)
+        if (path.has_relative_path() && path.relative_path().has_parent_path() &&
+            path.relative_path().parent_path().has_parent_path() &&
+            path.relative_path().parent_path().parent_path().has_parent_path()) {
+
+            // Get the ancestor that is three levels up
+            fs::path threeLevelsUp = path.parent_path().parent_path().parent_path();
+
+            // Check if the ancestor's extension is ".framework"
+            if (threeLevelsUp.extension() == ".framework")
+                return threeLevelsUp;
+            return {};
+        }
+        return {};
+    };
+
+    const auto &copyFramework = [](const fs::path &frameworkPath, const fs::path &dest) {
+        for (const auto &entry : fs::recursive_directory_iterator(frameworkPath)) {
+            if (entry.path().filename() == "Headers" &&
+                entry.path().parent_path().filename() == "Resources") {
+                continue;
+            }
+            fs::path destPath =
+                dest / frameworkPath.filename() / fs::relative(entry.path(), frameworkPath);
+            if (fs::is_directory(entry)) {
+                fs::create_directories(destPath);
+            } else {
+                fs::copy(entry, destPath, fs::copy_options::overwrite_existing);
+                syncFileTime(destPath, entry.path()); // Sync time for each file
+            }
+        }
+    };
+
+    const auto &copyDylibFiles = [](const fs::path &dylibPath, const fs::path &dest) {
+        std::string baseName = dylibPath.stem();
+        std::string extension = dylibPath.extension();
+        fs::path dir = dylibPath.parent_path();
+
+        std::regex dylibRegex(baseName + "(\\.\\d+)*" + extension); // Regex to match similar dylibs
+
+        for (const auto &entry : fs::directory_iterator(dir)) {
+            const auto &entryPath = entry.path();
+            if (std::regex_match(entryPath.filename().string(), dylibRegex)) {
+                fs::path destDylibPath = dest / entryPath.filename();
+                fs::copy(entry, destDylibPath, fs::copy_options::overwrite_existing);
+                syncFileTime(destDylibPath, entryPath); // Sync time for each dylib file
+            }
+        }
+    };
+
+    fs::path destPath(dest);
+    for (const auto &dep : std::as_const(dependencies)) {
+        fs::path depPath(dep);
+        if (depPath.extension() == ".dylib") {
+            copyDylibFiles(depPath, destPath);
+        } else if (auto frameworkPath = getFramework(depPath); !frameworkPath.empty()) {
+            copyFramework(frameworkPath, destPath);
+        } else {
+            continue;
+        }
+
+        // Update rpaths for the dependencies and filenames
+        setFileRunPaths(destPath / depPath.filename(), {"@loader_path"});
+    }
+
+    for (const auto &file : std::as_const(fileNames)) {
+        fs::path filePath(file);
+        fs::path relativePath = fs::relative(filePath.parent_path(), destPath);
+        setFileRunPaths(file, {"@loader_path/" + relativePath.string()});
+    }
+#else
+#endif
 
     return 0;
 }

@@ -44,6 +44,8 @@ namespace Utils {
 
 #ifdef _WIN32
     std::string local8bit_to_utf8(const std::string &s);
+#else
+    void setFileRunPaths(const std::string &file, const std::vector<std::string> &paths);
 #endif
 
 }
