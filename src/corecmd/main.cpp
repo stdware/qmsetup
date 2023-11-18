@@ -565,7 +565,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
 
             if ((standard && (
-#ifdef _WIN32xing
+#ifdef _WIN32
                                  fileName.starts_with(_TSTR("vcruntime")) ||
                                  fileName.starts_with(_TSTR("msvcp")) ||
                                  fileName.starts_with(_TSTR("concrt")) ||
