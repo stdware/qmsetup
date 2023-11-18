@@ -476,7 +476,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     bool force = result.optionIsSet("-f");
     bool standard = result.optionIsSet("-s");
 
-    TString dest = fs::current_path(); // Default to current path
+    fs::path dest = fs::current_path(); // Default to current path
     if (result.optionIsSet("-o")) {
         dest = fs::absolute(str2tstr(result.valueForOption("-o").toString()));
     }
@@ -576,7 +576,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                                  fileName.starts_with(_TSTR("vccorlib")) ||
                                  fileName.starts_with(_TSTR("ucrtbase"))
 #elif defined(__APPLE__)
-                                 fileName.starts_with("libc++") || fileName.starts_with("libSystem")
+                                 fileName.starts_with("libc++") ||
+                                 fileName.starts_with("libSystem") ||
+                                 fileName.starts_with("/System")
 #else
                                  fileName.starts_with("libstdc++") ||
                                  fileName.starts_with("libgcc") ||
@@ -587,13 +589,11 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #endif
                                      )) ||
 #ifdef _WIN32
-                ( //
-                    fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
-                    fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
-                    fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
-                    fileName.starts_with(_TSTR("api-ms-win-")) ||
-                    fileName.starts_with(_TSTR("ext-ms-win-")) //
-                    ) ||
+                (fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
+                 fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
+                 fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
+                 fileName.starts_with(_TSTR("api-ms-win-")) ||
+                 fileName.starts_with(_TSTR("ext-ms-win-"))) ||
 #endif
                 visited.count(fileName)) {
                 continue;
@@ -640,29 +640,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
 #ifdef _WIN32
     for (const auto &file : std::as_const(dependencies)) {
-        auto target = dest / fs::path(file).filename();
-
-        if (fs::exists(target) && fs::exists(file) && fs::canonical(target) == fs::canonical(file))
-            continue; // Same file
-
-        if (!force && fs::exists(target) &&
-            Utils::fileTime(target).modifyTime >= Utils::fileTime(file).modifyTime) {
-            continue; // Replace if different
-        }
-
-        if (verbose) {
-            u8printf("Deploy %s\n", tstr2str(target).data());
-        }
-
-        if (!fs::is_directory(dest)) {
-            fs::create_directories(dest);
-        }
-
-        fs::copy(file, dest, fs::copy_options::overwrite_existing);
-        Utils::syncFileTime(target, file);
+        copyFile(file, dest, false, force, verbose);
     }
 #elif defined(__APPLE__)
-
     // Get framework path from the core path
     const auto &getFramework = [](fs::path path) -> fs::path {
         // Ensure the path has at least three ancestors (including root)
@@ -708,12 +688,10 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         return target;
     };
 
-    fs::path destPath(dest);
-
     // Fix rpath for original files
     for (const auto &file : std::as_const(fileNames)) {
         fs::path filePath(file);
-        fs::path relativePath = fs::relative(destPath, filePath.parent_path());
+        fs::path relativePath = fs::relative(dest, filePath.parent_path());
         if (verbose) {
             u8printf("Fix run path: %s\n", file.data());
         }
@@ -724,7 +702,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     for (const auto &dep : std::as_const(dependencies)) {
         fs::path depPath = fs::canonical(dep);
         if (depPath.extension() == ".dylib") {
-            std::string targetPath = copyDylibFiles(depPath, destPath);
+            std::string targetPath = copyDylibFiles(depPath, dest);
 
             // Fix library rpath
             Utils::setFileRunPaths(targetPath, {
@@ -732,11 +710,11 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                                                });
         } else if (auto frameworkPath = getFramework(depPath); !frameworkPath.empty()) {
             fs::path targetPath =
-                destPath.string() +
+                dest.string() +
                 depPath.string().substr(frameworkPath.parent_path()
                                             .string()
                                             .size()); // dest/XXX.framework/Versions/A/XXX
-            fs::path targetFrameworkDir = destPath / frameworkPath.filename(); // dest/XXX.framework
+            fs::path targetFrameworkDir = dest / frameworkPath.filename(); // dest/XXX.framework
             fs::path targetCoreDir = targetPath.parent_path(); // dest/XXX.framework/Versions/A
 
             // Copy framework directory, ignore "Headers"
