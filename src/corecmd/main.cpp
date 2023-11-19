@@ -489,6 +489,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
     }
 
+
 #ifdef _WIN32
     // Add searching paths
     std::vector<fs::path> searchingPaths;
@@ -533,7 +534,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
     }
 
-    // Add copy patterns
+    // Add extra org files
     std::vector<std::pair<fs::path, fs::path>> extraOrgFiles;
     {
         const auto &copiesResult = result.option("-c");
@@ -544,6 +545,14 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(0, i).toString()))),
                 Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(1, i).toString()))));
         }
+    }
+
+    std::set<fs::path> allOrgFiles;
+    for (const auto &item : std::as_const(orgFiles)) {
+        allOrgFiles.insert(item);
+    }
+    for (const auto &pair : std::as_const(extraOrgFiles)) {
+        allOrgFiles.insert(pair.first);
     }
 
     // Deploy
@@ -637,6 +646,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #else
                 const fs::path &path = Utils::cleanPath(lib);
 #endif
+                // Ignore orginal file
+                if (allOrgFiles.contains(path))
+                    continue;
 
                 bool skip = false;
                 for (const auto &pattern : std::as_const(excludes)) {
