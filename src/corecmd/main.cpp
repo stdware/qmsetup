@@ -154,6 +154,29 @@ static std::string standardError(int code = errno) {
     return std::error_code(code, std::generic_category()).message();
 }
 
+#ifdef __APPLE__
+static fs::path lib2framework(fs::path path, const fs::path &fallback = {}) {
+    // Ensure the path has at least three ancestors (including root)
+    for (int i = 0; i < 3; ++i) {
+        if (!path.has_parent_path())
+            return fallback;
+        path = path.parent_path();
+    }
+    // Check if the ancestor's extension is ".framework"
+    if (path.extension() == ".framework")
+        return path;
+    return fallback;
+}
+
+static fs::path framework2lib(fs::path path, const fs::path &fallback = {}) {
+    try {
+        return fs::canonical(path / path.stem());
+    } catch (...) {
+    }
+    return fallback;
+}
+#endif
+
 // ---------------------------------------- Commands ----------------------------------------
 
 static int cmd_cpdir(const SCL::ParseResult &result) {
@@ -547,22 +570,28 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
     }
 
-    std::set<fs::path> allOrgFiles;
-    for (const auto &item : std::as_const(orgFiles)) {
-        allOrgFiles.insert(item);
-    }
-    for (const auto &pair : std::as_const(extraOrgFiles)) {
-        allOrgFiles.insert(pair.first);
-    }
-
     // Deploy
     std::vector<fs::path> dependencies;
     {
+        std::set<fs::path> allOrgFileNames;
+        for (const auto &item : std::as_const(orgFiles)) {
+            allOrgFileNames.insert(item.filename());
+        }
+        for (const auto &pair : std::as_const(extraOrgFiles)) {
+            allOrgFileNames.insert(pair.first.filename());
+        }
+
         const auto &getFilesDeps =
             [](const std::vector<fs::path> &paths) -> std::vector<std::string> {
             std::set<std::string> libs;
             for (const auto &path : std::as_const(paths)) {
-                const auto &deps = Utils::resolveExecutableDependencies(path);
+                const auto &deps = Utils::resolveExecutableDependencies(
+#ifdef __APPLE__
+                    framework2lib(path, path)
+#else
+                    path
+#endif
+                );
                 for (const auto &item : std::as_const(deps)) {
                     libs.insert(item);
                 }
@@ -589,7 +618,11 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
             // Search dependencies
             for (const auto &lib : std::as_const(libs)) {
+#ifdef __APPLE__
+                TString fileName = lib2framework(lib, lib).filename();
+#else
                 TString fileName = fs::path(lib).filename();
+#endif
                 std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
 
                 // Ignore files in standard mode
@@ -643,11 +676,13 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 if (path.empty()) {
                     continue;
                 }
+#elif defined(__APPLE__)
+                const fs::path &path = Utils::cleanPath(lib2framework(lib, lib));
 #else
                 const fs::path &path = Utils::cleanPath(lib);
 #endif
                 // Ignore orginal file
-                if (allOrgFiles.contains(path))
+                if (allOrgFileNames.contains(path.filename()))
                     continue;
 
                 bool skip = false;
@@ -713,20 +748,6 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 
 #  if defined(__APPLE__)
-    // Get framework path from the core path
-    const auto &getFramework = [](fs::path path) -> fs::path {
-        // Ensure the path has at least three ancestors (including root)
-        for (int i = 0; i < 3; ++i) {
-            if (!path.has_parent_path())
-                return {};
-            path = path.parent_path();
-        }
-        // Check if the ancestor's extension is ".framework"
-        if (path.extension() == ".framework")
-            return path;
-        return {};
-    };
-
     // Fix rpath for original files
     for (const auto &file : std::as_const(targetOrgFiles)) {
         if (verbose) {
@@ -748,7 +769,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             Utils::setFileRPaths(targetPath, {
                                                  "@loader_path",
                                              });
-        } else if (auto frameworkPath = getFramework(dep); !frameworkPath.empty()) {
+        } else if (auto frameworkPath = lib2framework(dep); !frameworkPath.empty()) {
             fs::path targetPath =
                 dest.string() +
                 dep.string().substr(frameworkPath.parent_path()
@@ -957,9 +978,14 @@ int main(int argc, char *argv[]) {
     SCL::Command deployCommand = []() {
         SCL::Command command("deploy", "Resolve and deploy " OS_EXECUTABLE " files' dependencies");
         command.addArguments({
-            SCL::Argument("file", OS_EXECUTABLE "(s)").multi(),
+            SCL::Argument("file", OS_EXECUTABLE " file(s)").multi(),
         });
         command.addOptions({
+            SCL::Option({"-c", "--copy"}, "Additional " OS_EXECUTABLE " file(s) to copy")
+                .arg("src")
+                .arg("dir")
+                .multi()
+                .prior(SCL::Option::IgnoreMissingArguments),
             SCL::Option({"-o", "--out"},
                         "Set output directory of dependencies, defult to current directory")
                 .arg("dir"),
@@ -970,11 +996,6 @@ int main(int argc, char *argv[]) {
                 .short_match(SCL::Option::ShortMatchSingleChar),
 #endif
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-            SCL::Option({"-c", "--copy"}, "Additional files that need to be copied")
-                .arg("src")
-                .arg("dir")
-                .multi()
-                .prior(SCL::Option::IgnoreMissingArguments),
             SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
@@ -983,7 +1004,8 @@ int main(int argc, char *argv[]) {
         return command;
     }();
 
-    SCL::Command rootCommand(SCL::appName(), "Cross-platform core utility commands.");
+    SCL::Command rootCommand(SCL::appName(),
+                             "Cross-platform utility commands for C/C++ build systems.");
     rootCommand.addCommands({
         cpdirCommand,
         rmdirCommand,
