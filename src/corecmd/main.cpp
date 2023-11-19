@@ -204,22 +204,22 @@ fs::path copyCanonical(const fs::path &path, const fs::path &dest, bool force, b
 
 #endif
 
-static fs::path toFramework(const fs::path &path) {
+static inline fs::path toFramework(const fs::path &path) {
     return
 #ifdef __APPLE__
         lib2framework(path, path)
 #else
-        lib
+        path
 #endif
             ;
 };
 
-static fs::path fromFramework(const fs::path &path) {
+static inline fs::path fromFramework(const fs::path &path) {
     return
 #ifdef __APPLE__
         framework2lib(path, path)
 #else
-        lib
+        path
 #endif
             ;
 };
