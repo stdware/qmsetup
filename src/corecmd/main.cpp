@@ -82,17 +82,22 @@ static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
     bool isEmpty = true;
     for (const auto &entry : fs::directory_iterator(path)) {
         if (fs::is_directory(entry.path()) && removeEmptyDirectories(entry.path(), verbose)) {
-            if (verbose) {
-                u8printf("Remove %s\n", tstr2str(path).data());
-            }
-
-            // Empty directory
-            fs::remove(entry.path());
+            continue;
         }
 
         // File or non-empty directory
         isEmpty = false;
     }
+
+    // Remove self if empty
+    if (isEmpty) {
+        if (verbose) {
+            u8printf("Remove %s\n", tstr2str(path).data());
+        }
+        fs::remove(path);
+    }
+
+    // Notify the caller the directory is empty or not
     return isEmpty;
 }
 
@@ -125,27 +130,34 @@ static bool copyFile(const fs::path &file, const fs::path &dest, bool symlink, b
     return true;
 }
 
-static void copyDirectory(const fs::path &rootSourceDir, const fs::path &sourceDir,
+static void copyDirectory(const fs::path &srcRootDir, const fs::path &srcDir,
                           const fs::path &destDir, bool force, bool verbose,
                           const std::function<bool(const fs::path &)> &ignore = {}) {
     fs::create_directories(destDir); // Ensure the destination directory exists
 
-    for (const auto &dirEntry : fs::directory_iterator(sourceDir)) {
-        const auto &sourcePath = dirEntry.path();
-        if (ignore && ignore(sourcePath))
+    for (const auto &entry : fs::directory_iterator(srcDir)) {
+        const auto &entryPath = entry.path();
+        if (ignore && ignore(entryPath))
             continue;
 
-        if (fs::is_symlink(sourcePath)) {
-            auto linkPath = fs::canonical(sourcePath);
+        if (fs::is_symlink(entryPath)) {
+            fs::path linkPath;
+            try {
+                linkPath = fs::canonical(entryPath);
+            } catch (...) {
+                // The symlink is invalid
+                copyFile(entryPath, destDir, false, force, verbose);
+                continue;
+            }
 
             // Copy if symlink points inside the source directory
-            copyFile(sourcePath, destDir, linkPath.string().starts_with(rootSourceDir.string()),
-                     force, verbose);
-        } else if (fs::is_regular_file(sourcePath)) {
-            copyFile(sourcePath, destDir, false, force, verbose);
-        } else if (fs::is_directory(sourcePath)) {
-            copyDirectory(rootSourceDir, sourcePath, destDir / sourcePath.filename(), force,
-                          verbose, ignore);
+            copyFile(entryPath, destDir, linkPath.string().starts_with(srcRootDir.string()), force,
+                     verbose);
+        } else if (fs::is_regular_file(entryPath)) {
+            copyFile(entryPath, destDir, false, force, verbose);
+        } else if (fs::is_directory(entryPath)) {
+            copyDirectory(srcRootDir, entryPath, destDir / entryPath.filename(), force, verbose,
+                          ignore);
         }
     }
 }
