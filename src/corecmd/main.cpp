@@ -851,7 +851,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             fs::path filePath(file);
             fs::path relativePath = fs::relative(interpreter, filePath.parent_path());
             if (verbose) {
-                u8printf("Set interpreter: %s\n", file.data());
+                u8printf("Set interpreter: %s\n", file.string().data());
             }
 
             Utils::setFileInterpreter(file, "$ORIGIN/" + relativePath.string());
@@ -860,7 +860,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         // Set interpreter for dependencies
         for (const auto &dep : std::as_const(targetDependencies)) {
             if (verbose) {
-                u8printf("Set interpreter: %s\n", dep.data());
+                u8printf("Set interpreter: %s\n", dep.string().data());
             }
             Utils::setFileInterpreter(dep, "$ORIGIN/" + interpreterName);
         }
@@ -961,7 +961,8 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-c", "--copy"}, "Additional files that need to be copied")
                 .arg("src")
                 .arg("dir")
-                .multi(),
+                .multi()
+                .prior(SCL::Option::IgnoreMissingArguments),
             SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });

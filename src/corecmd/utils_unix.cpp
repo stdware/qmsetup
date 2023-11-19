@@ -356,10 +356,9 @@ namespace Utils {
                                                     file,
                                                 });
         } catch (const std::exception &e) {
-            if (!errorIsInterpNotFound(e.what())) {
-                throw std::runtime_error("Failed to get interpreter: " + std::string(e.what()));
-            }
-            return {};
+            if (errorIsInterpNotFound(e.what()))
+                return {};
+            throw std::runtime_error("Failed to get interpreter: " + std::string(e.what()));
         }
 
         output = trim(output);
@@ -375,9 +374,9 @@ namespace Utils {
                                                          file,
                                                      });
         } catch (const std::exception &e) {
-            if (!errorIsInterpNotFound(e.what()))
-                throw std::runtime_error("Failed to set interpreter: " + std::string(e.what()));
-            return false;
+            if (errorIsInterpNotFound(e.what()))
+                return false;
+            throw std::runtime_error("Failed to set interpreter: " + std::string(e.what()));
         }
         return true;
     }
