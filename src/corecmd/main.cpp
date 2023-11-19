@@ -866,17 +866,17 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Copy original files
     auto targetOrgFiles = orgFiles;
     for (const auto &pair : std::as_const(extraOrgFiles)) {
-        std::string targetPath = copySharedLibraries(pair.first, pair.second);
+        auto targetPath = copyCanonical(pair.first, pair.second, force, verbose);
         targetOrgFiles.insert(targetPath);
     }
 
     // Copy dependencies
     std::set<fs::path> targetDependencies;
-    for (const auto &dep : std::as_const(dependencies)) {
-        std::string targetPath = copySharedLibraries(dep, dest);
+    for (const auto &file : std::as_const(dependencies)) {
+        auto targetPath = copyCanonical(file, dest, force, verbose);
 
         // libc.so is a shell script
-        if (fs::path(targetPath).filename() != "libc.so") {
+        if (targetPath.filename() != "libc.so") {
             targetDependencies.insert(targetPath);
         }
     }
