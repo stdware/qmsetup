@@ -344,6 +344,10 @@ namespace Utils {
 
 
 #ifdef __linux__
+    static inline bool errorIsInterpNotFound(const std::string &what) {
+        return what.find("cannot find section '.interp'") != std::string::npos;
+    };
+
     std::string getInterpreter(const std::string &file) {
         std::string output;
         try {
@@ -352,7 +356,10 @@ namespace Utils {
                                                     file,
                                                 });
         } catch (const std::exception &e) {
-            throw std::runtime_error("Failed to get interpreter: " + std::string(e.what()));
+            if (!errorIsInterpNotFound(e.what())) {
+                throw std::runtime_error("Failed to get interpreter: " + std::string(e.what()));
+            }
+            return {};
         }
 
         output = trim(output);
@@ -360,7 +367,7 @@ namespace Utils {
         return output;
     }
 
-    void setFileInterpreter(const std::string &file, const std::string &interpreter) {
+    bool setFileInterpreter(const std::string &file, const std::string &interpreter) {
         try {
             std::ignore = executeCommand("patchelf", {
                                                          "--set-interpreter",
@@ -368,8 +375,11 @@ namespace Utils {
                                                          file,
                                                      });
         } catch (const std::exception &e) {
-            throw std::runtime_error("Failed to set interpreter: " + std::string(e.what()));
+            if (!errorIsInterpNotFound(e.what()))
+                throw std::runtime_error("Failed to set interpreter: " + std::string(e.what()));
+            return false;
         }
+        return true;
     }
 #endif
 

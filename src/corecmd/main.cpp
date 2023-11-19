@@ -167,16 +167,16 @@ static int cmd_cpdir(const SCL::ParseResult &result) {
 
 static int cmd_rmdir(const SCL::ParseResult &result) {
     bool verbose = result.optionIsSet("-V");
-    TStringList fileNames;
+    std::vector<fs::path> dirs;
     {
         const auto &dirsResult = result.values(0);
-        fileNames.reserve(dirsResult.size());
+        dirs.reserve(dirsResult.size());
         for (const auto &item : dirsResult) {
-            fileNames.emplace_back(fs::absolute(str2tstr(item.toString())));
+            dirs.emplace_back(fs::absolute(str2tstr(item.toString())));
         }
     }
 
-    for (const auto &item : std::as_const(fileNames)) {
+    for (const auto &item : std::as_const(dirs)) {
         if (!fs::is_directory(item)) {
             continue;
         }
@@ -476,50 +476,49 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
     fs::path dest = fs::current_path(); // Default to current path
     if (result.optionIsSet("-o")) {
-        dest = fs::absolute(str2tstr(result.valueForOption("-o").toString()));
+        dest = Utils::cleanPath(fs::absolute(str2tstr(result.valueForOption("-o").toString())));
     }
 
     // Add file names
-    TStringList fileNames;
+    std::vector<fs::path> orgFiles;
     {
         const auto &files = result.values(0);
-        fileNames.reserve(files.size());
+        orgFiles.reserve(files.size());
         for (const auto &item : files) {
-            fileNames.emplace_back(fs::absolute(str2tstr(item.toString())));
+            orgFiles.emplace_back(Utils::cleanPath(fs::absolute(str2tstr(item.toString()))));
         }
     }
 
 #ifdef _WIN32
     // Add searching paths
-    TStringList searchingPaths;
+    std::vector<fs::path> searchingPaths;
     {
         const auto &linkResult = result.option("-L").allValues();
 
-        TStringList tmp;
-        tmp.reserve(linkResult.size() + fileNames.size());
+        std::vector<fs::path> tmp;
+        tmp.reserve(linkResult.size() + orgFiles.size());
 
         // Add file paths
-        for (const auto &item : std::as_const(fileNames)) {
+        for (const auto &item : std::as_const(orgFiles)) {
             tmp.emplace_back(fs::path(item).parent_path());
         }
 
         // Add searching paths
         for (const auto &item : linkResult) {
-            tmp.emplace_back(fs::absolute(str2tstr(item.toString())));
+            tmp.emplace_back(Utils::cleanPath(fs::absolute(str2tstr(item.toString()))));
         }
 
         // Remove duplications
-        TStringSet visited;
+        std::set<fs::path> visited;
         for (const auto &item : std::as_const(tmp)) {
             if (!fs::is_directory(item))
                 continue;
 
-            TString simplified = Utils::cleanPath(item);
-            if (visited.contains(simplified)) {
+            if (visited.contains(item)) {
                 continue;
             }
-            visited.insert(simplified);
-            searchingPaths.emplace_back(simplified);
+            visited.insert(item);
+            searchingPaths.emplace_back(item);
         }
     }
 #endif
@@ -528,7 +527,6 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     TStringList excludes;
     {
         const auto &excludeResult = result.option("-e").allValues();
-
         excludes.reserve(excludeResult.size());
         for (const auto &item : excludeResult) {
             excludes.emplace_back(str2tstr(item.toString()));
@@ -536,113 +534,128 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 
     // Add copy patterns
-    std::vector<std::pair<TString, TString>> copies;
+    std::vector<std::pair<fs::path, fs::path>> extraOrgFiles;
     {
         const auto &copiesResult = result.option("-c");
         int cnt = copiesResult.count();
-        copies.reserve(cnt);
+        extraOrgFiles.reserve(cnt);
         for (int i = 0; i < cnt; ++i) {
-            copies.emplace_back(str2tstr(copiesResult.value(0, i).toString()),
-                                str2tstr(copiesResult.value(1, i).toString()));
+            extraOrgFiles.emplace_back(
+                Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(0, i).toString()))),
+                Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(1, i).toString()))));
         }
     }
 
     // Deploy
-    TStringSet visited;
-    for (const auto &item : std::as_const(fileNames)) {
-        visited.insert(fs::path(item).filename());
-    }
-
-    TStringList stack = fileNames;
-    TStringList dependencies;
-
-    // Search for dependencies recursively
-    while (!stack.empty()) {
-        // Resolve dependencies
-        auto libs = [](const TStringList &fileNames) -> std::vector<std::string> {
+    std::vector<fs::path> dependencies;
+    {
+        const auto &getFilesDeps =
+            [](const std::vector<fs::path> &paths) -> std::vector<std::string> {
             std::set<std::string> libs;
-            for (const auto &fileName : std::as_const(fileNames)) {
-                const auto &deps = Utils::resolveExecutableDependencies(fileName);
+            for (const auto &path : std::as_const(paths)) {
+                const auto &deps = Utils::resolveExecutableDependencies(path);
                 for (const auto &item : std::as_const(deps)) {
                     libs.insert(item);
                 }
             }
             return {libs.begin(), libs.end()};
-        }(stack);
-        stack.clear();
+        };
 
-        // Search dependencies
-        for (const auto &lib : std::as_const(libs)) {
-            TString fileName = fs::path(lib).filename();
-            std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
+        std::set<fs::path> visited;
+        std::vector<fs::path> stack = orgFiles;
 
-            if ((standard && (
+        // Mark original files as visited
+        for (const auto &item : std::as_const(orgFiles)) {
+            visited.insert(item.filename());
+        }
+        for (const auto &pair : std::as_const(extraOrgFiles)) {
+            visited.insert(pair.first.filename());
+            stack.push_back(pair.first);
+        }
+
+        // Search for dependencies recursively
+        while (!stack.empty()) {
+            auto libs = getFilesDeps(stack);
+            stack.clear();
+
+            // Search dependencies
+            for (const auto &lib : std::as_const(libs)) {
+                TString fileName = fs::path(lib).filename();
+                std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
+
+                // Ignore files in standard mode
+                if ((standard && (
 #ifdef _WIN32
-                                 fileName.starts_with(_TSTR("vcruntime")) ||
-                                 fileName.starts_with(_TSTR("msvcp")) ||
-                                 fileName.starts_with(_TSTR("concrt")) ||
-                                 fileName.starts_with(_TSTR("vccorlib")) ||
-                                 fileName.starts_with(_TSTR("ucrtbase"))
+                                     fileName.starts_with(_TSTR("vcruntime")) ||
+                                     fileName.starts_with(_TSTR("msvcp")) ||
+                                     fileName.starts_with(_TSTR("concrt")) ||
+                                     fileName.starts_with(_TSTR("vccorlib")) ||
+                                     fileName.starts_with(_TSTR("ucrtbase"))
 #elif defined(__APPLE__)
-                                 fileName.starts_with("libc++") ||
-                                 fileName.starts_with("libSystem") ||
-                                 fileName.starts_with("/System")
+                                     fileName.starts_with("libc++") ||
+                                     fileName.starts_with("libSystem") ||
+                                     fileName.starts_with("/System")
 #else
-                                 fileName.starts_with("libstdc++") ||
-                                 fileName.starts_with("libgcc") ||
-                                 fileName.starts_with("libglib") ||
-                                 fileName.starts_with("libpthread") ||
-                                 fileName.starts_with("libgthread") ||
-                                 fileName.starts_with("libicu") ||
-                                 fileName.starts_with("libc.so") || fileName.starts_with("libc-") ||
-                                 fileName.starts_with("libdl.so") || fileName.starts_with("libdl-")
+                                     fileName.starts_with("libstdc++") ||
+                                     fileName.starts_with("libgcc") ||
+                                     fileName.starts_with("libglib") ||
+                                     fileName.starts_with("libpthread") ||
+                                     fileName.starts_with("libgthread") ||
+                                     fileName.starts_with("libicu") ||
+                                     fileName.starts_with("libc.so") ||
+                                     fileName.starts_with("libc-") ||
+                                     fileName.starts_with("libdl.so") ||
+                                     fileName.starts_with("libdl-")
 #endif
-                                     )) ||
+                                         )) ||
 #ifdef _WIN32
-                (fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
-                 fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
-                 fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
-                 fileName.starts_with(_TSTR("api-ms-win-")) ||
-                 fileName.starts_with(_TSTR("ext-ms-win-"))) ||
+                    (fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
+                     fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
+                     fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
+                     fileName.starts_with(_TSTR("api-ms-win-")) ||
+                     fileName.starts_with(_TSTR("ext-ms-win-"))) ||
 #endif
-                visited.contains(fileName)) {
-                continue;
-            }
-            visited.insert(fileName);
-
-#ifdef _WIN32
-            // Search in specified searching paths
-            fs::path path;
-            for (const auto &dir : std::as_const(searchingPaths)) {
-                fs::path targetPath = dir / fs::path(lib);
-                if (fs::exists(targetPath)) {
-                    path = targetPath;
-                    break;
+                    visited.contains(fileName)) {
+                    continue;
                 }
-            }
+                visited.insert(fileName);
 
-            if (path.empty()) {
-                continue;
-            }
+#ifdef _WIN32
+                // Search in specified searching paths on Windows
+                fs::path path;
+                for (const auto &dir : std::as_const(searchingPaths)) {
+                    fs::path targetPath = dir / fs::path(lib);
+                    if (fs::exists(targetPath)) {
+                        path = targetPath;
+                        break;
+                    }
+                }
+
+                if (path.empty()) {
+                    continue;
+                }
 #else
-            fs::path path = lib;
+                const fs::path &path = Utils::cleanPath(lib);
 #endif
 
-            bool skip = false;
-            for (const auto &pattern : std::as_const(excludes)) {
-                const TString &pathString = path;
-                if (std::regex_search(pathString.begin(), pathString.end(),
-                                      std::basic_regex<TChar>(pattern))) {
-                    skip = true;
-                    break;
+                bool skip = false;
+                for (const auto &pattern : std::as_const(excludes)) {
+                    const TString &pathString = path;
+                    if (std::regex_search(pathString.begin(), pathString.end(),
+                                          std::basic_regex<TChar>(pattern))) {
+                        skip = true;
+                        break;
+                    }
                 }
+
+                if (skip)
+                    continue;
+
+                dependencies.push_back(path);
+
+                // Push to stack and resolve in next loop
+                stack.push_back(path);
             }
-
-            if (skip)
-                continue;
-
-            dependencies.push_back(path);
-            stack.push_back(path);
         }
     }
 
@@ -653,14 +666,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Only need to copy the libraries.
 
     // Copy original files
-    for (const auto &file : std::as_const(fileNames)) {
-        for (const auto &pattern : std::as_const(copies)) {
-            if (std::regex_search(file.begin(), file.end(),
-                                  std::basic_regex<TChar>(pattern.first))) {
-                copyFile(file, pattern.second, false, force, verbose);
-                break;
-            }
-        }
+    for (const auto &pair : std::as_const(extraOrgFiles)) {
+        copyFile(pair.first, pair.second, false, force, verbose);
     }
 
     // Copy dependencies
@@ -676,37 +683,21 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         fs::path target;
         if (fs::is_symlink(path)) {
             auto linkPath = fs::canonical(path);
-            copyFile(linkPath, dest, false, force, verbose);
-            copyFile(path, dest, true, force, verbose);
+            copyFile(linkPath, dest, false, force, verbose); // Copy real file
+            copyFile(path, dest, true, force, verbose);      // Copy link file
             target = dest / linkPath.filename();
         } else {
-            copyFile(path, dest, false, force, verbose);
+            copyFile(path, dest, false, force, verbose); // Copy file
             target = dest / path.filename();
         }
         return target;
     };
 
     // Copy original files
-    std::vector<std::string> targetOrgFiles;
-    targetOrgFiles.reserve(fileNames.size());
-    for (const auto &file : std::as_const(fileNames)) {
-        fs::path targetDir;
-        for (const auto &pattern : std::as_const(copies)) {
-            if (std::regex_search(file.begin(), file.end(),
-                                  std::basic_regex<TChar>(pattern.first))) {
-                targetDir = pattern.second;
-                break;
-            }
-        }
-
-        if (targetDir.empty()) {
-            targetOrgFiles.push_back(file);
-            continue;
-        }
-
-        fs::path filePath(file);
-        copyFile(file, targetDir, false, force, verbose);
-        targetOrgFiles.push_back(targetDir / filePath.filename());
+    auto targetOrgFiles = orgFiles;
+    for (const auto &pair : std::as_const(extraOrgFiles)) {
+        copyFile(pair.first, pair.second, false, force, verbose);
+        targetOrgFiles.push_back(pair.second / pair.first.filename());
     }
 
 #  if defined(__APPLE__)
@@ -726,23 +717,17 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
     // Fix rpath for original files
     for (const auto &file : std::as_const(targetOrgFiles)) {
-        fs::path filePath(file);
         if (verbose) {
-            u8printf("Fix rpath: %s\n", file.data());
+            u8printf("Fix rpath: %s\n", file.string().data());
         }
-        Utils::setFileRPaths(
-            file, {"@loader_path/" + fs::relative(dest, filePath.parent_path()).string()});
+        Utils::setFileRPaths(file,
+                             {"@loader_path/" + fs::relative(dest, file.parent_path()).string()});
     }
 
-    // Fix rpath for dependencies
+    // Copy and fix rpath for dependencies
     for (const auto &dep : std::as_const(dependencies)) {
-        fs::path depPath = Utils::cleanPath(dep);
-        if (depPath.extension() == ".dylib") {
-            std::string targetPath = copySharedLibraries(depPath, dest);
-            if (targetPath.empty()) {
-                throw std::runtime_error("cannot determine shared library: \"" + depPath.string() +
-                                         "\"");
-            }
+        if (dep.extension() == ".dylib") {
+            std::string targetPath = copySharedLibraries(dep, dest);
 
             // Fix library rpath
             if (verbose) {
@@ -751,12 +736,12 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             Utils::setFileRPaths(targetPath, {
                                                  "@loader_path",
                                              });
-        } else if (auto frameworkPath = getFramework(depPath); !frameworkPath.empty()) {
+        } else if (auto frameworkPath = getFramework(dep); !frameworkPath.empty()) {
             fs::path targetPath =
                 dest.string() +
-                depPath.string().substr(frameworkPath.parent_path()
-                                            .string()
-                                            .size()); // dest/XXX.framework/Versions/A/XXX
+                dep.string().substr(frameworkPath.parent_path()
+                                        .string()
+                                        .size()); // dest/XXX.framework/Versions/A/XXX
             fs::path targetFrameworkDir = dest / frameworkPath.filename(); // dest/XXX.framework
             fs::path targetCoreDir = targetPath.parent_path(); // dest/XXX.framework/Versions/A
 
@@ -779,7 +764,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
             // Try fixing another library
             {
-                std::string libName = depPath.filename();
+                std::string libName = dep.filename();
                 std::string anotherLib = libName.ends_with("_debug")
                                              ? libName.substr(0, libName.size() - 5)
                                              : libName + "_debug";
@@ -800,13 +785,11 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 #  else
     // Copy dependencies
-    std::set<std::string> targetDependencies;
+    std::set<fs::path> targetDependencies;
     for (const auto &dep : std::as_const(dependencies)) {
-        fs::path depPath = Utils::cleanPath(dep);
-        std::string targetPath = copySharedLibraries(depPath, dest);
+        std::string targetPath = copySharedLibraries(dep, dest);
         if (targetPath.empty()) {
-            throw std::runtime_error("cannot determine shared library: \"" + depPath.string() +
-                                     "\"");
+            throw std::runtime_error("cannot determine shared library: \"" + dep.string() + "\"");
         }
         // libc.so is a shell script
         if (fs::path(targetPath).filename() != "libc.so") {
@@ -816,53 +799,37 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
     // Fix rpath for original files
     for (const auto &file : std::as_const(targetOrgFiles)) {
-        fs::path filePath(file);
         if (verbose) {
-            u8printf("Fix rpath: %s\n", file.data());
+            u8printf("Fix rpath: %s\n", file.string().data());
         }
-        Utils::setFileRPaths(file,
-                             {"$ORIGIN/" + fs::relative(dest, filePath.parent_path()).string()});
+        Utils::setFileRPaths(file, {"$ORIGIN/" + fs::relative(dest, file.parent_path()).string()});
     }
 
     // Fix rpath for dependencies
     for (const auto &dep : std::as_const(targetDependencies)) {
         if (verbose) {
-            u8printf("Fix rpath: %s\n", dep.data());
+            u8printf("Fix rpath: %s\n", dep.string().data());
         }
         Utils::setFileRPaths(dep, {"$ORIGIN"});
     }
 
+    // Fix interpreter
     do {
         if (standard) {
             break;
         }
 
-        const auto &interpNotFound = [](const std::string &what) {
-            return what.find("cannot find section '.interp'") != std::string::npos;
-        };
-
-        // Get Linux Executable interpreter
         fs::path interpreter;
         for (const auto &file : std::as_const(targetOrgFiles)) {
-            try {
-                interpreter = Utils::getInterpreter(file);
-            } catch (const std::exception &e) {
-                if (!interpNotFound(e.what()))
-                    throw;
-                continue;
-            }
-            break;
+            interpreter = Utils::getInterpreter(file);
+            if (!interpreter.empty())
+                break;
         }
         if (interpreter.empty()) {
             for (const auto &dep : std::as_const(targetDependencies)) {
-                try {
-                    interpreter = Utils::getInterpreter(dep);
-                } catch (const std::exception &e) {
-                    if (!interpNotFound(e.what()))
-                        throw;
-                    continue;
-                }
-                break;
+                interpreter = Utils::getInterpreter(dep);
+                if (!interpreter.empty())
+                    break;
             }
         }
         if (interpreter.empty())
@@ -887,12 +854,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 u8printf("Set interpreter: %s\n", file.data());
             }
 
-            try {
-                Utils::setFileInterpreter(file, "$ORIGIN/" + relativePath.string());
-            } catch (const std::exception &e) {
-                if (!interpNotFound(e.what()))
-                    throw;
-            }
+            Utils::setFileInterpreter(file, "$ORIGIN/" + relativePath.string());
         }
 
         // Set interpreter for dependencies
@@ -900,12 +862,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             if (verbose) {
                 u8printf("Set interpreter: %s\n", dep.data());
             }
-            try {
-                Utils::setFileInterpreter(dep, "$ORIGIN/" + interpreterName);
-            } catch (const std::exception &e) {
-                if (!interpNotFound(e.what()))
-                    throw;
-            }
+            Utils::setFileInterpreter(dep, "$ORIGIN/" + interpreterName);
         }
     } while (false);
 #  endif
@@ -1001,8 +958,8 @@ int main(int argc, char *argv[]) {
                 .short_match(SCL::Option::ShortMatchSingleChar),
 #endif
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-            SCL::Option({"-c", "--copy"}, "Copy files of given pattern to corresponding directory")
-                .arg("regex")
+            SCL::Option({"-c", "--copy"}, "Additional files that need to be copied")
+                .arg("src")
                 .arg("dir")
                 .multi(),
             SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),

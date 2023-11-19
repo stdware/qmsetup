@@ -95,7 +95,7 @@ namespace Utils {
 #ifdef __linux__
     std::string getInterpreter(const std::string &file);
 
-    void setFileInterpreter(const std::string &file, const std::string &interpreter);
+    bool setFileInterpreter(const std::string &file, const std::string &interpreter);
 #endif
 }
 
