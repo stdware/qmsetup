@@ -83,6 +83,12 @@ namespace Utils {
         return res;
     }
 
+    template <class T>
+    std::basic_string<T> toLower(std::basic_string<T> s) {
+        std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+        return s;
+    }
+
     // OS Utils
     std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path);
 

@@ -175,7 +175,54 @@ static fs::path framework2lib(fs::path path, const fs::path &fallback = {}) {
     }
     return fallback;
 }
+
+static fs::path framework2lib_debug(fs::path path, const fs::path &fallback = {}) {
+    try {
+        return fs::canonical(path / (path.stem().string() + "_debug"));
+    } catch (...) {
+    }
+    return fallback;
+}
 #endif
+
+#ifndef _WIN32
+
+// Copy library files and symlinks, returns the real library file
+fs::path copyCanonical(const fs::path &path, const fs::path &dest, bool force, bool verbose) {
+    fs::path target;
+    if (fs::is_symlink(path)) {
+        auto linkPath = fs::canonical(path);
+        copyFile(linkPath, dest, false, force, verbose); // Copy real file
+        copyFile(path, dest, true, force, verbose);      // Copy link file
+        target = dest / linkPath.filename();
+    } else {
+        copyFile(path, dest, false, force, verbose); // Copy file
+        target = dest / path.filename();
+    }
+    return target;
+};
+
+#endif
+
+static fs::path toFramework(const fs::path &path) {
+    return
+#ifdef __APPLE__
+        lib2framework(path, path)
+#else
+        lib
+#endif
+            ;
+};
+
+static fs::path fromFramework(const fs::path &path) {
+    return
+#ifdef __APPLE__
+        framework2lib(path, path)
+#else
+        lib
+#endif
+            ;
+};
 
 // ---------------------------------------- Commands ----------------------------------------
 
@@ -496,6 +543,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     bool verbose = result.optionIsSet("-V");
     bool force = result.optionIsSet("-f");
     bool standard = result.optionIsSet("-s");
+#ifdef __APPLE__
+    bool debug = result.optionIsSet("-d");
+#endif
 
     fs::path dest = fs::current_path(); // Default to current path
     if (result.optionIsSet("-o")) {
@@ -503,15 +553,27 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 
     // Add file names
-    std::vector<fs::path> orgFiles;
+    std::set<fs::path> orgFiles;
     {
         const auto &files = result.values(0);
-        orgFiles.reserve(files.size());
         for (const auto &item : files) {
-            orgFiles.emplace_back(Utils::cleanPath(fs::absolute(str2tstr(item.toString()))));
+            orgFiles.insert(toFramework(Utils::cleanPath(fs::absolute(str2tstr(item.toString())))));
         }
     }
 
+    // Add extra org files
+    std::vector<std::pair<fs::path, fs::path>> extraOrgFiles;
+    {
+        const auto &copiesResult = result.option("-c");
+        int cnt = copiesResult.count();
+        extraOrgFiles.reserve(cnt);
+        for (int i = 0; i < cnt; ++i) {
+            extraOrgFiles.emplace_back(
+                toFramework(
+                    Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(0, i).toString())))),
+                Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(1, i).toString()))));
+        }
+    }
 
 #ifdef _WIN32
     // Add searching paths
@@ -557,19 +619,6 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
     }
 
-    // Add extra org files
-    std::vector<std::pair<fs::path, fs::path>> extraOrgFiles;
-    {
-        const auto &copiesResult = result.option("-c");
-        int cnt = copiesResult.count();
-        extraOrgFiles.reserve(cnt);
-        for (int i = 0; i < cnt; ++i) {
-            extraOrgFiles.emplace_back(
-                Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(0, i).toString()))),
-                Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(1, i).toString()))));
-        }
-    }
-
     // Deploy
     std::vector<fs::path> dependencies;
     {
@@ -585,13 +634,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             [](const std::vector<fs::path> &paths) -> std::vector<std::string> {
             std::set<std::string> libs;
             for (const auto &path : std::as_const(paths)) {
-                const auto &deps = Utils::resolveExecutableDependencies(
-#ifdef __APPLE__
-                    framework2lib(path, path)
-#else
-                    path
-#endif
-                );
+                const auto &deps = Utils::resolveExecutableDependencies(fromFramework(path));
                 for (const auto &item : std::as_const(deps)) {
                     libs.insert(item);
                 }
@@ -600,7 +643,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         };
 
         std::set<fs::path> visited;
-        std::vector<fs::path> stack = orgFiles;
+        std::vector<fs::path> stack = {orgFiles.begin(), orgFiles.end()};
 
         // Mark original files as visited
         for (const auto &item : std::as_const(orgFiles)) {
@@ -618,12 +661,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
             // Search dependencies
             for (const auto &lib : std::as_const(libs)) {
-#ifdef __APPLE__
-                TString fileName = lib2framework(lib, lib).filename();
-#else
-                TString fileName = fs::path(lib).filename();
-#endif
-                std::transform(fileName.begin(), fileName.end(), fileName.begin(), ::tolower);
+                TString fileName = Utils::toLower(TString(toFramework(lib).filename()));
 
                 // Ignore files in standard mode
                 if ((standard && (
@@ -676,11 +714,10 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 if (path.empty()) {
                     continue;
                 }
-#elif defined(__APPLE__)
-                const fs::path &path = Utils::cleanPath(lib2framework(lib, lib));
 #else
-                const fs::path &path = Utils::cleanPath(lib);
+                const fs::path &path = Utils::cleanPath(toFramework(lib));
 #endif
+
                 // Ignore orginal file
                 if (allOrgFileNames.contains(path.filename()))
                     continue;
@@ -725,105 +762,119 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Unix
     // Copy libraries and fix rpaths, and may need to deploy interpreter on Linux.
 
-    // Copy library files and symlinks, returns the real library file
-    const auto &copySharedLibraries = [=](const fs::path &path, const fs::path &dest) -> fs::path {
-        fs::path target;
-        if (fs::is_symlink(path)) {
-            auto linkPath = fs::canonical(path);
-            copyFile(linkPath, dest, false, force, verbose); // Copy real file
-            copyFile(path, dest, true, force, verbose);      // Copy link file
-            target = dest / linkPath.filename();
-        } else {
-            copyFile(path, dest, false, force, verbose); // Copy file
-            target = dest / path.filename();
+    const auto &fixRPaths = [verbose](const std::string &file,
+                                      const std::vector<std::string> &paths) {
+        if (verbose) {
+            u8printf("Fix rpath: %s\n", file.data());
         }
-        return target;
+        Utils::setFileRPaths(file, paths);
+    };
+
+#  if defined(__APPLE__)
+    // Ignore Header files and unused library
+    const auto &frameworkIgnore = [](const fs::path &path, const fs::path &frameworkName,
+                                     bool debug) -> bool {
+        if (debug) {
+            if (path.filename() == frameworkName)
+                return true;
+        } else {
+            if (path.filename() == frameworkName.string() + "_debug")
+                return true;
+        }
+        return fs::is_directory(path) && path.filename() == "Headers" &&
+               fs::is_directory(path.parent_path() / "Resources");
+    };
+
+    // The framework is supposed to place at the right place
+    // We don't take care of the special rpaths
+    const auto &fixFrameworkRPaths = [fixRPaths](const fs::path &path) {
+        fixRPaths(path, {
+                            "@executable_path/../Frameworks",
+                            "@loader_path/Frameworks",
+                            "@loader_path/../../..",
+                        });
     };
 
     // Copy original files
     auto targetOrgFiles = orgFiles;
     for (const auto &pair : std::as_const(extraOrgFiles)) {
-        copyFile(pair.first, pair.second, false, force, verbose);
-        targetOrgFiles.push_back(pair.second / pair.first.filename());
+        const auto &file = pair.first;
+        fs::path targetPath;
+        if (fs::is_directory(file)) {
+            const auto &name = file.stem();
+            targetPath = pair.second / file.filename();
+            copyDirectory(
+                file, file, targetPath, force, verbose,
+                [&](const fs::path &path) -> bool { return frameworkIgnore(path, name, debug); });
+        } else {
+            targetPath = copyCanonical(file, pair.second, force, verbose);
+        }
+        targetOrgFiles.insert(targetPath);
     }
 
-#  if defined(__APPLE__)
+    // Copy dependencies
+    std::set<fs::path> targetDependencies;
+    for (const auto &file : std::as_const(dependencies)) {
+        fs::path targetPath;
+        if (fs::is_directory(file)) {
+            const auto &name = file.stem();
+            targetPath = dest / file.filename();
+            copyDirectory(
+                file, file, targetPath, force, verbose,
+                [&](const fs::path &path) -> bool { return frameworkIgnore(path, name, debug); });
+        } else {
+            targetPath = copyCanonical(file, dest, force, verbose);
+        }
+        targetDependencies.insert(targetPath);
+    }
+
     // Fix rpath for original files
     for (const auto &file : std::as_const(targetOrgFiles)) {
-        if (verbose) {
-            u8printf("Fix rpath: %s\n", file.string().data());
-        }
-        Utils::setFileRPaths(file,
-                             {"@loader_path/" + fs::relative(dest, file.parent_path()).string()});
-    }
-
-    // Copy and fix rpath for dependencies
-    for (const auto &dep : std::as_const(dependencies)) {
-        if (dep.extension() == ".dylib") {
-            std::string targetPath = copySharedLibraries(dep, dest);
-
-            // Fix library rpath
-            if (verbose) {
-                u8printf("Fix rpath: %s\n", targetPath.data());
+        if (file.extension() == ".dylib") {
+            fixRPaths(file, {"@loader_path" + fs::relative(dest, file.parent_path()).string()});
+        } else {
+            fs::path lib = framework2lib(file);
+            if (!lib.empty()) {
+                fixFrameworkRPaths(lib);
             }
-            Utils::setFileRPaths(targetPath, {
-                                                 "@loader_path",
-                                             });
-        } else if (auto frameworkPath = lib2framework(dep); !frameworkPath.empty()) {
-            fs::path targetPath =
-                dest.string() +
-                dep.string().substr(frameworkPath.parent_path()
-                                        .string()
-                                        .size()); // dest/XXX.framework/Versions/A/XXX
-            fs::path targetFrameworkDir = dest / frameworkPath.filename(); // dest/XXX.framework
-            fs::path targetCoreDir = targetPath.parent_path(); // dest/XXX.framework/Versions/A
 
-            // Copy framework directory, ignore "Headers"
-            copyDirectory(frameworkPath, frameworkPath, targetFrameworkDir, force, verbose,
-                          [](const fs::path &path) -> bool {
-                              return fs::is_directory(path) && path.filename() == "Headers" &&
-                                     fs::is_directory(path.parent_path() / "Resources");
-                          });
-
-            // Fix library rpath
-            if (verbose) {
-                u8printf("Fix rpath: %s\n", targetPath.string().data());
-            }
-            Utils::setFileRPaths(targetPath, {
-                                                 "@executable_path/../Frameworks",
-                                                 "@loader_path/Frameworks",
-                                                 "@loader_path/../../..",
-                                             });
-
-            // Try fixing another library
-            {
-                std::string libName = dep.filename();
-                std::string anotherLib = libName.ends_with("_debug")
-                                             ? libName.substr(0, libName.size() - 5)
-                                             : libName + "_debug";
-                auto anotherLibFile =
-                    targetCoreDir / anotherLib; // dest/XXX.framework/Versions/A/XXX_debug
-                if (fs::is_regular_file(anotherLibFile)) {
-                    if (verbose) {
-                        u8printf("Fix rpath: %s\n", anotherLibFile.string().data());
-                    }
-                    Utils::setFileRPaths(anotherLibFile, {
-                                                             "@executable_path/../Frameworks",
-                                                             "@loader_path/Frameworks",
-                                                             "@loader_path/../../..",
-                                                         });
-                }
+            fs::path libDebug = framework2lib_debug(file);
+            if (!libDebug.empty()) {
+                fixFrameworkRPaths(libDebug);
             }
         }
     }
+
+    // Fix rpath for dependencies
+    for (const auto &file : std::as_const(targetDependencies)) {
+        if (file.extension() == ".dylib") {
+            fixRPaths(file, {"@loader_path"});
+        } else {
+            fs::path lib = framework2lib(file);
+            if (!lib.empty()) {
+                fixFrameworkRPaths(lib);
+            }
+
+            fs::path libDebug = framework2lib_debug(file);
+            if (!libDebug.empty()) {
+                fixFrameworkRPaths(libDebug);
+            }
+        }
+    }
+
 #  else
+    // Copy original files
+    auto targetOrgFiles = orgFiles;
+    for (const auto &pair : std::as_const(extraOrgFiles)) {
+        std::string targetPath = copySharedLibraries(pair.first, pair.second);
+        targetOrgFiles.insert(targetPath);
+    }
+
     // Copy dependencies
     std::set<fs::path> targetDependencies;
     for (const auto &dep : std::as_const(dependencies)) {
         std::string targetPath = copySharedLibraries(dep, dest);
-        if (targetPath.empty()) {
-            throw std::runtime_error("cannot determine shared library: \"" + dep.string() + "\"");
-        }
+
         // libc.so is a shell script
         if (fs::path(targetPath).filename() != "libc.so") {
             targetDependencies.insert(targetPath);
@@ -835,15 +886,15 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         if (verbose) {
             u8printf("Fix rpath: %s\n", file.string().data());
         }
-        Utils::setFileRPaths(file, {"$ORIGIN/" + fs::relative(dest, file.parent_path()).string()});
+        fixRPaths(file, {"$ORIGIN/" + fs::relative(dest, file.parent_path()).string()});
     }
 
     // Fix rpath for dependencies
-    for (const auto &dep : std::as_const(targetDependencies)) {
+    for (const auto &file : std::as_const(targetDependencies)) {
         if (verbose) {
-            u8printf("Fix rpath: %s\n", dep.string().data());
+            u8printf("Fix rpath: %s\n", file.string().data());
         }
-        Utils::setFileRPaths(dep, {"$ORIGIN"});
+        fixRPaths(file, {"$ORIGIN"});
     }
 
     // Fix interpreter
@@ -868,13 +919,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         if (interpreter.empty())
             break;
 
-        if (fs::is_symlink(interpreter)) {
-            auto linkPath = fs::canonical(interpreter);
-            copyFile(linkPath, dest, false, force, verbose);
-            copyFile(interpreter, dest, true, force, verbose);
-        } else {
-            copyFile(interpreter, dest, false, force, verbose);
-        }
+        // Copy interpreter
+        copyCanonical(interpreter, dest, force, verbose);
 
         std::string interpreterName = interpreter.filename();
         interpreter = dest / interpreterName;
@@ -994,6 +1040,8 @@ int main(int argc, char *argv[]) {
                 .arg("dir")
                 .multi()
                 .short_match(SCL::Option::ShortMatchSingleChar),
+#elif defined(__APPLE__)
+            SCL::Option({"-d", "--debug"}, "Deploy debug frameworks"),
 #endif
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
