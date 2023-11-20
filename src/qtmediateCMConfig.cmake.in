@@ -7,6 +7,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/qtmediateCMTargets.cmake")
 set(QTMEDIATE_MODULES_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 include("${QTMEDIATE_MODULES_DIR}/QtMediateAPI.cmake")
+include("${QTMEDIATE_MODULES_DIR}/QtMediateDeployAPI.cmake")
 include("${QTMEDIATE_MODULES_DIR}/QtMediatePreprocessAPI.cmake")
 include("${QTMEDIATE_MODULES_DIR}/QtMediateFilesystemAPI.cmake")
 include("${QTMEDIATE_MODULES_DIR}/QtMediateDoxygenAPI.cmake")

@@ -83,7 +83,6 @@ function(qtmediate_add_win_rc _target)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
-    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
 
     qtmediate_set_value(_name FUNC_NAME ${_target})
     qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
@@ -105,6 +104,8 @@ function(qtmediate_add_win_rc _target)
         set(RC_ICON_PATH ${FUNC_ICON})
     endif()
 
+    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
+    
     configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
@@ -214,7 +215,7 @@ function(qtmediate_create_win_shortcut _target _dir)
 
     qtmediate_set_value(_output_name FUNC_OUTPUT_NAME $<TARGET_FILE_BASE_NAME:${_target}>)
 
-    set(_vbs_name ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut.vbs)
+    set(_vbs_name ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut_$<CONFIG>.vbs)
     set(_vbs_temp ${_vbs_name}.in)
 
     set(_lnk_path "${_dir}/${_output_name}.lnk")
@@ -296,44 +297,6 @@ endfunction()
 #[[
     Helper to link libraries and include directories of a target.
 
-    qtmediate_get_shared_library_path(<target> <VAR>)
-]] #
-function(qtmediate_get_shared_library_path _target _out)
-    unset(${_out} PARENT_SCOPE)
-
-    if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL Debug)
-        set(_config_upper DEBUG)
-    else()
-        string(TOUPPER ${CMAKE_BUILD_TYPE} _config_upper)
-    endif()
-
-    # Resolve location
-    get_target_property(_imported ${_item} IMPORTED)
-
-    if(_imported)
-        get_target_property(_path ${_item} LOCATION_${_config_upper})
-
-        if(NOT _path OR ${_path} IN_LIST _result)
-            return()
-        endif()
-
-        get_filename_component(_path ${_path} DIRECTORY)
-    else()
-        get_target_property(_type ${_item} TYPE)
-
-        if(NOT ${_type} MATCHES "SHARED_LIBRARY")
-            return()
-        endif()
-
-        set(_path "$<TARGET_FILE_DIR:${_item}>")
-    endif()
-
-    set(${_out} ${_path} PARENT_SCOPE)
-endfunction()
-
-#[[
-    Helper to link libraries and include directories of a target.
-
     qtmediate_configure_target(<target>
         [SOURCES          <files>]
         [LINKS            <libs>]
@@ -385,24 +348,6 @@ function(qtmediate_configure_target _target)
             ${FUNC_SKIP_AUTOMOC_FILES} PROPERTIES SKIP_AUTOMOC ON
         )
     endif()
-
-    # Add library searching paths
-    if(WIN32)
-        foreach(_item ${FUNC_LINKS} ${FUNC_LINKS_PRIVATE})
-            if(TARGET ${_item})
-                set(_path)
-                qtmediate_get_shared_library_path(${_item} _path)
-
-                if(NOT _path)
-                    continue()
-                endif()
-
-                set_property(TARGET ${_target} APPEND PROPERTY LIBRARY_SEARCHING_PATHS ${_path})
-            else()
-                set_property(TARGET ${_target} APPEND PROPERTY DEFERRED_PARSED_LIBRARIES ${_item})
-            endif()
-        endforeach()
-    endif()
 endfunction()
 
 #[[
@@ -449,102 +394,6 @@ macro(qtmediate_set_value _key _maybe_value _default)
         set(${_key} ${_default})
     endif()
 endmacro()
-
-#[[
-    Helper to define export macros.
-
-    qtmediate_win_applocal_deps(<target>
-        [TARGET <name>]
-        [INSTALL_DIR <dir>]
-        [EXTRA_SEARCHING_PATHS <paths...>]
-    )
-]] #
-function(qtmediate_win_applocal_deps _target)
-    set(options)
-    set(oneValueArgs TARGET INSTALL_DIR)
-    set(multiValueArgs EXTRA_SEARCHING_PATHS)
-    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    # Get tool
-    set(_tool_target qtmediateCM::corecmd)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_win_applocal_deps: tool \"corecmd\" not found.")
-    else()
-        get_target_property(_tool ${_tool_target} LOCATION)
-    endif()
-
-    if(FUNC_TARGET)
-        set(_deploy_target ${FUNC_TARGET})
-        add_custom_target(${_deploy_target})
-    else()
-        set(_deploy_target ${_target})
-    endif()
-
-    # Get searching paths
-    get_target_property(_paths ${_target} LIBRARY_SEARCHING_PATHS)
-
-    if(NOT _paths)
-        set(_paths)
-    endif()
-
-    # Add extra searching paths
-    if(FUNC_EXTRA_SEARCHING_PATHS)
-        list(APPEND _paths ${FUNC_EXTRA_SEARCHING_PATHS})
-    endif()
-
-    # Parse deferred libraries
-    get_target_property(_deferred_libs ${_target} DEFERRED_PARSED_LIBRARIES)
-
-    if(_deferred_libs)
-        foreach(_item ${_deferred_libs})
-            set(_path)
-            qtmediate_get_shared_library_path(${_item} _path)
-
-            if(NOT _path)
-                message(WARNING "qtmediate_win_applocal_deps: dependency \"${_item}\" of target \"${_target}\" is not defined")
-                continue()
-            endif()
-
-            list(APPEND _paths ${_path})
-        endforeach()
-    endif()
-
-    if(NOT _paths)
-        return()
-    endif()
-
-    # Add command
-    set(_args)
-
-    foreach(_item ${_paths})
-        list(APPEND _args "-L${_item}")
-    endforeach()
-
-    add_custom_command(TARGET ${_deploy_target} POST_BUILD
-        COMMENT # COMMAND ${CMAKE_COMMAND} -E echo
-        "Deploying shared libraries for $<TARGET_FILE_NAME:${_target}>"
-        COMMAND ${_tool} deploy ${_args} $<TARGET_FILE:${_target}> 1>NUL
-        WORKING_DIRECTORY $<TARGET_FILE_DIR:${_target}>
-    )
-
-    if(FUNC_INSTALL_DIR)
-        set(_quoted_args)
-
-        foreach(_item ${_args})
-            set(_quoted_args "${_quoted_args} \"${_item}\"")
-        endforeach()
-
-        install(CODE "
-            execute_process(
-                COMMAND \"${_tool}\" deploy ${_quoted_args} \"$<TARGET_FILE:${_target}>\"
-                WORKING_DIRECTORY \"${FUNC_INSTALL_DIR}\"
-                COMMAND_ERROR_IS_FATAL ANY
-                OUTPUT_QUIET
-            )
-        ")
-    endif()
-endfunction()
 
 #[[
     Collect targets of given types recursively in a directory.

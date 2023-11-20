@@ -19,9 +19,9 @@ function(qtmediate_sync_include _src_dir _dest_dir)
 
     if(NOT TARGET ${_tool_target})
         message(FATAL_ERROR "qtmediate_sync_include: tool \"corecmd\" not found.")
-    else()
-        get_target_property(_tool ${_tool_target} LOCATION)
     endif()
+
+    get_target_property(_tool ${_tool_target} LOCATION)
 
     if(NOT IS_ABSOLUTE ${_src_dir})
         get_filename_component(_src_dir ${_src_dir} ABSOLUTE)
@@ -179,9 +179,9 @@ function(qtmediate_generate_config _file)
 
     if(NOT TARGET ${_tool_target})
         message(FATAL_ERROR "qtmediate_generate_config: tool \"corecmd\" not found.")
-    else()
-        get_target_property(_tool ${_tool_target} LOCATION)
     endif()
+
+    get_target_property(_tool ${_tool_target} LOCATION)
 
     qtmediate_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
 
@@ -220,9 +220,9 @@ function(qtmediate_generate_build_info _dir _prefix _file)
 
     if(NOT TARGET ${_tool_target})
         message(FATAL_ERROR "qtmediate_generate_build_info: tool \"corecmd\" not found.")
-    else()
-        get_target_property(_tool ${_tool_target} LOCATION)
     endif()
+
+    get_target_property(_tool ${_tool_target} LOCATION)
 
     set(_git_branch "unknown")
     set(_git_hash "unknown")
@@ -296,11 +296,11 @@ function(qtmediate_generate_build_info _dir _prefix _file)
 
     # string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
     # string(TIMESTAMP _build_year "%Y")
-
     set(_def_list)
     list(APPEND _def_list ${_prefix}_BUILD_COMPILER_ID=\"${_compiler_name}\")
     list(APPEND _def_list ${_prefix}_BUILD_COMPILER_VERSION=\"${_compiler_version}\")
     list(APPEND _def_list ${_prefix}_BUILD_COMPILER_ARCH=\"${_compiler_arch}\")
+
     # list(APPEND _def_list ${_prefix}_BUILD_DATE_TIME=\"${_build_time}\")
     # list(APPEND _def_list ${_prefix}_BUILD_YEAR=\"${_build_year}\")
     list(APPEND _def_list ${_prefix}_GIT_BRANCH=\"${_git_branch}\")

@@ -52,7 +52,7 @@ function(qtmediate_setup_doxygen _target)
     set(_sep " \\\n    ")
 
     # Generate include file
-    set(_doxy_includes "${CMAKE_CURRENT_BINARY_DIR}/cmake/doxygen_${_target}.inc")
+    set(_doxy_includes "${CMAKE_CURRENT_BINARY_DIR}/cmake/doxygen_${_target}_$<CONFIG>.inc")
     set(_doxy_output_dir "${CMAKE_CURRENT_BINARY_DIR}/doxygen_${_target}")
 
     set(_input "")
@@ -194,14 +194,14 @@ function(qtmediate_setup_doxygen _target)
             set(_install_command_quoted "${_install_command_quoted}\"${_item}\" ")
         endforeach()
 
-        install(CODE "
-            message(STATUS \"Install HTML documentation\")
-            file(MAKE_DIRECTORY \"${_install_dir}\")
+        install(CODE [[
+            message(STATUS "Install HTML documentation")
+            file(MAKE_DIRECTORY "${_install_dir}")
             execute_process(
                 COMMAND ${_install_command_quoted}
-                WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
+                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
                 OUTPUT_QUIET
             )
-        ")
+        ]])
     endif()
 endfunction()
