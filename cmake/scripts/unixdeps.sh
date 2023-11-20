@@ -2,11 +2,14 @@
 
 # 显示用法信息
 usage() {
-    echo "Usage: $(basename $0) -i <input_dir> -p <plugin_dir> -l <lib_dir> -q <qmake_path> -m <qmcorecmd_path> [-t <plugin>]... [-c <src> <dest>]... [-f] [-s] [-V]"
+    echo "Usage: $(basename $0) -i <input_dir> -p <plugin_dir> -l <lib_dir> -m <qmcorecmd_path>"
+    echo "                     [-q <qmake_path>] [-P <extra_path>]..."
+    echo "                     [-t <plugin>]... [-c <src> <dest>]... [-f] [-s] [-V] [-h]"
     echo "  -i <input_dir>       Directory containing binaries and libraries"
     echo "  -p <plugin_dir>      Output directory for plugins"
     echo "  -l <lib_dir>         Output directory for libraries"
-    echo "  -q <qmake_path>      Path to qmake"
+    echo "  -q <qmake_path>      Path to qmake (optional)"
+    echo "  -P <extra_path>      Extra plugin search path. Can be repeated."
     echo "  -m <qmcorecmd_path>  Path to qmcorecmd"
     echo "  -t <plugin>          Specify a Qt plugin to deploy. Can be repeated for multiple plugins."
     echo "  -c <src> <dest>      Specify additional binary file to copy and its destination directory. Can be repeated."
@@ -17,6 +20,7 @@ usage() {
 }
 
 # 初始化参数
+EXTRA_PLUGIN_PATHS=()
 COPY_ARGS=()
 ARGS=()
 VERBOSE=""
@@ -30,6 +34,7 @@ while (( "$#" )); do
         -p) PLUGIN_DIR="$2"; shift 2;;
         -l) LIB_DIR="$2"; shift 2;;
         -q) QMAKE_PATH="$2"; shift 2;;
+        -P) EXTRA_PLUGIN_PATHS+=("$2"); shift 2;;
         -m) QMCORECMD_PATH="$2"; shift 2;;
         -t) PLUGINS+=("$2"); shift 2;;
         -f|-s) ARGS+=("$1"); shift;;
@@ -41,13 +46,24 @@ while (( "$#" )); do
 done
 
 # 检查必需参数
-for arg in INPUT_DIR PLUGIN_DIR LIB_DIR QMAKE_PATH QMCORECMD_PATH; do
+for arg in INPUT_DIR PLUGIN_DIR LIB_DIR QMCORECMD_PATH; do
     if [[ -z ${!arg} ]]; then
         echo "Error: Missing required argument '$arg'"
         usage
         exit 1
     fi
 done
+
+# 获取 Qt 插件安装路径
+PLUGIN_PATHS=()
+if [[ -n "$QMAKE_PATH" ]]; then
+    QMAKE_PLUGIN_PATH=$($QMAKE_PATH -query QT_INSTALL_PLUGINS)
+    PLUGIN_PATHS+=("$QMAKE_PLUGIN_PATH")
+fi
+
+# 添加额外的插件搜索路径
+PLUGIN_PATHS+=("${EXTRA_PLUGIN_PATHS[@]}")
+
 
 # 根据操作系统决定搜索的文件类型
 if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]]; then
@@ -66,21 +82,24 @@ else
 fi
 
 # 查找 Qt 插件的完整路径
-QT_PLUGIN_PATH=$($QMAKE_PATH -query QT_INSTALL_PLUGINS)
 for plugin_path in "${PLUGINS[@]}"; do
+    # 检查格式
     if [[ $plugin_path == */* ]]; then
         IFS='/' read -r -a plugin_parts <<< "$plugin_path"
         category=${plugin_parts[0]}
         name=${plugin_parts[1]}
 
-        if [ ! -d "${QT_PLUGIN_PATH}/${category}" ]; then
-            echo "Error: Plugin category directory '${QT_PLUGIN_PATH}/${category}' not found."
-            exit 1
-        fi
+        # 遍历路径
+        for search_path in "${PLUGIN_PATHS[@]}"; do
+            FOUND_PLUGIN=$(find "${search_path}/${category}" -name "*${name}*" ! -name "*debug*" -print -quit)
+            if [[ -n "$FOUND_PLUGIN" ]]; then
+                FILES="$FILES -c $FOUND_PLUGIN ${PLUGIN_DIR}/${category}"
+                break
+            fi
+        done
 
-        FOUND_PLUGIN=$(find "${QT_PLUGIN_PATH}/${category}" -name "*${name}*" ! -name "*debug*" -print -quit)
         if [ -z "$FOUND_PLUGIN" ]; then
-            echo "Error: Plugin '${plugin_path}' not found."
+            echo "Error: Plugin '${plugin_path}' not found in any search paths."
             exit 1
         fi
 

@@ -179,6 +179,7 @@ endfunction()
         [FORCE] [STANDARD] [VERBOSE]
         [PLUGIN_DIR <dir>]
         [LIBRARY_DIR <dir>]
+        [EXTRA_PLUGIN_PATHS <path>...]
         [PLUGINS <plugin>...]
     )
 ]] #
@@ -189,7 +190,7 @@ function(qtmediate_unix_deploy _install_dir)
 
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR)
-    set(multiValueArgs PLUGINS)
+    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS)
 
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -227,6 +228,11 @@ function(qtmediate_unix_deploy _install_dir)
     # Add Qt Plugins
     foreach(_item IN LISTS FUNC_PLUGINS)
         list(APPEND _args "-t" "${_item}")
+    endforeach()
+
+    # Add extra plugin paths
+    foreach(_item IN LIST FUNC_EXTRA_PLUGIN_PATHS)
+        list(APPEND _args "-P" "${_item}")
     endforeach()
 
     # Add options
