@@ -181,6 +181,7 @@ endfunction()
         [LIBRARY_DIR <dir>]
         [EXTRA_PLUGIN_PATHS <path>...]
         [PLUGINS <plugin>...]
+        [COMMENT <comment]
     )
 ]] #
 function(qtmediate_unix_deploy _install_dir)
@@ -189,7 +190,7 @@ function(qtmediate_unix_deploy _install_dir)
     endif()
 
     set(options FORCE STANDARD VERBOSE)
-    set(oneValueArgs LIBRARY_DIR PLUGIN_DIR)
+    set(oneValueArgs LIBRARY_DIR PLUGIN_DIR COMMENT)
     set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS)
 
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -260,8 +261,15 @@ function(qtmediate_unix_deploy _install_dir)
         set(_args_quoted "${_args_quoted}\"${_item}\" ")
     endforeach()
 
+    set(_comment_code)
+
+    if(FUNC_COMMENT)
+        set(_comment_code "message(STATUS \"${FUNC_COMMENT}\")")
+    endif()
+
     # Add install command
     install(CODE "
+        ${_comment_code}
         execute_process(
             COMMAND bash \"${QTMEDIATE_MODULES_DIR}/scripts/unixdeps.sh\" ${_args_quoted}
             WORKING_DIRECTORY \"${_install_dir}\"

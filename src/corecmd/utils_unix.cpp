@@ -324,9 +324,9 @@ namespace Utils {
         while (std::getline(iss, line)) {
             std::smatch match;
             if (std::regex_match(line, match, regexp) && match.size() >= 2) {
-                dependencies.push_back(match[1].str());
+                dependencies.push_back(cleanPath(match[1].str()));
             } else if (std::regex_match(line, match, regexp2) && match.size() >= 2 && unparsed) {
-                unparsed->push_back(match[1].str());
+                unparsed->push_back(cleanPath(match[1].str()));
             }
         }
 

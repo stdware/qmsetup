@@ -102,8 +102,8 @@ static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
     return isEmpty;
 }
 
-static bool copyFile(const fs::path &file, const fs::path &dest, bool symlink, bool force,
-                     bool verbose) {
+static bool copyFile(const fs::path &file, const fs::path &dest, const std::string &symlinkContent,
+                     bool force, bool verbose) {
     auto target = dest / fs::path(file).filename();
     if (fs::exists(target)) {
         if (Utils::cleanPath(target) == Utils::cleanPath(file))
@@ -115,11 +115,14 @@ static bool copyFile(const fs::path &file, const fs::path &dest, bool symlink, b
         fs::create_directories(dest);
     }
 
-    if (symlink && fs::is_symlink(file)) {
+    if (!symlinkContent.empty()) {
         if (verbose) {
             u8printf("Link %s\n", tstr2str(target).data());
         }
-        fs::copy_symlink(file, target);
+
+        if (fs::exists(target))
+            fs::remove(target);
+        fs::create_symlink(symlinkContent, target);
     } else {
         if (verbose) {
             u8printf("Copy %s\n", tstr2str(target).data());
@@ -147,15 +150,18 @@ static void copyDirectory(const fs::path &srcRootDir, const fs::path &srcDir,
                 linkPath = fs::canonical(entryPath);
             } catch (...) {
                 // The symlink is invalid
-                copyFile(entryPath, destDir, false, force, verbose);
+                copyFile(entryPath, destDir, {}, force, verbose);
                 continue;
             }
 
             // Copy if symlink points inside the source directory
-            copyFile(entryPath, destDir, linkPath.string().starts_with(srcRootDir.string()), force,
-                     verbose);
+            copyFile(entryPath, destDir,
+                     linkPath.string().starts_with(srcRootDir.string())
+                         ? fs::relative(linkPath, fs::canonical(entryPath).parent_path()).string()
+                         : std::string(),
+                     force, verbose);
         } else if (fs::is_regular_file(entryPath)) {
-            copyFile(entryPath, destDir, false, force, verbose);
+            copyFile(entryPath, destDir, {}, force, verbose);
         } else if (fs::is_directory(entryPath)) {
             copyDirectory(srcRootDir, entryPath, destDir / entryPath.filename(), force, verbose,
                           ignore);
@@ -205,11 +211,11 @@ fs::path copyCanonical(const fs::path &path, const fs::path &dest, bool force, b
     fs::path target;
     if (fs::is_symlink(path)) {
         auto linkPath = fs::canonical(path);
-        copyFile(linkPath, dest, false, force, verbose); // Copy real file
-        copyFile(path, dest, true, force, verbose);      // Copy link file
+        copyFile(linkPath, dest, {}, force, verbose);              // Copy real file
+        copyFile(path, dest, linkPath.filename(), force, verbose); // Copy link file
         target = dest / linkPath.filename();
     } else {
-        copyFile(path, dest, false, force, verbose); // Copy file
+        copyFile(path, dest, {}, force, verbose); // Copy file
         target = dest / path.filename();
     }
     return target;
@@ -836,12 +842,12 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
     // Copy original files
     for (const auto &pair : std::as_const(extraOrgFiles)) {
-        copyFile(pair.first, pair.second, false, force, verbose);
+        copyFile(pair.first, pair.second, {}, force, verbose);
     }
 
     // Copy dependencies
     for (const auto &file : std::as_const(dependencies)) {
-        copyFile(file, dest, false, force, verbose);
+        copyFile(file, dest, {}, force, verbose);
     }
 #else
     // Unix
@@ -938,10 +944,12 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 fixFrameworkRPaths(libDebug);
             }
         } else {
-            fixRPaths(file, {
-                                "@executable_path/../Frameworks",
-                                "@loader_path/" + fs::relative(dest, file.parent_path()).string(),
-                            });
+            fixRPaths(file,
+                      {
+                          "@executable_path/../Frameworks",
+                          "@loader_path/" +
+                              Utils::cleanPath(fs::relative(dest, file.parent_path())).string(),
+                      });
         }
     }
 
@@ -966,6 +974,14 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 
 #  else
+    const auto &setInterpreter = [verbose](const std::string &file, const std::string &interp) {
+        if (verbose) {
+            u8printf("Set interpreter: %s\n", file.data());
+            u8printf("    %s\n", interp.data());
+        }
+        Utils::setFileInterpreter(file, interp);
+    };
+
     // Copy original files
     auto targetOrgFiles = orgFiles;
     for (const auto &pair : std::as_const(extraOrgFiles)) {
@@ -986,17 +1002,12 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
     // Fix rpath for original files
     for (const auto &file : std::as_const(targetOrgFiles)) {
-        if (verbose) {
-            u8printf("Fix rpath: %s\n", file.string().data());
-        }
-        fixRPaths(file, {"$ORIGIN/" + fs::relative(dest, file.parent_path()).string()});
+        fixRPaths(file,
+                  {"$ORIGIN/" + Utils::cleanPath(fs::relative(dest, file.parent_path())).string()});
     }
 
     // Fix rpath for dependencies
     for (const auto &file : std::as_const(targetDependencies)) {
-        if (verbose) {
-            u8printf("Fix rpath: %s\n", file.string().data());
-        }
         fixRPaths(file, {"$ORIGIN"});
     }
 
@@ -1028,22 +1039,21 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         std::string interpreterName = interpreter.filename();
         interpreter = dest / interpreterName;
 
+        if (verbose) {
+            u8printf("Interpreter: %s\n", interpreter.string().data());
+        }
+
         // Set interpreter for original files
         for (const auto &file : std::as_const(targetOrgFiles)) {
-            fs::path filePath(file);
-            fs::path relativePath = fs::relative(interpreter, filePath.parent_path());
-            if (verbose) {
-                u8printf("Set interpreter: %s\n", file.string().data());
-            }
-            Utils::setFileInterpreter(file, "$ORIGIN/" + relativePath.string());
+            setInterpreter(file,
+                           "$ORIGIN/" + Utils::cleanPath(fs::relative(dest, file.parent_path()) /
+                                                         interpreter.filename())
+                                            .string());
         }
 
         // Set interpreter for dependencies
         for (const auto &dep : std::as_const(targetDependencies)) {
-            if (verbose) {
-                u8printf("Set interpreter: %s\n", dep.string().data());
-            }
-            Utils::setFileInterpreter(dep, "$ORIGIN/" + interpreterName);
+            setInterpreter(dep, "$ORIGIN/" + interpreterName);
         }
     } while (false);
 #  endif
