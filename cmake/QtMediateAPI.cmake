@@ -77,6 +77,10 @@ endmacro()
     )
 ]] #
 function(qtmediate_add_win_rc _target)
+    if(NOT WIN32)
+        return()
+    endif()
+
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON OUTPUT)
     set(multiValueArgs)
@@ -105,7 +109,7 @@ function(qtmediate_add_win_rc _target)
     endif()
 
     qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
-    
+
     configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
@@ -121,6 +125,10 @@ endfunction()
     )
 ]] #
 function(qtmediate_add_win_manifest _target)
+    if(NOT WIN32)
+        return()
+    endif()
+
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION OUTPUT)
     set(multiValueArgs)
@@ -153,6 +161,10 @@ endfunction()
     )
 ]] #
 function(qtmediate_add_mac_bundle _target)
+    if(NOT APPLE)
+        return()
+    endif()
+
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON)
     set(multiValueArgs)
@@ -208,6 +220,10 @@ endfunction()
     )
 ]] #
 function(qtmediate_create_win_shortcut _target _dir)
+    if(NOT WIN32)
+        return()
+    endif()
+
     set(options)
     set(oneValueArgs OUTPUT_NAME)
     set(multiValueArgs)

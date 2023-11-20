@@ -56,6 +56,10 @@ endfunction()
     )
 ]] #
 function(qtmediate_win_applocal_deps _target)
+    if(NOT WIN32)
+        return()
+    endif()
+
     set(options)
     set(oneValueArgs TARGET OUTPUT_DIR)
     set(multiValueArgs TARGETS EXTRA_SEARCHING_PATHS)
@@ -179,8 +183,12 @@ endfunction()
     )
 ]] #
 function(qtmediate_unix_deploy _install_dir)
+    if(WIN32)
+        return()
+    endif()
+
     set(options FORCE STANDARD VERBOSE)
-    set(oneValueArgs PLUGIN_DIR LIBRARY_DIR)
+    set(oneValueArgs LIBRARY_DIR PLUGIN_DIR)
     set(multiValueArgs PLUGINS)
 
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -204,21 +212,21 @@ function(qtmediate_unix_deploy _install_dir)
     endif()
 
     # Set values
+    qtmediate_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/lib")
     qtmediate_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
-    qtmediate_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}")
 
     # Prepare commands
     set(_args
-        -i "\"${_install_dir}\""
-        -p "\"${_plugin_dir}\""
-        -l "\"${_lib_dir}\""
-        -q "\"${QT_QMAKE_EXECUTABLE}\""
-        -m "\"${_tool}\""
+        -i "${_install_dir}"
+        -p "${_plugin_dir}"
+        -l "${_lib_dir}"
+        -q "${QT_QMAKE_EXECUTABLE}"
+        -m "${_tool}"
     )
 
     # Add Qt Plugins
     foreach(_item IN LISTS FUNC_PLUGINS)
-        list(APPEND _args "-t" "\"${_item}\"")
+        list(APPEND _args "-t" "${_item}")
     endforeach()
 
     # Add options
@@ -234,12 +242,18 @@ function(qtmediate_unix_deploy _install_dir)
         list(APPEND _args "-V")
     endif()
 
+    set(_args_quoted)
+
+    foreach(_item ${_args})
+        set(_args_quoted "${_args_quoted}\"${_item}\" ")
+    endforeach()
+
     # Add install command
-    install(CODE [[
+    install(CODE "
         execute_process(
-            COMMAND bash "${QTMEDIATE_MODULES_DIR}/scripts/unixdeps.sh" ${_args}
-            WORKING_DIRECTORY "${_install_dir}"
+            COMMAND bash \"${QTMEDIATE_MODULES_DIR}/scripts/unixdeps.sh\" ${_args_quoted}
+            WORKING_DIRECTORY \"${_install_dir}\"
             COMMAND_ERROR_IS_FATAL ANY
         )
-    ]])
+    ")
 endfunction()

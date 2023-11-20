@@ -19,6 +19,7 @@ usage() {
 # 初始化参数
 COPY_ARGS=()
 ARGS=()
+VERBOSE=""
 PLUGINS=()
 FILES=""
 
@@ -31,7 +32,8 @@ while (( "$#" )); do
         -q) QMAKE_PATH="$2"; shift 2;;
         -m) QMCORECMD_PATH="$2"; shift 2;;
         -t) PLUGINS+=("$2"); shift 2;;
-        -f|-s|-V) ARGS+=("$1"); shift;;
+        -f|-s) ARGS+=("$1"); shift;;
+        -V) VERBOSE="-V"; shift;;
         -c) COPY_ARGS+=("$2" "$3"); shift 3;;
         -h) usage; exit 0;;
         *) echo "Error: Unsupported argument $1"; usage; exit 1;;
@@ -64,7 +66,8 @@ else
 fi
 
 # 查找 Qt 插件的完整路径
-for plugin_path in "${QT_PLUGINS[@]}"; do
+QT_PLUGIN_PATH=$($QMAKE_PATH -query QT_INSTALL_PLUGINS)
+for plugin_path in "${PLUGINS[@]}"; do
     if [[ $plugin_path == */* ]]; then
         IFS='/' read -r -a plugin_parts <<< "$plugin_path"
         category=${plugin_parts[0]}
@@ -96,7 +99,10 @@ for ((i=0; i < ${#COPY_ARGS[@]}; i+=2)); do
 done
 
 # 构建并执行 qmcorecmd deploy 命令
-DEPLOY_CMD="$QMCORECMD_PATH deploy $FILES ${ARGS[@]} -o $LIB_DIR"
+DEPLOY_CMD="$QMCORECMD_PATH deploy $FILES ${ARGS[@]} $VERBOSE -o $LIB_DIR"
+if [[ "$VERBOSE" == "-V" ]]; then
+    echo "Executing: $DEPLOY_CMD"
+fi
 eval $DEPLOY_CMD
 
 # 检查部署结果

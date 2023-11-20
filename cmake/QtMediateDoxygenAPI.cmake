@@ -194,14 +194,14 @@ function(qtmediate_setup_doxygen _target)
             set(_install_command_quoted "${_install_command_quoted}\"${_item}\" ")
         endforeach()
 
-        install(CODE [[
-            message(STATUS "Install HTML documentation")
-            file(MAKE_DIRECTORY "${_install_dir}")
+        install(CODE "
+            message(STATUS \"Install HTML documentation\")
+            file(MAKE_DIRECTORY \"${_install_dir}\")
             execute_process(
                 COMMAND ${_install_command_quoted}
-                WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+                WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                 OUTPUT_QUIET
             )
-        ]])
+        ")
     endif()
 endfunction()

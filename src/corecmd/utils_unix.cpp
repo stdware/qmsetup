@@ -217,7 +217,7 @@ namespace Utils {
     std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
         auto rpaths = readMacBinaryRPaths(path);
         auto dependencies = readMacBinaryDependencies(path);
-        const std::string &loaderPath = path.string();
+        const std::string &loaderPath = path.parent_path();
 
         std::vector<std::string> res;
         for (auto dep : std::as_const(dependencies)) {
@@ -226,7 +226,11 @@ namespace Utils {
             replaceString(dep, std::string("@loader_path"), loaderPath);
 
             // Find dependency
-            for (const auto &rpath : rpaths) {
+            for (auto rpath : rpaths) {
+                // Replace again
+                replaceString(rpath, std::string("@executable_path"), loaderPath);
+                replaceString(rpath, std::string("@loader_path"), loaderPath);
+
                 std::string fullPath = dep;
                 replaceString(fullPath, std::string("@rpath"), rpath);
                 if (fs::exists(fullPath) && fullPath != path) {
