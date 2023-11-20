@@ -705,7 +705,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 }
                 if (verbose) {
                     for (const auto &item : std::as_const(unparsed)) {
-                        u8printf("    %s\n [Unknown]", item.data());
+                        u8printf("    %s [Unknown]\n", item.data());
                     }
                 }
             }

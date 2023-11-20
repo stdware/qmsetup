@@ -214,11 +214,11 @@ namespace Utils {
         return dependencies;
     }
 
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &,
+    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path,
                                                            std::vector<std::string> *unparsed) {
         auto rpaths = readMacBinaryRPaths(path);
         auto dependencies = readMacBinaryDependencies(path);
-        const std::string &loaderPath = path.parent_path();
+        const std::string &loaderPath = fs::canonical(path).parent_path();
 
         std::vector<std::string> res;
         for (auto dep : std::as_const(dependencies)) {
@@ -228,7 +228,7 @@ namespace Utils {
 
             // Find dependency
             std::string target = dep;
-            if (dep.contains("@rpath")) {
+            if (dep.find("@rpath") != std::string::npos) {
                 for (auto rpath : rpaths) {
                     // Replace again
                     replaceString(rpath, std::string("@executable_path"), loaderPath);
@@ -244,10 +244,9 @@ namespace Utils {
             }
 
             target = cleanPath(target);
-            if (target == path)
-                continue;
-
             if (fs::exists(target)) {
+                if (target == path)
+                    continue;
                 res.push_back(target);
             } else if (unparsed) {
                 unparsed->push_back(target);
@@ -385,7 +384,7 @@ namespace Utils {
         }
 
         output = trim(output);
-        replaceString(output, std::string("$ORIGIN"), fs::path(file).parent_path().string());
+        replaceString(output, std::string("$ORIGIN"), fs::canonical(file).parent_path().string());
         return output;
     }
 
