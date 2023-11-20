@@ -204,26 +204,32 @@ function(qtmediate_unix_deploy _install_dir)
     get_target_property(_tool ${_tool_target} LOCATION)
 
     # Get qmake
-    if(NOT TARGET Qt${QT_VERSION_MAJOR}::qmake)
-        message(FATAL_ERROR "qtmediate_unix_deploy: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
-    endif()
-
-    if(NOT DEFINED QT_QMAKE_EXECUTABLE)
-        get_target_property(QT_QMAKE_EXECUTABLE Qt${QT_VERSION_MAJOR}::qmake IMPORTED_LOCATION)
+    if(FUNC_PLUGINS AND NOT DEFINED QT_QMAKE_EXECUTABLE)
+        if(TARGET Qt${QT_VERSION_MAJOR}::qmake)
+            get_target_property(QT_QMAKE_EXECUTABLE Qt${QT_VERSION_MAJOR}::qmake IMPORTED_LOCATION)
+        elseif(NOT FUNC_EXTRA_PLUGIN_PATHS)
+            message(FATAL_ERROR "qtmediate_unix_deploy: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
+        endif()
     endif()
 
     # Set values
     qtmediate_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/lib")
     qtmediate_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
 
+    get_filename_component(_lib_dir ${_lib_dir} ABSOLUTE BASE_DIR ${_install_dir})
+    get_filename_component(_plugin_dir ${_plugin_dir} ABSOLUTE BASE_DIR ${_install_dir})
+
     # Prepare commands
     set(_args
         -i "${_install_dir}"
         -p "${_plugin_dir}"
         -l "${_lib_dir}"
-        -q "${QT_QMAKE_EXECUTABLE}"
         -m "${_tool}"
     )
+
+    if(QT_QMAKE_EXECUTABLE)
+        list(APPEND _args -q "${QT_QMAKE_EXECUTABLE}")
+    endif()
 
     # Add Qt Plugins
     foreach(_item IN LISTS FUNC_PLUGINS)
@@ -231,7 +237,7 @@ function(qtmediate_unix_deploy _install_dir)
     endforeach()
 
     # Add extra plugin paths
-    foreach(_item IN LIST FUNC_EXTRA_PLUGIN_PATHS)
+    foreach(_item IN_LIST FUNC_EXTRA_PLUGIN_PATHS)
         list(APPEND _args "-P" "${_item}")
     endforeach()
 
