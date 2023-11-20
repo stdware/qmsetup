@@ -7,6 +7,7 @@
 #include <chrono>
 #include <algorithm>
 #include <cctype>
+#include <vector>
 
 namespace Utils {
 
@@ -90,7 +91,9 @@ namespace Utils {
     }
 
     // OS Utils
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path);
+    std::vector<std::string>
+        resolveExecutableDependencies(const std::filesystem::path &path,
+                                      std::vector<std::string> *unparsed = nullptr);
 
 #ifdef _WIN32
     std::string local8bit_to_utf8(const std::string &s);

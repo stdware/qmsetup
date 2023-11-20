@@ -23,15 +23,17 @@ namespace Utils {
     static std::chrono::system_clock::time_point filetime_to_timepoint(const FILETIME &ft) {
         // Windows file time starts from January 1, 1601
         // std::chrono::system_clock starts from January 1, 1970
-        static constexpr const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
+        static constexpr const long long WIN_EPOCH =
+            116444736000000000LL; // in hundreds of nanoseconds
         long long duration = (static_cast<long long>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
-        duration -= WIN_EPOCH;                            // convert to Unix epoch
+        duration -= WIN_EPOCH;    // convert to Unix epoch
         return std::chrono::system_clock::from_time_t(duration / 10000000LL);
     }
 
     static FILETIME timepoint_to_filetime(const std::chrono::system_clock::time_point &tp) {
         FILETIME ft;
-        static constexpr const long long WIN_EPOCH = 116444736000000000LL; // in hundreds of nanoseconds
+        static constexpr const long long WIN_EPOCH =
+            116444736000000000LL; // in hundreds of nanoseconds
         long long duration =
             std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch()).count();
         duration = duration * 10 + WIN_EPOCH;
@@ -234,8 +236,7 @@ namespace Utils {
 
     template <class ImageNtHeader>
     static void determineDependentLibs(const ImageNtHeader *nth, const void *fileMemory,
-                                       bool isMinGW,
-                                       std::vector<std::string> *dependentLibrariesIn,
+                                       bool isMinGW, std::vector<std::string> *dependentLibrariesIn,
                                        std::wstring *errorMessage) {
         std::vector<std::string> dependentLibraries;
         if (dependentLibrariesIn)
@@ -296,13 +297,11 @@ namespace Utils {
             if (wordSizeIn)
                 *wordSizeIn = wordSize;
             if (wordSize == 32) {
-                determineDependentLibs(
-                    reinterpret_cast<const IMAGE_NT_HEADERS32 *>(ntHeaders), fileMemory, isMinGW,
-                    dependentLibrariesIn, errorMessage);
+                determineDependentLibs(reinterpret_cast<const IMAGE_NT_HEADERS32 *>(ntHeaders),
+                                       fileMemory, isMinGW, dependentLibrariesIn, errorMessage);
             } else {
-                determineDependentLibs(
-                    reinterpret_cast<const IMAGE_NT_HEADERS64 *>(ntHeaders), fileMemory, isMinGW,
-                    dependentLibrariesIn, errorMessage);
+                determineDependentLibs(reinterpret_cast<const IMAGE_NT_HEADERS64 *>(ntHeaders),
+                                       fileMemory, isMinGW, dependentLibrariesIn, errorMessage);
             }
 
             if (machineArchIn)
@@ -323,14 +322,17 @@ namespace Utils {
         return result;
     }
 
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
+    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path,
+                                                           std::vector<std::string> *unparsed) {
+        (void) unparsed;
+        
         std::wstring errorMessage;
         std::vector<std::string> dependentLibrariesIn;
         unsigned wordSizeIn;
         bool isMinGW = false;
         unsigned short machineArchIn;
-        if (!readPeExecutable(path, &errorMessage, &dependentLibrariesIn, &wordSizeIn,
-                              isMinGW, &machineArchIn)) {
+        if (!readPeExecutable(path, &errorMessage, &dependentLibrariesIn, &wordSizeIn, isMinGW,
+                              &machineArchIn)) {
             throw std::runtime_error(SCL::wideToUtf8(errorMessage));
         }
         return dependentLibrariesIn;

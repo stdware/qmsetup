@@ -561,8 +561,12 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 
 static int cmd_deploy(const SCL::ParseResult &result) {
     bool verbose = result.optionIsSet("-V");
+    bool dryrun = result.optionIsSet("-d");
     bool force = result.optionIsSet("-f");
     bool standard = result.optionIsSet("-s");
+
+    if (dryrun)
+        verbose = true;
 
     fs::path dest = fs::current_path(); // Default to current path
     if (result.optionIsSet("-o")) {
@@ -690,12 +694,19 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 if (verbose) {
                     u8printf("Resolve %s\n", tstr2str(path).data());
                 }
-                const auto &deps = Utils::resolveExecutableDependencies(fromFramework(path));
+                std::vector<std::string> unparsed;
+                const auto &deps =
+                    Utils::resolveExecutableDependencies(fromFramework(path), &unparsed);
                 for (const auto &item : std::as_const(deps)) {
                     if (verbose) {
-                        u8printf("    %s\n", Utils::cleanPath(item).string().data());
+                        u8printf("    %s\n", item.data());
                     }
-                    libs.insert(Utils::cleanPath(item).string());
+                    libs.insert(item);
+                }
+                if (verbose) {
+                    for (const auto &item : std::as_const(unparsed)) {
+                        u8printf("    %s\n [Unknown]", item.data());
+                    }
                 }
             }
             return {libs.begin(), libs.end()};
@@ -815,6 +826,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 
     // Deploy
+    if (dryrun) {
+        return 0;
+    }
 
 #ifdef _WIN32
     // Windows
@@ -1135,6 +1149,7 @@ int main(int argc, char *argv[]) {
 #endif
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
+            SCL::Option({"-d", "--dryrun"}, "Print dependencies only"),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
         command.addOption(verbose);

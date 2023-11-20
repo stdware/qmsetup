@@ -214,7 +214,8 @@ namespace Utils {
         return dependencies;
     }
 
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
+    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &,
+                                                           std::vector<std::string> *unparsed) {
         auto rpaths = readMacBinaryRPaths(path);
         auto dependencies = readMacBinaryDependencies(path);
         const std::string &loaderPath = path.parent_path();
@@ -226,17 +227,30 @@ namespace Utils {
             replaceString(dep, std::string("@loader_path"), loaderPath);
 
             // Find dependency
-            for (auto rpath : rpaths) {
-                // Replace again
-                replaceString(rpath, std::string("@executable_path"), loaderPath);
-                replaceString(rpath, std::string("@loader_path"), loaderPath);
+            std::string target = dep;
+            if (dep.contains("@rpath")) {
+                for (auto rpath : rpaths) {
+                    // Replace again
+                    replaceString(rpath, std::string("@executable_path"), loaderPath);
+                    replaceString(rpath, std::string("@loader_path"), loaderPath);
 
-                std::string fullPath = dep;
-                replaceString(fullPath, std::string("@rpath"), rpath);
-                if (fs::exists(fullPath) && fullPath != path) {
-                    res.push_back(fullPath);
-                    break;
+                    std::string fullPath = dep;
+                    replaceString(fullPath, std::string("@rpath"), rpath);
+                    if (fs::exists(fullPath)) {
+                        target = fullPath;
+                        break;
+                    }
                 }
+            }
+
+            target = cleanPath(target);
+            if (target == path)
+                continue;
+
+            if (fs::exists(target)) {
+                res.push_back(target);
+            } else if (unparsed) {
+                unparsed->push_back(target);
             }
         }
 
@@ -291,7 +305,8 @@ namespace Utils {
     // Linux
     // Use `ldd` and `patchelf`
 
-    static std::vector<std::string> readLddOutput(const std::string &fileName) {
+    static std::vector<std::string> readLddOutput(const std::string &fileName,
+                                                  std::vector<std::string> *unparsed) {
         std::string output;
 
         try {
@@ -304,20 +319,24 @@ namespace Utils {
         std::string line;
 
         static const std::regex regexp("^\\s*.+ => (.+) \\(.*");
+        static const std::regex regexp2("^\\s*(.+) \\(.*");
 
         std::vector<std::string> dependencies;
         while (std::getline(iss, line)) {
             std::smatch match;
             if (std::regex_match(line, match, regexp) && match.size() >= 2) {
                 dependencies.push_back(match[1].str());
+            } else if (std::regex_match(line, match, regexp2) && match.size() >= 2 && unparsed) {
+                unparsed->push_back(match[1].str());
             }
         }
 
         return dependencies;
     }
 
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path) {
-        return readLddOutput(path);
+    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path,
+                                                           std::vector<std::string> *unparsed) {
+        return readLddOutput(path, unparsed);
     }
 
     void setFileRPaths(const std::string &file, const std::vector<std::string> &paths) {
