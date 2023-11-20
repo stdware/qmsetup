@@ -6,6 +6,7 @@
 #include <set>
 #include <stdexcept>
 #include <iomanip>
+#include <map>
 
 #include <syscmdline/parser.h>
 #include <syscmdline/system.h>
@@ -227,13 +228,18 @@ static inline fs::path toFramework(const fs::path &path) {
 };
 
 static inline fs::path fromFramework(const fs::path &path) {
-    return
 #ifdef __APPLE__
-        framework2lib(path, path)
+    auto res = framework2lib(path);
+    if (res.empty()) {
+        res = framework2lib_debug(path);
+        if (res.empty()) {
+            res = path;
+        }
+    }
+    return res;
 #else
-        path
+    return path;
 #endif
-            ;
 };
 
 // ---------------------------------------- Commands ----------------------------------------
@@ -555,9 +561,6 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     bool verbose = result.optionIsSet("-V");
     bool force = result.optionIsSet("-f");
     bool standard = result.optionIsSet("-s");
-#ifdef __APPLE__
-    bool debug = result.optionIsSet("-d");
-#endif
 
     fs::path dest = fs::current_path(); // Default to current path
     if (result.optionIsSet("-o")) {
@@ -633,6 +636,14 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
     // Deploy
     std::vector<fs::path> dependencies;
+#ifdef __APPLE__
+    enum FrameworkType {
+        NoFramework = 0,
+        Release = 1,
+        Debug = 2,
+    };
+    std::map<std::string, int> depFrameworkTypes;
+#endif
     {
         std::set<fs::path> allOrgFileNames;
         for (const auto &item : std::as_const(orgFiles)) {
@@ -734,6 +745,18 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 if (allOrgFileNames.contains(path.filename()))
                     continue;
 
+#ifdef __APPLE__
+                // Mark framework type
+                if (fs::is_directory(path)) {
+                    std::string name = fs::path(lib).filename();
+                    if (name.ends_with("_debug")) {
+                        depFrameworkTypes[path.stem()] |= Debug;
+                    } else {
+                        depFrameworkTypes[path.stem()] |= Release;
+                    }
+                }
+#endif
+
                 bool skip = false;
                 for (const auto &pattern : std::as_const(excludes)) {
                     const TString &pathString = path;
@@ -785,11 +808,12 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #  if defined(__APPLE__)
     // Ignore Header files and unused library
     const auto &frameworkIgnore = [](const fs::path &path, const fs::path &frameworkName,
-                                     bool debug) -> bool {
-        if (debug) {
+                                     int type) -> bool {
+        if (!(type & Release)) {
             if (path.filename() == frameworkName)
                 return true;
-        } else {
+        }
+        if (!(type & Debug)) {
             if (path.filename() == frameworkName.string() + "_debug")
                 return true;
         }
@@ -815,9 +839,11 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         if (fs::is_directory(file)) {
             const auto &name = file.stem();
             targetPath = pair.second / file.filename();
-            copyDirectory(
-                file, file, targetPath, force, verbose,
-                [&](const fs::path &path) -> bool { return frameworkIgnore(path, name, debug); });
+
+            copyDirectory(file, file, targetPath, force, verbose,
+                          [&](const fs::path &path) -> bool {
+                              return frameworkIgnore(path, name, Debug | Release); //
+                          });
         } else {
             targetPath = copyCanonical(file, pair.second, force, verbose);
         }
@@ -831,9 +857,15 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         if (fs::is_directory(file)) {
             const auto &name = file.stem();
             targetPath = dest / file.filename();
-            copyDirectory(
-                file, file, targetPath, force, verbose,
-                [&](const fs::path &path) -> bool { return frameworkIgnore(path, name, debug); });
+
+            int type = Debug | Release;
+            if (auto it = depFrameworkTypes.find(name); it != depFrameworkTypes.end()) {
+                type = it->second;
+            }
+            copyDirectory(file, file, targetPath, force, verbose,
+                          [&](const fs::path &path) -> bool {
+                              return frameworkIgnore(path, name, type); //
+                          });
         } else {
             targetPath = copyCanonical(file, dest, force, verbose);
         }
@@ -1052,8 +1084,6 @@ int main(int argc, char *argv[]) {
                 .arg("dir")
                 .multi()
                 .short_match(SCL::Option::ShortMatchSingleChar),
-#elif defined(__APPLE__)
-            SCL::Option({"-d", "--debug"}, "Deploy debug frameworks"),
 #endif
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
