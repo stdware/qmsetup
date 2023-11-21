@@ -126,20 +126,25 @@ endfunction()
 
     qtmediate_deploy_directory(_install_dir
         [FORCE] [STANDARD] [VERBOSE]
-        [PLUGIN_DIR <dir>]
         [LIBRARY_DIR <dir>]
         [EXTRA_PLUGIN_PATHS <path>...]
+        
         [PLUGINS <plugin>...]
-        [COMMENT <comment]
+        [PLUGIN_DIR <dir>]
+
+        [QML <qml>...]
+        [QML_DIR <dir>]
 
         [WIN_TARGETS <target>...]
         [WIN_SEARCHING_PATHS <path>...]
+
+        [COMMENT <comment]
     )
 ]] #
 function(qtmediate_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
-    set(oneValueArgs LIBRARY_DIR PLUGIN_DIR COMMENT)
-    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS WIN_TARGETS WIN_SEARCHING_PATHS)
+    set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
+    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS WIN_SEARCHING_PATHS)
 
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -153,10 +158,10 @@ function(qtmediate_deploy_directory _install_dir)
     get_target_property(_tool ${_tool_target} LOCATION)
 
     # Get qmake
-    if(FUNC_PLUGINS AND NOT DEFINED QT_QMAKE_EXECUTABLE)
+    if((FUNC_PLUGINS OR FUNC_QML) AND NOT DEFINED QT_QMAKE_EXECUTABLE)
         if(TARGET Qt${QT_VERSION_MAJOR}::qmake)
             get_target_property(QT_QMAKE_EXECUTABLE Qt${QT_VERSION_MAJOR}::qmake IMPORTED_LOCATION)
-        elseif(NOT FUNC_EXTRA_PLUGIN_PATHS)
+        elseif((FUNC_PLUGINS AND NOT FUNC_EXTRA_PLUGIN_PATHS) OR FUNC_QML)
             message(FATAL_ERROR "qtmediate_deploy_directory: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
         endif()
     endif()
@@ -250,6 +255,34 @@ function(qtmediate_deploy_directory _install_dir)
             COMMAND_ERROR_IS_FATAL ANY
         )
     ")
+
+    # Add install qml command
+    if(FUNC_QML)
+        qtmediate_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
+        execute_process(
+            COMMAND ${QT_QMAKE_EXECUTABLE} -query QT_INSTALL_QML
+            OUTPUT_VARIABLE _qml_path
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            COMMAND_ERROR_IS_FATAL ANY
+        )
+
+        foreach(_item ${FUNC_QML})
+            set(_src ${_qml_path}/${_item})
+
+            if(IS_DIRECTORY ${_src})
+                install(DIRECTORY ${_src}/
+                    DESTINATION ${_qml_dir}/${_item}
+                )
+            elseif(EXISTS ${_src})
+                get_filename_component(_dest_dir ${_qml_dir}/${_item} DIRECTORY)
+                install(FILES ${_src}
+                    DESTINATION ${_dest_dir}
+                )
+            else()
+                message(FATAL_ERROR "qtmediate_deploy_directory: qml module ${_item} not found in \"${_src}\".")
+            endif()
+        endforeach()
+    endif()
 endfunction()
 
 function(_qtmeidate_win_get_all_record_files _out)
