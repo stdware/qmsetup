@@ -253,9 +253,33 @@ static inline fs::path fromFramework(const fs::path &path) {
 static int cmd_cpdir(const SCL::ParseResult &result) {
     bool force = result.optionIsSet("-f");
     bool verbose = result.optionIsSet("-V");
+
     const auto &src = fs::absolute(str2tstr(result.value(0).toString()));
     const auto &dest = fs::absolute(str2tstr(result.value(1).toString()));
-    copyDirectory(src, src, dest, force, verbose);
+
+    // Add excludes
+    TStringList excludes;
+    {
+        const auto &excludeResult = result.option("-e").allValues();
+        excludes.reserve(excludeResult.size());
+        for (const auto &item : excludeResult) {
+            excludes.emplace_back(str2tstr(item.toString()));
+        }
+    }
+
+    // Copy
+    copyDirectory(src, src, dest, force, verbose, [&excludes](const fs::path &path) {
+        bool skip = false;
+        for (const auto &pattern : excludes) {
+            const TString &pathString = path;
+            if (std::regex_search(pathString.begin(), pathString.end(),
+                                  std::basic_regex<TChar>(pattern))) {
+                skip = true;
+                break;
+            }
+        }
+        return skip;
+    });
     return 0;
 }
 
@@ -1071,7 +1095,10 @@ int main(int argc, char *argv[]) {
             SCL::Argument("src", "Source directory"),
             SCL::Argument("dest", "Destination directory"),
         });
-        command.addOption(SCL::Option({"-f", "--force"}, "Force overwrite existing files"));
+        command.addOptions({
+            SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+            SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
+        });
         command.addOptions({verbose});
         command.setHandler(cmd_cpdir);
         return command;

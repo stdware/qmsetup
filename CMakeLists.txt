@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(qtmediateCM VERSION 0.0.1.4)
+project(qtmediateCM VERSION 0.0.1.5)
 
 # ----------------------------------
 # Configure Options
