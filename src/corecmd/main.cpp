@@ -118,6 +118,7 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const std::stri
     if (!symlinkContent.empty()) {
         if (verbose) {
             u8printf("Link %s\n", tstr2str(target).data());
+            u8printf("   %s\n", tstr2str(symlinkContent).data());
         }
 
         if (fs::exists(target))
@@ -157,7 +158,7 @@ static void copyDirectory(const fs::path &srcRootDir, const fs::path &srcDir,
             // Copy if symlink points inside the source directory
             copyFile(entryPath, destDir,
                      linkPath.string().starts_with(srcRootDir.string())
-                         ? fs::relative(linkPath, fs::canonical(entryPath).parent_path()).string()
+                         ? fs::relative(linkPath, fs::canonical(entryPath.parent_path())).string()
                          : std::string(),
                      force, verbose);
         } else if (fs::is_regular_file(entryPath)) {
