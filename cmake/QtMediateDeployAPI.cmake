@@ -183,29 +183,29 @@ function(qtmediate_deploy_directory _install_dir)
     # Prepare commands
     set(_args
         -i "${_install_dir}"
-        -p "${_plugin_dir}"
-        -l "${_lib_dir}"
-        -o "${_qml_dir}"
         -m "${_tool}"
+        --plugindir "${_plugin_dir}"
+        --libdir "${_lib_dir}"
+        --qmldir "${_qml_dir}"
     )
 
     if(QT_QMAKE_EXECUTABLE)
-        list(APPEND _args -q "${QT_QMAKE_EXECUTABLE}")
+        list(APPEND _args --qmake "${QT_QMAKE_EXECUTABLE}")
     endif()
 
     # Add Qt plugins
     foreach(_item IN LISTS FUNC_PLUGINS)
-        list(APPEND _args "-t" "${_item}")
+        list(APPEND _args --plugin "${_item}")
     endforeach()
 
     # Add QML modules
     foreach(_item IN LISTS FUNC_QML)
-        list(APPEND _args "-Q" "${_item}")
+        list(APPEND _args --qml "${_item}")
     endforeach()
 
     # Add extra plugin paths
     foreach(_item IN LISTS FUNC_EXTRA_PLUGIN_PATHS)
-        list(APPEND _args "-P" "${_item}")
+        list(APPEND _args --extra "${_item}")
     endforeach()
 
     if(WIN32)

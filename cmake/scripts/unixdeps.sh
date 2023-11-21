@@ -2,23 +2,25 @@
 
 # 显示用法信息
 usage() {
-    echo "Usage: $(basename $0) -i <input_dir> -p <plugin_dir> -l <lib_dir> -m <qmcorecmd_path> -o <qml_output_dir>"
-    echo "                     [-q <qmake_path>] [-P <extra_path>]... [-Q <qml_rel_path>]..."
-    echo "                     [-t <plugin>]... [-c <src> <dest>]... [-f] [-s] [-V] [-h]"
-    echo "  -i <input_dir>       Directory containing binaries and libraries"
-    echo "  -p <plugin_dir>      Output directory for plugins"
-    echo "  -l <lib_dir>         Output directory for libraries"
-    echo "  -o <qml_output_dir>  Output directory for QML files"
-    echo "  -q <qmake_path>      Path to qmake (optional)"
-    echo "  -P <extra_path>      Extra plugin search path. Can be repeated."
-    echo "  -Q <qml_rel_path>    Relative path to QML directory. Can be repeated."
-    echo "  -m <qmcorecmd_path>  Path to qmcorecmd"
-    echo "  -t <plugin>          Specify a Qt plugin to deploy. Can be repeated for multiple plugins."
-    echo "  -c <src> <dest>      Specify additional binary file to copy and its destination directory. Can be repeated."
-    echo "  -f                   Force overwrite existing files"
-    echo "  -s                   Ignore C/C++ runtime and system libraries"
-    echo "  -V                   Show verbose output"
-    echo "  -h                   Show this help message"
+    echo "Usage: $(basename $0) -i <dir> -m <path>"
+    echo "                   --plugindir <plugin_dir> --libdir <lib_dir> --qmldir <qml_dir>"
+    echo "                  [--qmake <qmake_path>] [--extra <extra_path>]..."
+    echo "                  [--qml <qml_module>]... [--plugin <plugin>]... [--copy <src> <dest>]..."
+    echo "                  [-f] [-s] [-V] [-h]"
+    echo "  -i <input_dir>              Directory containing binaries and libraries"
+    echo "  -m <qmcorecmd_path>         Path to qmcorecmd"
+    echo "  --plugindir <plugin_dir>    Output directory for plugins"
+    echo "  --libdir <lib_dir>          Output directory for libraries"
+    echo "  --qmldir <qml_dir>          Output directory for QML files"
+    echo "  --qmake <qmake_path>        Path to qmake (optional)"
+    echo "  --extra <extra_path>        Extra plugin searching path (repeatable)"
+    echo "  --qml <qml_module>          Relative path to QML directory (repeatable)"
+    echo "  --plugin <plugin>           Specify a Qt plugin to deploy (repeatable)"
+    echo "  --copy <src> <dest>         Specify additional binary file to copy and its destination directory (repeatable)"
+    echo "  -f                          Force overwrite existing files"
+    echo "  -s                          Ignore C/C++ runtime and system libraries"
+    echo "  -V                          Show verbose output"
+    echo "  -h                          Show this help message"
 }
 
 # 初始化参数
@@ -32,18 +34,18 @@ FILES=""
 # 解析命令行参数
 while (( "$#" )); do
     case "$1" in
-        -i) INPUT_DIR="$2"; shift 2;;
-        -p) PLUGIN_DIR="$2"; shift 2;;
-        -l) LIB_DIR="$2"; shift 2;;
-        -o) QML_DIR="$2"; shift 2;;
-        -q) QMAKE_PATH="$2"; shift 2;;
-        -P) EXTRA_PLUGIN_PATHS+=("$2"); shift 2;;
-        -Q) QML_REL_PATHS+=("$2"); shift 2;;
-        -m) QMCORECMD_PATH="$2"; shift 2;;
-        -t) PLUGINS+=("$2"); shift 2;;
-        -f|-s) ARGS+=("$1"); shift;;
-        -V) VERBOSE="-V"; shift;;
-        -c) ARGS+=("-c \"$2\" \"$3\""); shift 3;;
+        -i)            INPUT_DIR="$2"; shift 2;;
+        -m)            QMCORECMD_PATH="$2"; shift 2;;
+        --plugindir)   PLUGIN_DIR="$2"; shift 2;;
+        --libdir)      LIB_DIR="$2"; shift 2;;
+        --qmldir)      QML_DIR="$2"; shift 2;;
+        --qmake)       QMAKE_PATH="$2"; shift 2;;
+        --extra)       EXTRA_PLUGIN_PATHS+=("$2"); shift 2;;
+        --plugin)      PLUGINS+=("$2"); shift 2;;
+        --qml)         QML_REL_PATHS+=("$2"); shift 2;;
+        --copy)        ARGS+=("-c \"$2\" \"$3\""); shift 3;;
+        -f|-s)         ARGS+=("$1"); shift;;
+        -V)            VERBOSE="-V"; shift;;
         -h) usage; exit 0;;
         *) echo "Error: Unsupported argument $1"; usage; exit 1;;
     esac
