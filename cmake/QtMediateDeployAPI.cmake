@@ -98,59 +98,14 @@ function(qtmediate_win_applocal_deps _target)
         message(FATAL_ERROR "qtmediate_win_applocal_deps: cannot determine output directory.")
     endif()
 
-    # Get searching paths
-    macro(get_recursive_dynamic_dependencies _current_target _result)
-        get_target_property(_deps ${_current_target} LINK_LIBRARIES)
-
-        if(_deps)
-            foreach(_dep ${_deps})
-                get_target_property(_type ${_dep} TYPE)
-
-                if(${_type} STREQUAL "SHARED_LIBRARY")
-                    list(APPEND ${_result} ${_dep})
-                endif()
-
-                get_recursive_dynamic_dependencies(${_dep} ${_result})
-            endforeach()
-        endif()
-    endmacro()
-
+    # Get record files
     set(_path_files)
-    set(_visited_targets)
-
-    if(TRUE)
-        set(_all_deps ${_target})
-        get_recursive_dynamic_dependencies(${_target} _all_deps)
-
-        foreach(_cur_dep ${_all_deps})
-            if(${_cur_dep} IN_LIST _visited_targets)
-                continue()
-            endif()
-
-            list(APPEND _visited_targets ${_cur_dep})
-
-            # Add file
-            get_target_property(_file ${_cur_dep} DEPENDENCIES_RECORD_FILE)
-
-            if(NOT _file)
-                continue()
-            endif()
-
-            list(APPEND _path_files ${_file})
-        endforeach()
-    endif()
-
-    # Add extra searching paths
-    set(_paths)
-
-    if(FUNC_EXTRA_SEARCHING_PATHS)
-        list(APPEND _paths ${FUNC_EXTRA_SEARCHING_PATHS})
-    endif()
+    _qtmeidate_win_get_all_record_files(_path_files ${_target})
 
     # Prepare command
     set(_args)
 
-    foreach(_item ${_paths})
+    foreach(_item ${FUNC_EXTRA_SEARCHING_PATHS})
         list(APPEND _args "-L${_item}")
     endforeach()
 
@@ -169,23 +124,22 @@ endfunction()
 #[[
     Add deploy command when install project.
 
-    qtmediate_unix_deploy(_install_dir
+    qtmediate_deploy_directory(_install_dir
         [FORCE] [STANDARD] [VERBOSE]
         [PLUGIN_DIR <dir>]
         [LIBRARY_DIR <dir>]
         [EXTRA_PLUGIN_PATHS <path>...]
         [PLUGINS <plugin>...]
         [COMMENT <comment]
+
+        [WIN_TARGETS <target>...]
+        [WIN_SEARCHING_PATHS <path>...]
     )
 ]] #
-function(qtmediate_unix_deploy _install_dir)
-    if(WIN32)
-        return()
-    endif()
-
+function(qtmediate_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR COMMENT)
-    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS)
+    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS WIN_TARGETS WIN_SEARCHING_PATHS)
 
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -193,7 +147,7 @@ function(qtmediate_unix_deploy _install_dir)
     set(_tool_target qtmediateCM::corecmd)
 
     if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_unix_deploy: tool \"corecmd\" not found.")
+        message(FATAL_ERROR "qtmediate_deploy_directory: tool \"corecmd\" not found.")
     endif()
 
     get_target_property(_tool ${_tool_target} LOCATION)
@@ -203,12 +157,18 @@ function(qtmediate_unix_deploy _install_dir)
         if(TARGET Qt${QT_VERSION_MAJOR}::qmake)
             get_target_property(QT_QMAKE_EXECUTABLE Qt${QT_VERSION_MAJOR}::qmake IMPORTED_LOCATION)
         elseif(NOT FUNC_EXTRA_PLUGIN_PATHS)
-            message(FATAL_ERROR "qtmediate_unix_deploy: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
+            message(FATAL_ERROR "qtmediate_deploy_directory: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
         endif()
     endif()
 
+    if(WIN32)
+        set(_default_lib_dir bin)
+    else()
+        set(_default_lib_dir lib)
+    endif()
+
     # Set values
-    qtmediate_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/lib")
+    qtmediate_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${_default_lib_dir}")
     qtmediate_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
 
     get_filename_component(_lib_dir ${_lib_dir} ABSOLUTE BASE_DIR ${_install_dir})
@@ -235,6 +195,26 @@ function(qtmediate_unix_deploy _install_dir)
     foreach(_item IN LISTS FUNC_EXTRA_PLUGIN_PATHS)
         list(APPEND _args "-P" "${_item}")
     endforeach()
+
+    if(WIN32)
+        set(_path_files)
+
+        if(FUNC_WIN_TARGETS)
+            _qtmeidate_win_get_all_record_files(_path_files ${FUNC_WIN_TARGETS})
+        endif()
+
+        foreach(_item ${FUNC_WIN_SEARCHING_PATHS})
+            list(APPEND _args -L "${_item}")
+        endforeach()
+
+        foreach(_item ${_path_files})
+            list(APPEND _args -@ "${_item}")
+        endforeach()
+
+        set(_script_quoted "cmd /c \"${QTMEDIATE_MODULES_DIR}/scripts/windeps.bat\"")
+    else()
+        set(_script_quoted "bash \"${QTMEDIATE_MODULES_DIR}/scripts/unixdeps.sh\"")
+    endif()
 
     # Add options
     if(FUNC_FORCE)
@@ -265,9 +245,58 @@ function(qtmediate_unix_deploy _install_dir)
     install(CODE "
         ${_comment_code}
         execute_process(
-            COMMAND bash \"${QTMEDIATE_MODULES_DIR}/scripts/unixdeps.sh\" ${_args_quoted}
+            COMMAND ${_script_quoted} ${_args_quoted}
             WORKING_DIRECTORY \"${_install_dir}\"
             COMMAND_ERROR_IS_FATAL ANY
         )
     ")
+endfunction()
+
+function(_qtmeidate_win_get_all_record_files _out)
+    # Get searching paths
+    macro(get_recursive_dynamic_dependencies _current_target _result)
+        get_target_property(_deps ${_current_target} LINK_LIBRARIES)
+
+        if(_deps)
+            foreach(_dep ${_deps})
+                get_target_property(_type ${_dep} TYPE)
+
+                if(${_type} STREQUAL "SHARED_LIBRARY")
+                    list(APPEND ${_result} ${_dep})
+                endif()
+
+                get_recursive_dynamic_dependencies(${_dep} ${_result})
+            endforeach()
+        endif()
+    endmacro()
+
+    set(_visited_targets ${ARGN})
+
+    foreach(_target ${ARGN})
+        set(_all_deps)
+        get_recursive_dynamic_dependencies(${_target} _all_deps)
+
+        foreach(_cur_dep ${_all_deps})
+            if(${_cur_dep} IN_LIST _visited_targets)
+                continue()
+            endif()
+
+            list(APPEND _visited_targets ${_cur_dep})
+        endforeach()
+    endforeach()
+
+    set(_path_files)
+
+    foreach(_target ${_visited_targets})
+        # Add file
+        get_target_property(_file ${_target} DEPENDENCIES_RECORD_FILE)
+
+        if(NOT _file)
+            continue()
+        endif()
+
+        list(APPEND _path_files ${_file})
+    endforeach()
+
+    set(${_out} ${_path_files} PARENT_SCOPE)
 endfunction()
