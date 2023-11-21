@@ -175,6 +175,7 @@ function(qtmediate_deploy_directory _install_dir)
     # Set values
     qtmediate_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${_default_lib_dir}")
     qtmediate_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
+    qtmediate_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
 
     get_filename_component(_lib_dir ${_lib_dir} ABSOLUTE BASE_DIR ${_install_dir})
     get_filename_component(_plugin_dir ${_plugin_dir} ABSOLUTE BASE_DIR ${_install_dir})
@@ -184,6 +185,7 @@ function(qtmediate_deploy_directory _install_dir)
         -i "${_install_dir}"
         -p "${_plugin_dir}"
         -l "${_lib_dir}"
+        -o "${_qml_dir}"
         -m "${_tool}"
     )
 
@@ -191,9 +193,14 @@ function(qtmediate_deploy_directory _install_dir)
         list(APPEND _args -q "${QT_QMAKE_EXECUTABLE}")
     endif()
 
-    # Add Qt Plugins
+    # Add Qt plugins
     foreach(_item IN LISTS FUNC_PLUGINS)
         list(APPEND _args "-t" "${_item}")
+    endforeach()
+
+    # Add QML modules
+    foreach(_item IN LISTS FUNC_QML)
+        list(APPEND _args "-Q" "${_item}")
     endforeach()
 
     # Add extra plugin paths
@@ -255,34 +262,6 @@ function(qtmediate_deploy_directory _install_dir)
             COMMAND_ERROR_IS_FATAL ANY
         )
     ")
-
-    # Add install qml command
-    if(FUNC_QML)
-        qtmediate_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
-        execute_process(
-            COMMAND ${QT_QMAKE_EXECUTABLE} -query QT_INSTALL_QML
-            OUTPUT_VARIABLE _qml_path
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            COMMAND_ERROR_IS_FATAL ANY
-        )
-
-        foreach(_item ${FUNC_QML})
-            set(_src ${_qml_path}/${_item})
-
-            if(IS_DIRECTORY ${_src})
-                install(DIRECTORY ${_src}/
-                    DESTINATION ${_qml_dir}/${_item}
-                )
-            elseif(EXISTS ${_src})
-                get_filename_component(_dest_dir ${_qml_dir}/${_item} DIRECTORY)
-                install(FILES ${_src}
-                    DESTINATION ${_dest_dir}
-                )
-            else()
-                message(FATAL_ERROR "qtmediate_deploy_directory: qml module ${_item} not found in \"${_src}\".")
-            endif()
-        endforeach()
-    endif()
 endfunction()
 
 function(_qtmeidate_win_get_all_record_files _out)
