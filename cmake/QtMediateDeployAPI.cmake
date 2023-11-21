@@ -50,7 +50,7 @@ endfunction()
     Automatically copy dependencies for Windows Executables after build.
 
     qtmediate_win_applocal_deps(_target
-        [TARGETS <targets...>]
+        [DEPLOY_TARGET <target>]
         [EXTRA_SEARCHING_PATHS <paths...>]
         [OUTPUT_DIR <dir>]
     )
@@ -61,8 +61,8 @@ function(qtmediate_win_applocal_deps _target)
     endif()
 
     set(options)
-    set(oneValueArgs TARGET OUTPUT_DIR)
-    set(multiValueArgs TARGETS EXTRA_SEARCHING_PATHS)
+    set(oneValueArgs TARGET DEPLOY_TARGET OUTPUT_DIR)
+    set(multiValueArgs EXTRA_SEARCHING_PATHS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
@@ -74,31 +74,28 @@ function(qtmediate_win_applocal_deps _target)
 
     get_target_property(_tool ${_tool_target} LOCATION)
 
-    # Get output directory and targets
+    # Get output directory and deploy target
     set(_out_dir)
-    set(_targets)
+    set(_deploy_target)
 
-    if(NOT TARGET ${_target})
-        add_custom_target(${_target})
+    if(FUNC_DEPLOY_TARGET)
+        set(_deploy_target ${FUNC_DEPLOY_TARGET})
+
+        if(NOT TARGET ${_deploy_target})
+            add_custom_target(${_deploy_target})
+        endif()
     else()
-        list(APPEND _targets ${_target})
-        set(_out_dir "$<TARGET_FILE_DIR:${_target}>")
+        set(_deploy_target ${_target})
     endif()
 
     if(FUNC_OUTPUT_DIR)
         set(_out_dir ${FUNC_OUTPUT_DIR})
+    else()
+        set(_out_dir "$<TARGET_FILE_DIR:${_target}>")
     endif()
 
     if(NOT _out_dir)
         message(FATAL_ERROR "qtmediate_win_applocal_deps: cannot determine output directory.")
-    endif()
-
-    if(FUNC_TARGETS)
-        list(APPEND _targets ${FUNC_TARGETS})
-    endif()
-
-    if(NOT _targets)
-        message(FATAL_ERROR "qtmediate_win_applocal_deps: no targets to deploy.")
     endif()
 
     # Get searching paths
@@ -121,12 +118,11 @@ function(qtmediate_win_applocal_deps _target)
     set(_path_files)
     set(_visited_targets)
 
-    foreach(_item ${_targets})
-        set(_all_deps ${_item})
-        get_recursive_dynamic_dependencies(${_item} _all_deps)
+    if(TRUE)
+        set(_all_deps ${_target})
+        get_recursive_dynamic_dependencies(${_target} _all_deps)
 
         foreach(_cur_dep ${_all_deps})
-            # Remove duplications
             if(${_cur_dep} IN_LIST _visited_targets)
                 continue()
             endif()
@@ -142,7 +138,7 @@ function(qtmediate_win_applocal_deps _target)
 
             list(APPEND _path_files ${_file})
         endforeach()
-    endforeach()
+    endif()
 
     # Add extra searching paths
     set(_paths)
@@ -162,11 +158,9 @@ function(qtmediate_win_applocal_deps _target)
         list(APPEND _args "-@${_item}")
     endforeach()
 
-    foreach(_item ${_targets})
-        list(APPEND _args "$<TARGET_FILE:${_item}>")
-    endforeach()
+    list(APPEND _args "$<TARGET_FILE:${_target}>")
 
-    add_custom_command(TARGET ${_target} POST_BUILD
+    add_custom_command(TARGET ${_deploy_target} POST_BUILD
         COMMAND ${_tool} deploy ${_args}
         WORKING_DIRECTORY ${_out_dir}
     )
@@ -238,7 +232,7 @@ function(qtmediate_unix_deploy _install_dir)
     endforeach()
 
     # Add extra plugin paths
-    foreach(_item IN_LIST FUNC_EXTRA_PLUGIN_PATHS)
+    foreach(_item IN LISTS FUNC_EXTRA_PLUGIN_PATHS)
         list(APPEND _args "-P" "${_item}")
     endforeach()
 

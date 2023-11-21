@@ -1012,50 +1012,50 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 
     // Fix interpreter
-    do {
-        if (standard) {
-            break;
-        }
+    // do {
+    //     if (standard) {
+    //         break;
+    //     }
 
-        fs::path interpreter;
-        for (const auto &file : std::as_const(targetOrgFiles)) {
-            interpreter = Utils::getInterpreter(file);
-            if (!interpreter.empty())
-                break;
-        }
-        if (interpreter.empty()) {
-            for (const auto &dep : std::as_const(targetDependencies)) {
-                interpreter = Utils::getInterpreter(dep);
-                if (!interpreter.empty())
-                    break;
-            }
-        }
-        if (interpreter.empty())
-            break;
+    //     fs::path interpreter;
+    //     for (const auto &file : std::as_const(targetOrgFiles)) {
+    //         interpreter = Utils::getInterpreter(file);
+    //         if (!interpreter.empty())
+    //             break;
+    //     }
+    //     if (interpreter.empty()) {
+    //         for (const auto &dep : std::as_const(targetDependencies)) {
+    //             interpreter = Utils::getInterpreter(dep);
+    //             if (!interpreter.empty())
+    //                 break;
+    //         }
+    //     }
+    //     if (interpreter.empty())
+    //         break;
 
-        // Copy interpreter
-        copyCanonical(interpreter, dest, force, verbose);
+    //     // Copy interpreter
+    //     copyCanonical(interpreter, dest, force, verbose);
 
-        std::string interpreterName = interpreter.filename();
-        interpreter = dest / interpreterName;
+    //     std::string interpreterName = interpreter.filename();
+    //     interpreter = dest / interpreterName;
 
-        if (verbose) {
-            u8printf("Interpreter: %s\n", interpreter.string().data());
-        }
+    //     if (verbose) {
+    //         u8printf("Interpreter: %s\n", interpreter.string().data());
+    //     }
 
-        // Set interpreter for original files
-        for (const auto &file : std::as_const(targetOrgFiles)) {
-            setInterpreter(file,
-                           "$ORIGIN/" + Utils::cleanPath(fs::relative(dest, file.parent_path()) /
-                                                         interpreter.filename())
-                                            .string());
-        }
+    //     // Set interpreter for original files
+    //     for (const auto &file : std::as_const(targetOrgFiles)) {
+    //         setInterpreter(file,
+    //                        "$ORIGIN/" + Utils::cleanPath(fs::relative(dest, file.parent_path()) /
+    //                                                      interpreter.filename())
+    //                                         .string());
+    //     }
 
-        // Set interpreter for dependencies
-        for (const auto &dep : std::as_const(targetDependencies)) {
-            setInterpreter(dep, "$ORIGIN/" + interpreterName);
-        }
-    } while (false);
+    //     // Set interpreter for dependencies
+    //     for (const auto &dep : std::as_const(targetDependencies)) {
+    //         setInterpreter(dep, "$ORIGIN/" + interpreterName);
+    //     }
+    // } while (false);
 #  endif
 #endif
     return 0;
