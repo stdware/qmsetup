@@ -305,6 +305,7 @@ static inline fs::path fromFramework(const fs::path &path) {
 
 static int cmd_cpdir(const SCL::ParseResult &result) {
     bool force = result.optionIsSet("-f");
+    bool contents = result.optionIsSet("-c");
     bool verbose = result.optionIsSet("-V");
 
     const auto &src = fs::absolute(str2tstr(result.value(0).toString()));
@@ -321,9 +322,17 @@ static int cmd_cpdir(const SCL::ParseResult &result) {
     }
 
     // Copy
-    copyDirectory(src, src, dest, force, verbose, [&excludes](const fs::path &path) {
-        return searchInRegexList(TString(path), excludes); //
-    });
+    if (fs::is_directory(src)) {
+        copyDirectory(src, src, contents ? dest : (dest / src.filename()), force, verbose,
+                      [&excludes](const fs::path &path) {
+                          return searchInRegexList(TString(path), excludes);
+                      });
+    } else if (fs::exists(src)) {
+        copyFile(src, dest, {}, force, verbose);
+    } else {
+        throw std::runtime_error("not a file or directory: \"" + tstr2str(src) + "\"");
+    }
+
     return 0;
 }
 
@@ -1106,13 +1115,14 @@ int main(int argc, char *argv[]) {
     static SCL::Option verbose({"-V", "--verbose"}, "Show verbose");
 
     SCL::Command cpdirCommand = []() {
-        SCL::Command command("cpdir", "Copy contents of a directory");
+        SCL::Command command("cpdir", "Copy directory to destination if different");
         command.addArguments({
             SCL::Argument("src", "Source directory"),
             SCL::Argument("dest", "Destination directory"),
         });
         command.addOptions({
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+            SCL::Option({"-c", "--content"}, "Copy contents").arg("regex").multi(),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
         command.addOptions({verbose});

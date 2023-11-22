@@ -3,7 +3,7 @@ include_guard(DIRECTORY)
 #[[
     Record searching paths for Windows Executables.
 
-    qtmediate_win_record_deps(_target)
+    qtmediate_win_record_deps(<target>)
 ]] #
 function(qtmediate_win_record_deps _target)
     set(_paths)
@@ -49,9 +49,10 @@ endfunction()
 #[[
     Automatically copy dependencies for Windows Executables after build.
 
-    qtmediate_win_applocal_deps(_target
+    qtmediate_win_applocal_deps(<target>
         [DEPLOY_TARGET <target>]
-        [EXTRA_SEARCHING_PATHS <paths...>]
+        [EXTRA_SEARCHING_PATHS <path...>]
+        [EXTRA_TARGETS <target...>]
         [OUTPUT_DIR <dir>]
     )
 ]] #
@@ -62,7 +63,7 @@ function(qtmediate_win_applocal_deps _target)
 
     set(options)
     set(oneValueArgs TARGET DEPLOY_TARGET OUTPUT_DIR)
-    set(multiValueArgs EXTRA_SEARCHING_PATHS)
+    set(multiValueArgs EXTRA_SEARCHING_PATHS EXTRA_TARGETS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
@@ -102,6 +103,10 @@ function(qtmediate_win_applocal_deps _target)
     set(_path_files)
     _qtmeidate_win_get_all_record_files(_path_files ${_target})
 
+    foreach(_item ${FUNC_EXTRA_TARGETS})
+        _qtmeidate_win_get_all_record_files(_path_files ${_item})
+    endforeach()
+
     # Prepare command
     set(_args)
 
@@ -124,7 +129,7 @@ endfunction()
 #[[
     Add deploy command when install project.
 
-    qtmediate_deploy_directory(_install_dir
+    qtmediate_deploy_directory(<install_dir>
         [FORCE] [STANDARD] [VERBOSE]
         [LIBRARY_DIR <dir>]
         [EXTRA_PLUGIN_PATHS <path>...]
@@ -145,7 +150,6 @@ function(qtmediate_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
     set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS WIN_SEARCHING_PATHS)
-
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
