@@ -47,6 +47,13 @@ if not defined LIB_DIR echo Error: Missing required argument 'LIB_DIR' & call :u
 if not defined QML_DIR echo Error: Missing required argument 'QML_DIR' & call :usage & exit /b
 if not defined QMCORECMD_PATH echo Error: Missing required argument 'QMCORECMD_PATH' & call :usage & exit /b
 
+:: 标准化
+set "INPUT_DIR=!INPUT_DIR:/=\!"
+set "PLUGIN_DIR=!PLUGIN_DIR:/=\!"
+set "LIB_DIR=!LIB_DIR:/=\!"
+set "QML_DIR=!QML_DIR:/=\!"
+set "QMCORECMD_PATH=!QMCORECMD_PATH:/=\!"
+
 :: 获取 Qt 插件安装路径和 Qt QML 目录
 set "PLUGIN_PATHS="
 set "QML_PATH="
@@ -112,7 +119,7 @@ for %%p in (!PLUGINS!) do (
 
 :: 处理 QML 目录
 for %%q in (%QML_REL_PATHS%) do (
-    call :traverse_qml "%%q"
+    call :search_qml_dir "%%q"
 )
 
 :: 构建并执行 qmcorecmd deploy 命令
@@ -127,7 +134,7 @@ exit /b
 
 
 
-
+:: ----------------------------------------------------------------------------------
 :: 查找插件
 :search_plugin
 for %%d in (!PLUGIN_PATHS!) do (
@@ -139,34 +146,37 @@ for %%d in (!PLUGIN_PATHS!) do (
     )
 )
 exit /b
+:: ----------------------------------------------------------------------------------
 
 
 
 
-:: qml 目录内层循环
-:traverse_qml
+
+:: ----------------------------------------------------------------------------------
+:: 搜索 QML 目录
+:search_qml_dir
 set "full_path=%QML_PATH%\%~1"
 if exist "%full_path%\" (
+    :: 处理目录
     for /r "%full_path%" %%f in (*) do (
-        call :handle_qml_file "%%f" "%QML_DIR%"
+        call :handle_qml_file "%%f"
     )
 ) else if exist "%full_path%" (
     :: 处理单个文件
-    call :handle_qml_file "%full_path%" "%QML_DIR%"
+    call :handle_qml_file "%full_path%"
 )
 exit /b
+:: ----------------------------------------------------------------------------------
 
 
 
 
+
+:: ----------------------------------------------------------------------------------
 :: 复制或添加到部署命令的函数
 :handle_qml_file
 set "file=%~1"
-set "target_dir=%~2"
-
-:: 标准化
 set "file=!file:/=\!"
-set "target_dir=!target_dir:/=\!"
 
 :: 忽略特定文件（示例）
 if "!file:~-4!"==".pdb" exit /b
@@ -178,14 +188,14 @@ if "!file:~-5!" == "d.dll" (
     )
 )
 
-:: 用很智障的方式计算目标文件夹和目标文件
+:: 用很智障的方式计算目标文件和目标文件夹
 set "rel_path=!file:%QML_PATH%\=!"
-set "target=%target_dir%\%rel_path%"
+set "target=%QML_DIR%\%rel_path%"
 for %%I in ("!file!") do (
     set "file_dir=%%~dpI"
 )
 set "rel_dir_path=!file_dir:%QML_PATH%\=!"
-set "target_dir=%target_dir%\%rel_dir_path%"
+set "target_dir=%QML_DIR%\%rel_dir_path%"
 
 :: 判断是否为可执行二进制文件并相应处理
 if "%file:~-4%"==".dll" (
@@ -200,10 +210,13 @@ if "%file:~-4%"==".dll" (
 )
 
 exit /b
+:: ----------------------------------------------------------------------------------
 
 
 
 
+
+:: ----------------------------------------------------------------------------------
 :: 显示简介
 :usage
 echo Usage: %~n0 -i ^<dir^> -m ^<path^>
@@ -213,3 +226,4 @@ echo               [--qml ^<qml_module^>]... [--plugin ^<plugin^>]... [--copy ^<
 echo               [-f] [-s] [-V] [-h]
 echo               [-@ ^<file^>]... [-L ^<path^>]...
 exit /b
+:: ----------------------------------------------------------------------------------

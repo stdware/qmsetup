@@ -80,21 +80,34 @@ if [[ ${#QML_REL_PATHS[@]} -gt 0 && -z "$QML_PATH" ]]; then
     exit 1
 fi
 
-# 根据操作系统决定搜索的文件类型
-if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]]; then
-    # Windows 环境，只搜索 .dll 和 .exe 文件
-    while IFS= read -r -d $'\0' file; do
-        FILES="$FILES \"$file\""
-    done < <(find "$INPUT_DIR" \( -name "*.dll" -o -name "*.exe" \) -type f -print0)
-else
-    # Unix-like 系统，遍历所有文件，使用 file 命令检查是否为可执行的二进制文件
-    while IFS= read -r -d $'\0' file; do
-        file_type=$(file -b "$file")
-        if [[ ($file_type == "ELF"* || $file_type == "Mach-O"*) && -x "$file" ]]; then
-            FILES="$FILES \"$file\""
+# 定义递归遍历函数
+search_input_dir() {
+    local path="$1"
+    for item in "$path"/*; do
+        if [ -d "$item" ]; then
+            # 检查是否为 mac .framework
+            if [[ "OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
+                FILES="$FILES \"$file\""
+            else
+                search_input_dir "$item"
+            fi
+        elif [ -f "$item" ]; then
+            if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
+                # Windows 环境，只搜索 .dll 和 .exe 文件
+                FILES="$FILES \"$file\""
+            else
+                # Unix 系统，遍历所有文件，使用 file 命令检查是否为可执行的二进制文件
+                file_type=$(file -b "$file")
+                if [[ ($file_type == "ELF"* || $file_type == "Mach-O"*) && -x "$file"  ]]; then
+                    FILES="$FILES \"$file\""
+                fi
+            fi
         fi
-    done < <(find "$INPUT_DIR" -type f -print0)
-fi
+    done
+}
+
+# 搜索输入目录
+search_input_dir "$INPUT_DIR"
 
 # 查找 Qt 插件的完整路径
 for plugin_path in "${PLUGINS[@]}"; do
@@ -129,10 +142,16 @@ done
 # 复制或添加到部署命令的函数
 handle_qml_file() {
     local file="$1"
-    local target_dir="$2"
-
     local rel_path="${file#$QML_PATH/}"
-    local target="$target_dir/$rel_path"
+
+    local target="$QML_DIR/$rel_path"
+    local target_dir="$(dirname "$target")"
+
+    # 如果是目录那么必是 mac framework
+    if [ -d "$file" ]; then
+        ARGS+=("-c \"$file\" \"$target_dir\"")
+        return
+    fi
 
     # 忽略特定文件
     if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]]; then
@@ -148,20 +167,37 @@ handle_qml_file() {
     # 判断是否为可执行二进制文件并相应处理
     if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]]; then
         if [[ "$file" == *.dll || "$file" == *.exe ]]; then
-            ARGS+=("-c \"$file\" \"$(dirname "$target")\"")
+            ARGS+=("-c \"$file\" \"$target_dir\"")
         else
-            mkdir -p "$(dirname "$target")"
+            mkdir -p "$target_dir"
             cp "$file" "$target"
         fi
     else
         file_type=$(file -b "$file")
         if [[ ($file_type == "ELF"* || $file_type == "Mach-O"*) && -x "$file" ]]; then
-            ARGS+=("-c \"$file\" \"$(dirname "$target")\"")
+            ARGS+=("-c \"$file\" \"$target_dir\"")
         else
-            mkdir -p "$(dirname "$target")"
+            mkdir -p "$target_dir"
             cp "$file" "$target"
         fi
     fi
+}
+
+# 搜索 QML 目录
+search_qml_dir() {
+    local path="$1"
+    for item in "$path"/*; do
+        if [ -d "$item" ]; then
+            # 检查是否为 mac .framework
+            if [[ "OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
+                handle_qml_file "$item"
+            else
+                search_qml_dir "$item"
+            fi
+        elif [ -f "$item" ]; then
+            handle_qml_file "$item"
+        fi
+    done
 }
 
 # 处理 QML 目录
@@ -169,9 +205,7 @@ for qml_rel_path in "${QML_REL_PATHS[@]}"; do
     full_path="$QML_PATH/$qml_rel_path"
     if [[ -d "$full_path" ]]; then
         # 处理目录
-        while IFS= read -r -d $'\0' file; do
-            handle_qml_file "$file" "$QML_DIR"
-        done < <(find "$full_path" -type f -print0)
+        search_qml_dir "$full_path"
     elif [[ -f "$full_path" ]]; then
         # 处理单个文件
         handle_qml_file "$full_path" "$QML_DIR"
