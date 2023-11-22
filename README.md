@@ -2,7 +2,14 @@
 
 CMake Modules for QtMediate and other projects.
 
-This project is independent from Qt and other 3rdparty libraries. Due to the fact that it encompasses some tools that need to be compiled, it cannot be included as a subproject.
+**This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it cannot be included as a subproject.
+
+## Features
+
++ Helpful CMake utilities
++ Deploy project dependencies and fix rpaths
++ Re-organize header files
++ Generate configuration header files
 
 ## Support Platforms
 
