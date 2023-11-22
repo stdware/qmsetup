@@ -259,8 +259,9 @@ static inline fs::path searchWindowsSystemPaths(const TString &fileName) {
     return {};
 }
 #else
-// Copy library files and symlinks, returns the real library file
-fs::path copyCanonical(const fs::path &path, const fs::path &dest, bool force, bool verbose) {
+static fs::path copyCanonical(const fs::path &path, const fs::path &dest, bool force,
+                              bool verbose) {
+    // Copy library files and symlinks, returns the real library file
     fs::path target;
     if (fs::is_symlink(path)) {
         auto linkPath = fs::canonical(path);
@@ -273,7 +274,6 @@ fs::path copyCanonical(const fs::path &path, const fs::path &dest, bool force, b
     }
     return target;
 };
-
 #endif
 
 static inline fs::path toFramework(const fs::path &path) {
@@ -516,6 +516,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 
     bool copy = result.optionIsSet("-c");
     bool all = !result.optionIsSet("-n");
+    bool force = result.optionIsSet("-f");
     bool standard = result.optionIsSet("-s");
 
     const fs::path &src = str2tstr(result.value(0).toString());
@@ -552,9 +553,9 @@ static int cmd_incsync(const SCL::ParseResult &result) {
         }
     }
 
-    // Remove target directory
-    if (fs::exists(dest)) {
-        std::filesystem::remove_all(dest);
+    // Remove target directory if needed
+    if (fs::exists(dest) && force) {
+        fs::remove_all(dest);
     }
 
     for (const auto &entry : fs::recursive_directory_iterator(src)) {
@@ -565,7 +566,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
             }
 
             // Get subdirectory
-            std::filesystem::path subdir;
+            fs::path subdir;
             for (const auto &pair : includes) {
                 const TString &pathString = path;
                 if (std::regex_search(pathString.begin(), pathString.end(),
@@ -591,6 +592,11 @@ static int cmd_incsync(const SCL::ParseResult &result) {
             auto targetPath = targetDir / path.filename();
             if (verbose) {
                 u8printf("Create %s\n", tstr2str(targetPath).data());
+            }
+
+            if (fs::exists(targetPath) &&
+                Utils::fileTime(targetPath).modifyTime >= Utils::fileTime(path).modifyTime) {
+                continue;
             }
 
             if (copy) {
@@ -624,13 +630,10 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 }
 
 static int cmd_deploy(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("-V");
     bool dryrun = result.optionIsSet("-d");
+    bool verbose = dryrun || result.optionIsSet("-V");
     bool force = result.optionIsSet("-f");
     bool standard = result.optionIsSet("-s");
-
-    if (dryrun)
-        verbose = true;
 
     fs::path dest = fs::current_path(); // Default to current path
     if (result.optionIsSet("-o")) {
@@ -1167,6 +1170,7 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-s", "--standard"}, "Add standard public-private name pattern"),
             SCL::Option({"-n", "--not-all"}, "Ignore unclassified files"),
             SCL::Option({"-c", "--copy"}, "Copy files rather than indirect reference"),
+            SCL::Option({"-f", "--force"}, "Force deleting existing directory"),
         });
         command.addOption(verbose);
         command.setHandler(cmd_incsync);
@@ -1246,8 +1250,8 @@ int main(int argc, char *argv[]) {
         std::string msg = e.what();
 
 #ifdef _WIN32
-        if (typeid(e) == typeid(std::filesystem::filesystem_error)) {
-            auto err = static_cast<const std::filesystem::filesystem_error &>(e);
+        if (typeid(e) == typeid(fs::filesystem_error)) {
+            auto err = static_cast<const fs::filesystem_error &>(e);
             // msg = "\"" + tstr2str(err.path1()) + "\": " + standardError();
             msg = Utils::local8bit_to_utf8(err.what());
         }

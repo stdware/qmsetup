@@ -5,11 +5,11 @@ include_guard(DIRECTORY)
     The generated file has the same timestamp as the source file.
 
     qtmediate_sync_include(<src> <dest>
-        [INSTALL_DIR]
+        [FORCE] [INSTALL_DIR <dir>]
     )
 #]]
 function(qtmediate_sync_include _src_dir _dest_dir)
-    set(options COPY)
+    set(options FORCE)
     set(oneValueArgs INSTALL_DIR)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -38,15 +38,20 @@ function(qtmediate_sync_include _src_dir _dest_dir)
     if(IS_DIRECTORY ${_src_dir})
         file(GLOB_RECURSE header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
 
-        execute_process(
-            COMMAND ${_tool} incsync -s ${_src_dir} ${_dest_dir}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            COMMAND_ERROR_IS_FATAL ANY
-        )
+        if(NOT FUNC_FORCE OR NOT EXISTS ${_dest_dir})
+            if(EXISTS ${_dest_dir})
+                file(REMOVE_RECURSE ${_dest_dir})
+            endif()
+
+            execute_process(
+                COMMAND ${_tool} incsync -s ${_src_dir} ${_dest_dir}
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                COMMAND_ERROR_IS_FATAL ANY
+            )
+        endif()
 
         if(FUNC_INSTALL_DIR)
             get_filename_component(_install_dir ${FUNC_INSTALL_DIR} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
-
             install(CODE "
                 execute_process(
                     COMMAND \"${_tool}\" incsync -c -s \"${_src_dir}\" \"${_install_dir}\"

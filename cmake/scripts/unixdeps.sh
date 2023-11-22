@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 显示用法信息
+# Show usage
 usage() {
     echo "Usage: $(basename $0) -i <dir> -m <path>"
     echo "                   --plugindir <plugin_dir> --libdir <lib_dir> --qmldir <qml_dir>"
@@ -23,7 +23,7 @@ usage() {
     echo "  -h                          Show this help message"
 }
 
-# 初始化参数
+# Initialize arguments
 EXTRA_PLUGIN_PATHS=()
 QML_REL_PATHS=()
 ARGS=()
@@ -31,7 +31,7 @@ VERBOSE=""
 PLUGINS=()
 FILES=""
 
-# 解析命令行参数
+# Parse command line
 while (( "$#" )); do
     case "$1" in
         -i)            INPUT_DIR="$2"; shift 2;;
@@ -51,7 +51,7 @@ while (( "$#" )); do
     esac
 done
 
-# 检查必需参数
+# Check required arguments
 for arg in INPUT_DIR PLUGIN_DIR LIB_DIR QML_DIR CORECMD_PATH; do
     if [[ -z ${!arg} ]]; then
         echo "Error: Missing required argument '$arg'"
@@ -60,7 +60,7 @@ for arg in INPUT_DIR PLUGIN_DIR LIB_DIR QML_DIR CORECMD_PATH; do
     fi
 done
 
-# 获取 Qt 插件安装路径和 Qt QML 目录
+# Get Qt plugin and QML paths
 PLUGIN_PATHS=()
 QML_PATH=""
 if [[ -n "$QMAKE_PATH" ]]; then
@@ -70,22 +70,23 @@ if [[ -n "$QMAKE_PATH" ]]; then
     QML_PATH=$($QMAKE_PATH -query QT_INSTALL_QML)
 fi
 
-# 添加额外的插件搜索路径
+# Add extra plugin searching paths
 PLUGIN_PATHS+=("${EXTRA_PLUGIN_PATHS[@]}")
 
-# 确保指定了 QML 相关路径时 QML 搜索路径不为空（需要指定 qmake）
+# Ensure that the QML search path is not empty 
+# when the QML related path is specified (qmake needs to be specified)
 if [[ ${#QML_REL_PATHS[@]} -gt 0 && -z "$QML_PATH" ]]; then
     echo "Error: qmake path must be specified when QML paths are provided"
     usage
     exit 1
 fi
 
-# 定义递归遍历函数
+# Search input directory
 search_input_dir() {
     local path="$1"
     for item in "$path"/*; do
         if [ -d "$item" ]; then
-            # 检查是否为 mac .framework
+            # Check if the directory is mac .framework
             if [[ "OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
                 FILES="$FILES \"$file\""
             else
@@ -93,10 +94,11 @@ search_input_dir() {
             fi
         elif [ -f "$item" ]; then
             if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
-                # Windows 环境，只搜索 .dll 和 .exe 文件
+                # On Windows, search for.exe and.dll files
                 FILES="$FILES \"$file\""
             else
-                # Unix 系统，遍历所有文件，使用 file 命令检查是否为可执行的二进制文件
+                # On Unix, traverse all files, using the file command to
+                # check for executable binary files
                 file_type=$(file -b "$file")
                 if [[ ($file_type == "ELF"* || $file_type == "Mach-O"*) && -x "$file"  ]]; then
                     FILES="$FILES \"$file\""
@@ -106,18 +108,19 @@ search_input_dir() {
     done
 }
 
-# 搜索输入目录
 search_input_dir "$INPUT_DIR"
 
-# 查找 Qt 插件的完整路径
+# Find the full path to the Qt plugin
 for plugin_path in "${PLUGINS[@]}"; do
-    # 检查格式
+    # Check format
     if [[ $plugin_path == */* ]]; then
         IFS='/' read -r -a plugin_parts <<< "$plugin_path"
+        
+        # Extracts the category and name
         category=${plugin_parts[0]}
         name=${plugin_parts[1]}
 
-        # 遍历路径
+        # Traverse the path and find the specific plug-in file
         found_plugin=""
         for search_path in "${PLUGIN_PATHS[@]}"; do
             found_plugin=$(find "${search_path}/${category}" -name "*${name}*" ! -name "*debug*" -print -quit)
@@ -139,7 +142,7 @@ for plugin_path in "${PLUGINS[@]}"; do
     fi
 done
 
-# 复制或添加到部署命令的函数
+# Process QML item
 handle_qml_file() {
     local file="$1"
     local rel_path="${file#$QML_PATH/}"
@@ -183,7 +186,7 @@ handle_qml_file() {
     fi
 }
 
-# 搜索 QML 目录
+# Search QML directory
 search_qml_dir() {
     local path="$1"
     for item in "$path"/*; do
@@ -200,26 +203,26 @@ search_qml_dir() {
     done
 }
 
-# 处理 QML 目录
+# Process QML directories
 for qml_rel_path in "${QML_REL_PATHS[@]}"; do
     full_path="$QML_PATH/$qml_rel_path"
     if [[ -d "$full_path" ]]; then
-        # 处理目录
+        # Directory
         search_qml_dir "$full_path"
     elif [[ -f "$full_path" ]]; then
-        # 处理单个文件
+        # File
         handle_qml_file "$full_path" "$QML_DIR"
     fi
 done
 
-# 构建并执行 deploy 命令
+# Build and execute the deploy command
 DEPLOY_CMD="$CORECMD_PATH deploy $FILES ${ARGS[@]} -o \"$LIB_DIR\" $VERBOSE"
 if [[ "$VERBOSE" == "-V" ]]; then
     echo "Executing: $DEPLOY_CMD"
 fi
 eval $DEPLOY_CMD
 
-# 检查部署结果
+# Check the deployment result
 if [ $? -ne 0 ]; then
     exit 1
 fi

@@ -68,7 +68,7 @@ if defined QMAKE_PATH (
     set "ARGS=!ARGS! -L !QT_BIN_PATH!"
 )
 
-:: ADd extra plugin searching paths
+:: Add extra plugin searching paths
 set "PLUGIN_PATHS=!PLUGIN_PATHS! !EXTRA_PLUGIN_PATHS!"
 
 :: Ensure that the QML search path is not empty 
