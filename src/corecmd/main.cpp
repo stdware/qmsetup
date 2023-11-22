@@ -780,7 +780,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                         maxSize = std::max(maxSize, item.size());
                     }
                     for (const auto &item : std::as_const(unparsed)) {
-                        u8printf("%s%s[Not Found]\n", item.data(),
+                        u8printf("    %s%s[Not Found]\n", item.data(),
                                  std::string(maxSize + 4 - item.size(), ' ').data());
                     }
                 }
