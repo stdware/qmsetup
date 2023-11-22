@@ -102,7 +102,7 @@ static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
     return isEmpty;
 }
 
-static bool copyFile(const fs::path &file, const fs::path &dest, const std::string &symlinkContent,
+static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path &symlinkContent,
                      bool force, bool verbose) {
     auto target = dest / fs::path(file).filename();
     if (fs::exists(target)) {

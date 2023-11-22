@@ -296,9 +296,9 @@ endfunction()
 #[[
     Tell if there are any generator expressions in the string.
 
-    qtmediate_has_genex(<string> <output>)
+    qtmediate_has_genex(<VAR> <string>)
 ]] #
-function(qtmediate_has_genex _str _out)
+function(qtmediate_has_genex _out _str)
     string(GENEX_STRIP "${_str}" _no_genex)
 
     if("${_str}" STREQUAL "${_no_genex}")
@@ -433,10 +433,21 @@ function(qtmediate_collect_targets _var)
     endif()
 
     set(_tmp_targets)
-    set(_targets)
+
+    macro(get_targets_recursive _targets _dir)
+        get_property(_subdirs DIRECTORY ${_dir} PROPERTY SUBDIRECTORIES)
+
+        foreach(_subdir ${_subdirs})
+            get_targets_recursive(${_targets} ${_subdir})
+        endforeach()
+
+        get_property(_current_targets DIRECTORY ${_dir} PROPERTY BUILDSYSTEM_TARGETS)
+        list(APPEND ${_targets} ${_current_targets})
+    endmacro()
 
     # Get targets
-    ck_get_targets_recursive(_tmp_targets ${_dir})
+    get_targets_recursive(_tmp_targets ${_dir})
+    set(_targets)
 
     if(NOT FUNC_EXECUTABLE AND NOT FUNC_SHARED AND NOT FUNC_STATIC AND NOT FUNC_UTILITY)
         set(_targets ${_tmp_targets})
