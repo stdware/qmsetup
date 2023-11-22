@@ -84,6 +84,29 @@ namespace Utils {
         CloseHandle(hFile);
     }
 
+    std::vector<std::filesystem::path> getPathsFromEnv() {
+        DWORD length = ::GetEnvironmentVariableW(L"PATH", nullptr, 0);
+        if (length == 0) {
+            return {};
+        }
+
+        auto buf = new wchar_t[length];
+        ::GetEnvironmentVariableW(L"PATH", buf, length);
+
+        std::wstring pathStr = buf;
+        delete[] buf;
+        std::wstringstream wss(pathStr);
+        std::wstring item;
+
+        std::vector<fs::path> paths;
+        while (std::getline(wss, item, L';')) {
+            if (!item.empty()) {
+                paths.push_back(item);
+            }
+        }
+        return paths;
+    }
+
     static constexpr const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
 
     static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage = true) {
@@ -322,10 +345,10 @@ namespace Utils {
         return result;
     }
 
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path,
-                                                           std::vector<std::string> *unparsed) {
-        (void) unparsed;
-        
+    std::vector<std::wstring>
+        resolveWinBinaryDependencies(const std::filesystem::path &path,
+                                     const std::vector<std::filesystem::path> &searchingPaths,
+                                     std::vector<std::string> *unparsed) {
         std::wstring errorMessage;
         std::vector<std::string> dependentLibrariesIn;
         unsigned wordSizeIn;
@@ -335,7 +358,29 @@ namespace Utils {
                               &machineArchIn)) {
             throw std::runtime_error(SCL::wideToUtf8(errorMessage));
         }
-        return dependentLibrariesIn;
+
+        // Search
+        std::vector<std::wstring> result;
+        for (const auto &item : std::as_const(dependentLibrariesIn)) {
+            fs::path fullPath;
+            for (const auto &dir : std::as_const(searchingPaths)) {
+                fs::path targetPath = dir / item;
+                if (fs::exists(targetPath)) {
+                    fullPath = targetPath;
+                    break;
+                }
+            }
+
+            if (!fullPath.empty()) {
+                result.push_back(fullPath);
+                continue;
+            }
+            
+            if (unparsed) {
+                unparsed->push_back(item);
+            }
+        }
+        return result;
     }
 
     std::string local8bit_to_utf8(const std::string &s) {

@@ -150,6 +150,26 @@ namespace Utils {
         }
     }
 
+    std::vector<fs::path> getPathsFromEnv() {
+        const char *pathEnv = std::getenv("PATH");
+        if (pathEnv == nullptr) {
+            return {}; 
+        }
+
+        std::string pathStr = pathEnv;
+        std::stringstream ss(pathStr);
+        std::string item;
+        
+        std::vector<fs::path> paths;
+        while (std::getline(ss, item, ':')) {
+            if (!item.empty()) {
+                paths.push_back(fs::path(item));
+            }
+        }
+
+        return paths;
+    }
+
 #ifdef __APPLE__
     // Mac
     // Use `otool` and `install_name_tool`
@@ -214,7 +234,7 @@ namespace Utils {
         return dependencies;
     }
 
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path,
+    std::vector<std::string> resolveUnixBinaryDependencies(const std::filesystem::path &path,
                                                            std::vector<std::string> *unparsed) {
         auto rpaths = readMacBinaryRPaths(path);
         auto dependencies = readMacBinaryDependencies(path);
@@ -333,7 +353,7 @@ namespace Utils {
         return dependencies;
     }
 
-    std::vector<std::string> resolveExecutableDependencies(const std::filesystem::path &path,
+    std::vector<std::string> resolveUnixBinaryDependencies(const std::filesystem::path &path,
                                                            std::vector<std::string> *unparsed) {
         return readLddOutput(path, unparsed);
     }

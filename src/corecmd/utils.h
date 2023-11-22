@@ -26,6 +26,8 @@ namespace Utils {
         setFileTime(dest, fileTime(src));
     }
 
+    std::vector<std::filesystem::path> getPathsFromEnv();
+
     std::filesystem::path cleanPath(const std::filesystem::path &path);
 
     // String Utils
@@ -91,14 +93,19 @@ namespace Utils {
     }
 
     // OS Utils
-    std::vector<std::string>
-        resolveExecutableDependencies(const std::filesystem::path &path,
-                                      std::vector<std::string> *unparsed = nullptr);
-
 #ifdef _WIN32
     std::string local8bit_to_utf8(const std::string &s);
+
+    std::vector<std::wstring>
+        resolveWinBinaryDependencies(const std::filesystem::path &path,
+                                     const std::vector<std::filesystem::path> &searchingPaths,
+                                     std::vector<std::string> *unparsed);
 #else
     void setFileRPaths(const std::string &file, const std::vector<std::string> &paths);
+
+    std::vector<std::string>
+        resolveUnixBinaryDependencies(const std::filesystem::path &path,
+                                      std::vector<std::string> *unparsed = nullptr);
 #endif
 
 #ifdef __linux__

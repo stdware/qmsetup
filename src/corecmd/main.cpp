@@ -79,6 +79,19 @@ static std::string time2str(const std::chrono::system_clock::time_point &t) {
     return s;
 }
 
+template <class T>
+static bool searchInRegexList(const std::basic_string<T> &s,
+                              const std::vector<std::basic_string<T>> &regexList) {
+    bool found = false;
+    for (const auto &pattern : regexList) {
+        if (std::regex_search(s.begin(), s.end(), std::basic_regex<T>(pattern))) {
+            found = true;
+            break;
+        }
+    }
+    return found;
+}
+
 static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
     bool isEmpty = true;
     for (const auto &entry : fs::directory_iterator(path)) {
@@ -205,8 +218,47 @@ static fs::path framework2lib_debug(fs::path path, const fs::path &fallback = {}
 }
 #endif
 
-#ifndef _WIN32
+#ifdef _WIN32
+static inline bool isMSVCLibrary(const TString &fileName) {
+    return fileName.starts_with(_TSTR("vcruntime")) || fileName.starts_with(_TSTR("msvcp")) ||
+           fileName.starts_with(_TSTR("concrt")) || fileName.starts_with(_TSTR("vccorlib")) ||
+           fileName.starts_with(_TSTR("ucrtbase"));
+}
 
+static inline fs::path searchWindowsSystemPaths(const TString &fileName) {
+    static std::vector<const wchar_t *> searchPaths = []() -> std::vector<const wchar_t *> {
+        static const wchar_t sys[] = L"C:\\Windows";
+        static const wchar_t sys32[] = L"C:\\Windows\\System32";
+
+#  if defined(_WIN64) || defined(__x86_64__) || defined(__ppc64__)
+        return {
+            sys,
+            sys32,
+        };
+#  else
+        static const wchar_t syswow64[] = L"C:\\Windows\\SysWOW64";
+        if (fs::exists(syswow64)) {
+            return {
+                sys,
+                syswow64,
+            };
+        }
+        return {
+            sys,
+            sys32,
+        };
+#  endif
+    }();
+
+    for (const auto &path : std::as_const(searchPaths)) {
+        auto fullPath = fs::path(path) / fileName;
+        if (fs::exists(fullPath)) {
+            return fullPath;
+        }
+    }
+    return {};
+}
+#else
 // Copy library files and symlinks, returns the real library file
 fs::path copyCanonical(const fs::path &path, const fs::path &dest, bool force, bool verbose) {
     fs::path target;
@@ -270,16 +322,7 @@ static int cmd_cpdir(const SCL::ParseResult &result) {
 
     // Copy
     copyDirectory(src, src, dest, force, verbose, [&excludes](const fs::path &path) {
-        bool skip = false;
-        for (const auto &pattern : excludes) {
-            const TString &pathString = path;
-            if (std::regex_search(pathString.begin(), pathString.end(),
-                                  std::basic_regex<TChar>(pattern))) {
-                skip = true;
-                break;
-            }
-        }
-        return skip;
+        return searchInRegexList(TString(path), excludes); //
     });
     return 0;
 }
@@ -535,17 +578,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
                 continue;
 
             // Check if it should be excluded
-            bool skip = false;
-            for (const auto &pattern : excludes) {
-                const TString &pathString = path;
-                if (std::regex_search(pathString.begin(), pathString.end(),
-                                      std::basic_regex<TChar>(pattern))) {
-                    skip = true;
-                    break;
-                }
-            }
-
-            if (skip)
+            if (searchInRegexList(TString(path), excludes))
                 continue;
 
             const fs::path &targetDir = subdir.empty() ? dest : (dest / subdir);
@@ -719,28 +752,40 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
 
         const auto &getFilesDeps =
-            [verbose](const std::vector<fs::path> &paths) -> std::vector<std::string> {
-            std::set<std::string> libs;
+            [&](const std::vector<fs::path> &paths) -> std::vector<fs::path> {
+            std::set<TString> result;
             for (const auto &path : std::as_const(paths)) {
                 if (verbose) {
                     u8printf("Resolve %s\n", tstr2str(path).data());
                 }
+
                 std::vector<std::string> unparsed;
                 const auto &deps =
-                    Utils::resolveExecutableDependencies(fromFramework(path), &unparsed);
-                for (const auto &item : std::as_const(deps)) {
+#ifdef _WIN32
+                    Utils::resolveWinBinaryDependencies(path, searchingPaths, &unparsed)
+#else
+                    Utils::resolveUnixBinaryDependencies(fromFramework(path), &unparsed)
+#endif
+                    ;
+                for (const auto &item : deps) {
                     if (verbose) {
-                        u8printf("    %s\n", item.data());
+                        u8printf("    %s\n", tstr2str(item).data());
                     }
-                    libs.insert(item);
+                    result.insert(item);
                 }
+
                 if (verbose) {
+                    size_t maxSize = 0;
                     for (const auto &item : std::as_const(unparsed)) {
-                        u8printf("    %s [Unknown]\n", item.data());
+                        maxSize = std::max(maxSize, item.size());
+                    }
+                    for (const auto &item : std::as_const(unparsed)) {
+                        u8printf("%s%s[Not Found]\n", item.data(),
+                                 std::string(maxSize + 4 - item.size(), ' ').data());
                     }
                 }
             }
-            return {libs.begin(), libs.end()};
+            return {result.begin(), result.end()};
         };
 
         std::set<fs::path> visited;
@@ -762,16 +807,16 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
             // Search dependencies
             for (const auto &lib : std::as_const(libs)) {
-                TString fileName = Utils::toLower(TString(toFramework(lib).filename()));
+                const auto &path = toFramework(lib);
+                // Ignore orginal file
+                if (allOrgFileNames.contains(path.filename()))
+                    continue;
 
                 // Ignore files in standard mode
+                TString fileName = Utils::toLower(TString(path.filename()));
                 if ((standard && (
 #ifdef _WIN32
-                                     fileName.starts_with(_TSTR("vcruntime")) ||
-                                     fileName.starts_with(_TSTR("msvcp")) ||
-                                     fileName.starts_with(_TSTR("concrt")) ||
-                                     fileName.starts_with(_TSTR("vccorlib")) ||
-                                     fileName.starts_with(_TSTR("ucrtbase"))
+                                     isMSVCLibrary(fileName)
 #elif defined(__APPLE__)
                                      fileName.starts_with("libc++") ||
                                      fileName.starts_with("libSystem") ||
@@ -790,9 +835,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #endif
                                          )) ||
 #ifdef _WIN32
-                    (fs::exists(_TSTR("C:\\Windows\\") + fileName) ||
-                     fs::exists(_TSTR("C:\\Windows\\system32\\") + fileName) ||
-                     fs::exists(_TSTR("C:\\Windows\\SysWow64\\") + fileName) ||
+                    (!searchWindowsSystemPaths(fileName).empty() ||
                      fileName.starts_with(_TSTR("api-ms-win-")) ||
                      fileName.starts_with(_TSTR("ext-ms-win-"))) ||
 #endif
@@ -801,32 +844,14 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 }
                 visited.insert(fileName);
 
-#ifdef _WIN32
-                // Search in specified searching paths on Windows
-                fs::path path;
-                for (const auto &dir : std::as_const(searchingPaths)) {
-                    fs::path targetPath = dir / fs::path(lib);
-                    if (fs::exists(targetPath)) {
-                        path = targetPath;
-                        break;
-                    }
-                }
-
-                if (path.empty()) {
-                    continue;
-                }
-#else
-                const fs::path &path = toFramework(lib);
-#endif
-
-                // Ignore orginal file
-                if (allOrgFileNames.contains(path.filename()))
+                // Check if it should be excluded
+                if (searchInRegexList(TString(path), excludes))
                     continue;
 
 #ifdef __APPLE__
                 // Mark framework type
                 if (fs::is_directory(path)) {
-                    std::string name = fs::path(lib).filename();
+                    std::string name = lib.filename();
                     if (name.ends_with("_debug")) {
                         depFrameworkTypes[path.stem()] |= Debug;
                     } else {
@@ -834,19 +859,6 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                     }
                 }
 #endif
-
-                bool skip = false;
-                for (const auto &pattern : std::as_const(excludes)) {
-                    const TString &pathString = path;
-                    if (std::regex_search(pathString.begin(), pathString.end(),
-                                          std::basic_regex<TChar>(pattern))) {
-                        skip = true;
-                        break;
-                    }
-                }
-
-                if (skip)
-                    continue;
 
                 dependencies.push_back(path);
 
