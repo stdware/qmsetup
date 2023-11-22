@@ -1,13 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: 初始化参数
+:: Initialize arguments
 set "INPUT_DIR="
 set "PLUGIN_DIR="
 set "LIB_DIR="
 set "QML_DIR="
 set "QMAKE_PATH="
-set "QMCORECMD_PATH="
+set "CORECMD_PATH="
 set "VERBOSE="
 set "FILES="
 set "EXTRA_PLUGIN_PATHS="
@@ -15,11 +15,11 @@ set "PLUGINS="
 set "QML_REL_PATHS="
 set "ARGS="
 
-:: 解析命令行参数
+:: Parse command line
 :parse_args
 if "%~1"=="" goto :end_parse_args
 if "%1"=="-i" set "INPUT_DIR=%~2" & shift & shift & goto :parse_args
-if "%1"=="-m" set "QMCORECMD_PATH=%~2" & shift & shift & goto :parse_args
+if "%1"=="-m" set "CORECMD_PATH=%~2" & shift & shift & goto :parse_args
 if "%1"=="--plugindir" set "PLUGIN_DIR=%~2" & shift & shift & goto :parse_args
 if "%1"=="--libdir" set "LIB_DIR=%~2" & shift & shift & goto :parse_args
 if "%1"=="--qmldir" set "QML_DIR=%~2" & shift & shift & goto :parse_args
@@ -40,21 +40,21 @@ shift
 goto :parse_args
 :end_parse_args
 
-:: 检查必需参数
+:: Check required arguments
 if not defined INPUT_DIR echo Error: Missing required argument 'INPUT_DIR' & call :usage & exit /b
 if not defined PLUGIN_DIR echo Error: Missing required argument 'PLUGIN_DIR' & call :usage & exit /b
 if not defined LIB_DIR echo Error: Missing required argument 'LIB_DIR' & call :usage & exit /b
 if not defined QML_DIR echo Error: Missing required argument 'QML_DIR' & call :usage & exit /b
-if not defined QMCORECMD_PATH echo Error: Missing required argument 'QMCORECMD_PATH' & call :usage & exit /b
+if not defined CORECMD_PATH echo Error: Missing required argument 'CORECMD_PATH' & call :usage & exit /b
 
-:: 标准化
+:: Normalize
 set "INPUT_DIR=!INPUT_DIR:/=\!"
 set "PLUGIN_DIR=!PLUGIN_DIR:/=\!"
 set "LIB_DIR=!LIB_DIR:/=\!"
 set "QML_DIR=!QML_DIR:/=\!"
-set "QMCORECMD_PATH=!QMCORECMD_PATH:/=\!"
+set "CORECMD_PATH=!CORECMD_PATH:/=\!"
 
-:: 获取 Qt 插件安装路径和 Qt QML 目录
+:: Get Qt plugin and QML paths
 set "PLUGIN_PATHS="
 set "QML_PATH="
 if defined QMAKE_PATH (
@@ -63,15 +63,16 @@ if defined QMAKE_PATH (
     for /f "tokens=*" %%a in ('!QMAKE_PATH! -query QT_INSTALL_QML') do set "QML_PATH=%%a"
     set "QML_PATH=!QML_PATH:/=\!"
 
-    :: 添加 Qt bin 目录
+    :: Add Qt bin directory
     for /f "tokens=*" %%a in ('!QMAKE_PATH! -query QT_INSTALL_BINS') do set "QT_BIN_PATH=%%a"
     set "ARGS=!ARGS! -L !QT_BIN_PATH!"
 )
 
-:: 添加额外的插件搜索路径
+:: ADd extra plugin searching paths
 set "PLUGIN_PATHS=!PLUGIN_PATHS! !EXTRA_PLUGIN_PATHS!"
 
-:: 确保指定了 QML 相关路径时 QML 搜索路径不为空（需要指定 qmake）
+:: Ensure that the QML search path is not empty 
+:: when the QML related path is specified (qmake needs to be specified)
 if not "%QML_REL_PATHS%"=="" (
     if "%QML_PATH%"=="" (
         echo Error: qmake path must be specified when QML paths are provided
@@ -79,29 +80,29 @@ if not "%QML_REL_PATHS%"=="" (
     )
 )
 
-:: 根据操作系统决定搜索的文件类型
-:: Windows 环境，搜索 .exe 和 .dll 文件
+:: The type of file to be searched depends on the operating system
+:: On Windows, search for.exe and.dll files
 for /r "%INPUT_DIR%" %%f in (*.exe *.dll) do (
     set "FILES=!FILES! %%f"
 )
 
-:: 查找 Qt 插件的完整路径
+:: Find the full path to the Qt plugin
 for %%p in (!PLUGINS!) do (
     set "plugin_path=%%p"
 
-    :: 检查格式
+    :: Check format
     echo !plugin_path! | findstr /R "[^/]*\/[^/]*" >nul
     if errorlevel 1 (
         echo Error: Invalid plugin format '!plugin_path!'. Expected format: ^<category^>/^<name^>
         exit /b
     )
 
-    :: 提取类别和名称
+    :: Extracts the category and name
     for /f "tokens=1,2 delims=/" %%a in ("!plugin_path!") do (
         set "category=%%a"
         set "name=%%b"
 
-        :: 遍历路径并查找具体插件文件
+        :: Traverse the path and find the specific plug-in file
         set "FOUND_PLUGIN="
         call :search_plugin
         if not defined FOUND_PLUGIN (
@@ -117,17 +118,17 @@ for %%p in (!PLUGINS!) do (
     )
 )
 
-:: 处理 QML 目录
+:: Process QML directories
 for %%q in (%QML_REL_PATHS%) do (
     call :search_qml_dir "%%q"
 )
 
-:: 构建并执行 qmcorecmd deploy 命令
-set "DEPLOY_CMD=!QMCORECMD_PATH! deploy !FILES! !ARGS! -o !LIB_DIR! !VERBOSE!"
+:: Build and execute the deploy command
+set "DEPLOY_CMD=!CORECMD_PATH! deploy !FILES! !ARGS! -o !LIB_DIR! !VERBOSE!"
 if "!VERBOSE!"=="-V" echo Executing: !DEPLOY_CMD!
 call !DEPLOY_CMD!
 
-:: 检查部署结果
+:: Check the deployment result
 if %errorlevel% neq 0 exit /b
 exit /b
 
@@ -135,7 +136,7 @@ exit /b
 
 
 :: ----------------------------------------------------------------------------------
-:: 查找插件
+:: Search plugins
 :search_plugin
 for %%d in (!PLUGIN_PATHS!) do (
     for %%f in ("%%d\!category!\!name!*") do (
@@ -153,16 +154,16 @@ exit /b
 
 
 :: ----------------------------------------------------------------------------------
-:: 搜索 QML 目录
+:: Search QML directory
 :search_qml_dir
 set "full_path=%QML_PATH%\%~1"
 if exist "%full_path%\" (
-    :: 处理目录
+    :: Directory
     for /r "%full_path%" %%f in (*) do (
         call :handle_qml_file "%%f"
     )
 ) else if exist "%full_path%" (
-    :: 处理单个文件
+    :: File
     call :handle_qml_file "%full_path%"
 )
 exit /b
@@ -173,12 +174,12 @@ exit /b
 
 
 :: ----------------------------------------------------------------------------------
-:: 复制或添加到部署命令的函数
+:: Copy or add to a deployment command
 :handle_qml_file
 set "file=%~1"
 set "file=!file:/=\!"
 
-:: 忽略特定文件（示例）
+:: Ignore specific files (example)
 if "!file:~-4!"==".pdb" exit /b
 if "!file:~-10!"==".dll.debug" exit /b
 if "!file:~-5!" == "d.dll" (
@@ -188,7 +189,7 @@ if "!file:~-5!" == "d.dll" (
     )
 )
 
-:: 用很智障的方式计算目标文件和目标文件夹
+:: Computes target file and folder in a very stupid way
 set "rel_path=!file:%QML_PATH%\=!"
 set "target=%QML_DIR%\%rel_path%"
 for %%I in ("!file!") do (
@@ -197,7 +198,7 @@ for %%I in ("!file!") do (
 set "rel_dir_path=!file_dir:%QML_PATH%\=!"
 set "target_dir=%QML_DIR%\%rel_dir_path%"
 
-:: 判断是否为可执行二进制文件并相应处理
+:: Determine whether it is an executable binary file and handle it accordingly
 if "%file:~-4%"==".dll" (
     set "ARGS=!ARGS! -c !file! !target_dir!"
 ) else if "%file:~-4%"==".exe" (
@@ -217,7 +218,7 @@ exit /b
 
 
 :: ----------------------------------------------------------------------------------
-:: 显示简介
+:: Show usage
 :usage
 echo Usage: %~n0 -i ^<dir^> -m ^<path^>
 echo                --plugindir ^<plugin_dir^> --libdir ^<lib_dir^> --qmldir ^<qml_dir^>

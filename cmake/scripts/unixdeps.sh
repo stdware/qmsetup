@@ -8,7 +8,7 @@ usage() {
     echo "                  [--qml <qml_module>]... [--plugin <plugin>]... [--copy <src> <dest>]..."
     echo "                  [-f] [-s] [-V] [-h]"
     echo "  -i <input_dir>              Directory containing binaries and libraries"
-    echo "  -m <qmcorecmd_path>         Path to qmcorecmd"
+    echo "  -m <corecmd_path>           Path to corecmd"
     echo "  --plugindir <plugin_dir>    Output directory for plugins"
     echo "  --libdir <lib_dir>          Output directory for libraries"
     echo "  --qmldir <qml_dir>          Output directory for QML files"
@@ -35,7 +35,7 @@ FILES=""
 while (( "$#" )); do
     case "$1" in
         -i)            INPUT_DIR="$2"; shift 2;;
-        -m)            QMCORECMD_PATH="$2"; shift 2;;
+        -m)            CORECMD_PATH="$2"; shift 2;;
         --plugindir)   PLUGIN_DIR="$2"; shift 2;;
         --libdir)      LIB_DIR="$2"; shift 2;;
         --qmldir)      QML_DIR="$2"; shift 2;;
@@ -52,7 +52,7 @@ while (( "$#" )); do
 done
 
 # 检查必需参数
-for arg in INPUT_DIR PLUGIN_DIR LIB_DIR QML_DIR QMCORECMD_PATH; do
+for arg in INPUT_DIR PLUGIN_DIR LIB_DIR QML_DIR CORECMD_PATH; do
     if [[ -z ${!arg} ]]; then
         echo "Error: Missing required argument '$arg'"
         usage
@@ -212,8 +212,8 @@ for qml_rel_path in "${QML_REL_PATHS[@]}"; do
     fi
 done
 
-# 构建并执行 qmcorecmd deploy 命令
-DEPLOY_CMD="$QMCORECMD_PATH deploy $FILES ${ARGS[@]} -o \"$LIB_DIR\" $VERBOSE"
+# 构建并执行 deploy 命令
+DEPLOY_CMD="$CORECMD_PATH deploy $FILES ${ARGS[@]} -o \"$LIB_DIR\" $VERBOSE"
 if [[ "$VERBOSE" == "-V" ]]; then
     echo "Executing: $DEPLOY_CMD"
 fi
