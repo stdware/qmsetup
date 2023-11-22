@@ -154,7 +154,7 @@ handle_qml_file() {
     fi
 
     # 忽略特定文件
-    if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]]; then
+    if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
         if [[ "$file" == *.pdb ]] || [[ "$file" == *d.dll ]]; then
             return
         fi
@@ -165,7 +165,7 @@ handle_qml_file() {
     fi
 
     # 判断是否为可执行二进制文件并相应处理
-    if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]]; then
+    if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
         if [[ "$file" == *.dll || "$file" == *.exe ]]; then
             ARGS+=("-c \"$file\" \"$target_dir\"")
         else
