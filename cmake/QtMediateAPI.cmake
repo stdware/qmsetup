@@ -422,7 +422,7 @@ endfunction()
         [SKIP_AUTOMOC_FILES  <files]
     )
 ]] #
-function(qtmediate_configure_target _target)
+macro(qtmediate_configure_target _target)
     set(options)
     set(oneValueArgs)
     set(multiValueArgs
@@ -453,7 +453,7 @@ function(qtmediate_configure_target _target)
             ${FUNC_SKIP_AUTOMOC_FILES} PROPERTIES SKIP_AUTOMOC ON
         )
     endif()
-endfunction()
+endmacro()
 
 #[[
     Helper to define export macros.

@@ -71,7 +71,7 @@ endfunction()
         [CONDITION <cond>]
     )
 ]] #
-macro(qtmediate_add_definition)
+function(qtmediate_add_definition)
     set(options GLOBAL NUMERICAL STRING_LITERAL)
     set(oneValueArgs TARGET PROPERTY CONDITION)
     set(multiValueArgs)
@@ -157,7 +157,7 @@ macro(qtmediate_add_definition)
     else()
         set_property(GLOBAL APPEND PROPERTY ${_prop} "${_result}")
     endif()
-endmacro()
+endfunction()
 
 #[[
     Generate a configuration header. If the configuration has not changed, the generated file's
