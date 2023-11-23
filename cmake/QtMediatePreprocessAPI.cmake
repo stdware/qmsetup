@@ -47,12 +47,30 @@ function(qtmediate_sync_include _src_dir _dest_dir)
 
         if(FUNC_INSTALL_DIR)
             get_filename_component(_install_dir ${FUNC_INSTALL_DIR} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
+            
+            # Get command output only and use file(INSTALL) to install files
             install(CODE "
                 execute_process(
-                    COMMAND \"${_tool}\" incsync -c -s \"${_src_dir}\" \"${_install_dir}\"
+                    COMMAND \"${_tool}\" incsync -c -d -s \"${_src_dir}\" \"${_install_dir}\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
+                    OUTPUT_VARIABLE _output_contents
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
                     COMMAND_ERROR_IS_FATAL ANY
                 )
+                string(REPLACE \"\\n\" \";\" _lines \"\${_output_contents}\")
+                set(_is_even_line TRUE)
+
+                foreach(_line \${_lines})
+                    if(_is_even_line)
+                        string(SUBSTRING \${_line} 7 -1 _target_path)
+                        get_filename_component(_target_path \${_target_path} DIRECTORY)
+                        set(_is_even_line FALSE)
+                    else()
+                        string(STRIP \${_line} _source_path)
+                        file(INSTALL \${_source_path} DESTINATION \${_target_path})
+                        set(_is_even_line TRUE)
+                    endif()
+                endforeach()
             ")
         endif()
     else()

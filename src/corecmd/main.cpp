@@ -545,15 +545,15 @@ static int cmd_configure(const SCL::ParseResult &result) {
 }
 
 static int cmd_incsync(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("-V");
-
+    bool dryrun = result.optionIsSet("-d");
+    bool verbose = dryrun || result.optionIsSet("-V");
     bool copy = result.optionIsSet("-c");
     bool all = !result.optionIsSet("-n");
     bool force = result.optionIsSet("-f");
     bool standard = result.optionIsSet("-s");
 
-    const fs::path &src = str2tstr(result.value(0).toString());
-    const fs::path &dest = str2tstr(result.value(1).toString());
+    const fs::path &src = Utils::cleanPath(fs::absolute(str2tstr(result.value(0).toString())));
+    const fs::path &dest = Utils::cleanPath(fs::absolute(str2tstr(result.value(1).toString())));
     if (!fs::is_directory(src)) {
         throw std::runtime_error("not a directory: \"" + tstr2str(src) + "\"");
     }
@@ -587,7 +587,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
     }
 
     // Remove target directory if needed
-    if (fs::exists(dest) && force) {
+    if (!dryrun && fs::exists(dest) && force) {
         fs::remove_all(dest);
     }
 
@@ -617,19 +617,23 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 
             const fs::path &targetDir = subdir.empty() ? dest : (dest / subdir);
 
-            // Create directory
-            if (!fs::exists(targetDir)) {
-                fs::create_directories(targetDir);
-            }
-
             auto targetPath = targetDir / path.filename();
             if (verbose) {
                 u8printf("Create %s\n", tstr2str(targetPath).data());
+                u8printf("    %s\n", tstr2str(path).data());
             }
+
+            if (dryrun)
+                continue;
 
             if (fs::exists(targetPath) &&
                 Utils::fileTime(targetPath).modifyTime >= Utils::fileTime(path).modifyTime) {
                 continue;
+            }
+
+            // Create directory
+            if (!fs::exists(targetDir)) {
+                fs::create_directories(targetDir);
             }
 
             if (copy) {
@@ -1203,6 +1207,7 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-s", "--standard"}, "Add standard public-private name pattern"),
             SCL::Option({"-n", "--not-all"}, "Ignore unclassified files"),
             SCL::Option({"-c", "--copy"}, "Copy files rather than indirect reference"),
+            SCL::Option({"-d", "--dryrun"}, "Print reorganizing details only"),
             SCL::Option({"-f", "--force"}, "Force deleting existing directory"),
         });
         command.addOption(verbose);
