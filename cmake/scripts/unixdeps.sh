@@ -150,13 +150,13 @@ handle_qml_file() {
     local target="$QML_DIR/$rel_path"
     local target_dir="$(dirname "$target")"
 
-    # 如果是目录那么必是 mac framework
+    # Directory: must be mac framework
     if [ -d "$file" ]; then
         ARGS+=("-c \"$file\" \"$target_dir\"")
         return
     fi
 
-    # 忽略特定文件
+    # Ignore specific files
     if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
         if [[ "$file" == *.pdb ]] || [[ "$file" == *d.dll ]]; then
             return
@@ -167,7 +167,7 @@ handle_qml_file() {
         fi
     fi
 
-    # 判断是否为可执行二进制文件并相应处理
+    # Determine whether it is an executable binary file and handle it accordingly
     if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
         if [[ "$file" == *.dll || "$file" == *.exe ]]; then
             ARGS+=("-c \"$file\" \"$target_dir\"")
@@ -191,7 +191,7 @@ search_qml_dir() {
     local path="$1"
     for item in "$path"/*; do
         if [ -d "$item" ]; then
-            # 检查是否为 mac .framework
+            # Check if the path is mac .framework
             if [[ "OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
                 handle_qml_file "$item"
             else
