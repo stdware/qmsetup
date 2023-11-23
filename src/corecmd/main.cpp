@@ -1122,7 +1122,7 @@ int main(int argc, char *argv[]) {
         });
         command.addOptions({
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-            SCL::Option({"-c", "--content"}, "Copy contents").arg("regex").multi(),
+            SCL::Option({"-c", "--content"}, "Copy contents"),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
         command.addOptions({verbose});

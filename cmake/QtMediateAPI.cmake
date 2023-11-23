@@ -187,7 +187,6 @@ function(qtmediate_add_win_rc_enhanced _target)
     set(RC_ICONS ${_icons})
 
     qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
-
     configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
@@ -196,6 +195,7 @@ endfunction()
     Attach windows manifest file to a target.
 
     qtmediate_add_win_manifest(<target>
+        [UTF8]
         [NAME           name] 
         [VERSION        version] 
         [DESCRIPTION    desc]
@@ -213,7 +213,6 @@ function(qtmediate_add_win_manifest _target)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
-    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${RC_PROJECT_NAME}_manifest.manifest")
 
     qtmediate_set_value(_name FUNC_NAME ${_target})
     qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
@@ -228,6 +227,7 @@ function(qtmediate_add_win_manifest _target)
         set(MANIFEST_UTF8 "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>")
     endif()
 
+    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_manifest.manifest")
     configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()

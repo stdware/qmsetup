@@ -50,7 +50,7 @@ endfunction()
     Automatically copy dependencies for Windows Executables after build.
 
     qtmediate_win_applocal_deps(<target>
-        [DEPLOY_TARGET <target>]
+        [CUSTOM_TARGET <target>]
         [EXTRA_SEARCHING_PATHS <path...>]
         [EXTRA_TARGETS <target...>]
         [OUTPUT_DIR <dir>]
@@ -62,7 +62,7 @@ function(qtmediate_win_applocal_deps _target)
     endif()
 
     set(options)
-    set(oneValueArgs TARGET DEPLOY_TARGET OUTPUT_DIR)
+    set(oneValueArgs TARGET CUSTOM_TARGET OUTPUT_DIR)
     set(multiValueArgs EXTRA_SEARCHING_PATHS EXTRA_TARGETS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -79,8 +79,8 @@ function(qtmediate_win_applocal_deps _target)
     set(_out_dir)
     set(_deploy_target)
 
-    if(FUNC_DEPLOY_TARGET)
-        set(_deploy_target ${FUNC_DEPLOY_TARGET})
+    if(FUNC_CUSTOM_TARGET)
+        set(_deploy_target ${FUNC_CUSTOM_TARGET})
 
         if(NOT TARGET ${_deploy_target})
             add_custom_target(${_deploy_target})
