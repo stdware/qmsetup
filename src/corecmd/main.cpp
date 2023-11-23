@@ -303,12 +303,33 @@ static inline fs::path fromFramework(const fs::path &path) {
 
 // ---------------------------------------- Commands ----------------------------------------
 
-static int cmd_cpdir(const SCL::ParseResult &result) {
+static int cmd_copy(const SCL::ParseResult &result) {
     bool force = result.optionIsSet("-f");
-    bool contents = result.optionIsSet("-c");
     bool verbose = result.optionIsSet("-V");
 
-    const auto &src = fs::absolute(str2tstr(result.value(0).toString()));
+    std::set<fs::path> files;
+    std::set<fs::path> directories;
+    std::set<fs::path> directoryContents;
+    {
+        const auto &srcResult = result.values(0);
+        for (const auto &item : srcResult) {
+            const auto &rawString = item.toString();
+            bool contents = false;
+            if (auto last = rawString.back(); last == '/' || last == '\\') {
+                contents = true;
+            }
+
+            const auto &path = fs::absolute(str2tstr(rawString));
+            if (fs::is_directory(path)) {
+                (contents ? directoryContents : directories).insert(path);
+            } else if (fs::exists(path)) {
+                files.insert(path);
+            } else {
+                throw std::runtime_error("not a file or directory: \"" + rawString + "\"");
+            }
+        }
+    }
+
     const auto &dest = fs::absolute(str2tstr(result.value(1).toString()));
 
     // Add excludes
@@ -322,15 +343,18 @@ static int cmd_cpdir(const SCL::ParseResult &result) {
     }
 
     // Copy
-    if (fs::is_directory(src)) {
-        copyDirectory(src, src, contents ? dest : (dest / src.filename()), force, verbose,
-                      [&excludes](const fs::path &path) {
-                          return searchInRegexList(TString(path), excludes);
-                      });
-    } else if (fs::exists(src)) {
-        copyFile(src, dest, {}, force, verbose);
-    } else {
-        throw std::runtime_error("not a file or directory: \"" + tstr2str(src) + "\"");
+    const auto &excludeFunc = [&excludes](const fs::path &path) {
+        return searchInRegexList(TString(path), excludes);
+    };
+
+    for (const auto &item : std::as_const(files)) {
+        copyFile(item, dest, {}, force, verbose);
+    }
+    for (const auto &item : std::as_const(directories)) {
+        copyDirectory(item, item, dest / item.filename(), force, verbose, excludeFunc);
+    }
+    for (const auto &item : std::as_const(directoryContents)) {
+        copyDirectory(item, item, dest, force, verbose, excludeFunc);
     }
 
     return 0;
@@ -1114,19 +1138,18 @@ int main(int argc, char *argv[]) {
     // Shared option
     static SCL::Option verbose({"-V", "--verbose"}, "Show verbose");
 
-    SCL::Command cpdirCommand = []() {
-        SCL::Command command("cpdir", "Copy directory to destination if different");
+    SCL::Command copyCommand = []() {
+        SCL::Command command("copy", "Copy files or directories if different");
         command.addArguments({
-            SCL::Argument("src", "Source directory"),
+            SCL::Argument("src", "Source files or directories").multi(),
             SCL::Argument("dest", "Destination directory"),
         });
         command.addOptions({
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-            SCL::Option({"-c", "--content"}, "Copy contents"),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
         command.addOptions({verbose});
-        command.setHandler(cmd_cpdir);
+        command.setHandler(cmd_copy);
         return command;
     }();
 
@@ -1224,7 +1247,7 @@ int main(int argc, char *argv[]) {
     SCL::Command rootCommand(SCL::appName(),
                              "Cross-platform utility commands for C/C++ build systems.");
     rootCommand.addCommands({
-        cpdirCommand,
+        copyCommand,
         rmdirCommand,
         touchCommand,
         configureCommand,
@@ -1239,7 +1262,7 @@ int main(int argc, char *argv[]) {
     });
 
     SCL::CommandCatalogue cc;
-    cc.addCommands("Filesystem Commands", {"cpdir", "rmdir", "touch"});
+    cc.addCommands("Filesystem Commands", {"copy", "rmdir", "touch"});
     cc.addCommands("Developer Commands", {"configure", "incsync", "deploy"});
     rootCommand.setCatalogue(cc);
 

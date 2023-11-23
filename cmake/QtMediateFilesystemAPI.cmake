@@ -5,25 +5,21 @@ Add a resources copying command for whole project.
 
     qtmediate_add_copy_command(<target>
         [CUSTOM_TARGET <target>]
+        [FORCE] [VERBOSE]
 
         SOURCES <file/dir...>
         DESTINATION <dir>
     )
 ]] #
 function(qtmediate_add_copy_command _target)
-    set(options)
+    set(options FORCE VERBOSE)
     set(oneValueArgs CUSTOM_TARGET DESTINATION)
     set(multiValueArgs SOURCES)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediateCM::corecmd)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_add_copy_command: tool \"corecmd\" not found.")
-    endif()
-
-    get_target_property(_tool ${_tool_target} LOCATION)
+    set(_tool)
+    _qtmediate_get_core_tool(_tool "qtmediate_add_copy_command")
 
     if(NOT FUNC_SOURCES)
         message(FATAL_ERROR "qtmediate_add_copy_command: SOURCES not specified.")
@@ -65,23 +61,20 @@ function(qtmediate_add_copy_command _target)
         set(_deploy_target ${_target})
     endif()
 
-    foreach(_item ${FUNC_SOURCES})
-        get_filename_component(_full_path ${_item} ABSOLUTE)
+    set(_extra_args)
 
-        # if(NOT EXISTS ${_full_path})
-        # message(FATAL_ERROR "qtmediate_add_copy_command: \"${_item}\" doesn't exist.")
-        # endif()
-        set(_args ${_tool} cpdir ${_full_path} ${_dest})
+    if(FUNC_FORCE)
+        list(APPEND _extra_args -f)
+    endif()
 
-        if(${_item} MATCHES ".+[/|\\\\]")
-            list(APPEND _args "-c")
-        endif()
+    if(FUNC_VERBOSE)
+        list(APPEND _extra_args -V)
+    endif()
 
-        # Add a post target to handle unexpected delete
-        add_custom_command(TARGET ${_deploy_target} POST_BUILD
-            COMMAND ${_args}
-        )
-    endforeach()
+    add_custom_command(TARGET ${_deploy_target} POST_BUILD
+        COMMAND ${_tool} copy ${_extra_args} ${FUNC_SOURCES} ${_dest}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 endfunction()
 
 #[[

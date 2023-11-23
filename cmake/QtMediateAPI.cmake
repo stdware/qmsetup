@@ -169,21 +169,26 @@ function(qtmediate_add_win_rc_enhanced _target)
     set(_file_type)
     set(_target_type)
     get_target_property(_target_type ${_target} TYPE)
+
     if("x${_target_type}" STREQUAL "xEXECUTABLE")
         set(_file_type "VFT_APP")
     else()
         set(_file_type "VFT_DLL")
     endif()
+
     set(RC_FILE_TYPE ${_file_type})
 
     set(_icons)
+
     if(FUNC_ICONS)
         set(_index 1)
+
         foreach(_icon IN LISTS FUNC_ICONS)
             string(APPEND _icons "IDI_ICON${_index}    ICON    \"${_icon}\"\n")
             math(EXPR _index "${_index} +1")
         endforeach()
     endif()
+
     set(RC_ICONS ${_icons})
 
     qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
@@ -223,6 +228,7 @@ function(qtmediate_add_win_manifest _target)
     set(MANIFEST_DESCRIPTION ${_desc})
 
     set(MANIFEST_UTF8)
+
     if(FUNC_UTF8)
         set(MANIFEST_UTF8 "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>")
     endif()
@@ -634,3 +640,11 @@ function(qtmediate_get_subdirs _var)
 
     set(${_var} ${_res} PARENT_SCOPE)
 endfunction()
+
+macro(_qtmediate_get_core_tool _out _func)
+    if(NOT TARGET qtmediateCM::corecmd)
+        message(FATAL_ERROR "${_func}: tool \"corecmd\" not found.")
+    endif()
+
+    get_target_property(${_out} qtmediateCM::corecmd LOCATION)
+endmacro()

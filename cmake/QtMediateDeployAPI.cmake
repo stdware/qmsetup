@@ -51,6 +51,7 @@ endfunction()
 
     qtmediate_win_applocal_deps(<target>
         [CUSTOM_TARGET <target>]
+        [FORCE] [VERBOSE]
         [EXTRA_SEARCHING_PATHS <path...>]
         [EXTRA_TARGETS <target...>]
         [OUTPUT_DIR <dir>]
@@ -61,19 +62,14 @@ function(qtmediate_win_applocal_deps _target)
         return()
     endif()
 
-    set(options)
+    set(options FORCE VERBOSE)
     set(oneValueArgs TARGET CUSTOM_TARGET OUTPUT_DIR)
     set(multiValueArgs EXTRA_SEARCHING_PATHS EXTRA_TARGETS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediateCM::corecmd)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_win_applocal_deps: tool \"corecmd\" not found.")
-    endif()
-
-    get_target_property(_tool ${_tool_target} LOCATION)
+    set(_tool)
+    _qtmediate_get_core_tool(_tool "qtmediate_win_applocal_deps")
 
     # Get output directory and deploy target
     set(_out_dir)
@@ -109,6 +105,14 @@ function(qtmediate_win_applocal_deps _target)
 
     # Prepare command
     set(_args)
+
+    if(FUNC_FORCE)
+        list(APPEND _args -f)
+    endif()
+
+    if(FUNC_VERBOSE)
+        list(APPEND _args -V)
+    endif()
 
     foreach(_item ${FUNC_EXTRA_SEARCHING_PATHS})
         list(APPEND _args "-L${_item}")
@@ -153,13 +157,8 @@ function(qtmediate_deploy_directory _install_dir)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediateCM::corecmd)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_deploy_directory: tool \"corecmd\" not found.")
-    endif()
-
-    get_target_property(_tool ${_tool_target} LOCATION)
+    set(_tool)
+    _qtmediate_get_core_tool(_tool "qtmediate_deploy_directory")
 
     # Get qmake
     if((FUNC_PLUGINS OR FUNC_QML) AND NOT DEFINED QT_QMAKE_EXECUTABLE)

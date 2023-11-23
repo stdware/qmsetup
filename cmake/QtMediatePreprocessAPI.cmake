@@ -15,13 +15,8 @@ function(qtmediate_sync_include _src_dir _dest_dir)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediateCM::corecmd)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_sync_include: tool \"corecmd\" not found.")
-    endif()
-
-    get_target_property(_tool ${_tool_target} LOCATION)
+    set(_tool)
+    _qtmediate_get_core_tool(_tool "qtmediate_sync_include")
 
     if(NOT IS_ABSOLUTE ${_src_dir})
         get_filename_component(_src_dir ${_src_dir} ABSOLUTE)
@@ -180,13 +175,8 @@ function(qtmediate_generate_config _file)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
-    set(_tool_target qtmediateCM::corecmd)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_generate_config: tool \"corecmd\" not found.")
-    endif()
-
-    get_target_property(_tool ${_tool_target} LOCATION)
+    set(_tool)
+    _qtmediate_get_core_tool(_tool "qtmediate_generate_config")
 
     qtmediate_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
 
@@ -221,13 +211,8 @@ endfunction()
 ]] #
 function(qtmediate_generate_build_info _dir _prefix _file)
     # Get tool
-    set(_tool_target qtmediateCM::corecmd)
-
-    if(NOT TARGET ${_tool_target})
-        message(FATAL_ERROR "qtmediate_generate_build_info: tool \"corecmd\" not found.")
-    endif()
-
-    get_target_property(_tool ${_tool_target} LOCATION)
+    set(_tool)
+    _qtmediate_get_core_tool(_tool "qtmediate_generate_build_info")
 
     set(_git_branch "unknown")
     set(_git_hash "unknown")
