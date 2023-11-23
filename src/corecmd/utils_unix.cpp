@@ -22,7 +22,7 @@ namespace Utils {
         // }
         // printf("\n");
 
-        const auto &dupStr = [](char *&dest, const char *src, size_t size) {
+        static const auto &dupStr = [](char *&dest, const char *src, size_t size) {
             dest = new char[size + 1];
             memcpy(dest, src, size);
             dest[size] = '\0';

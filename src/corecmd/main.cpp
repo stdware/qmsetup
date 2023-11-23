@@ -415,7 +415,8 @@ static int cmd_touch(const SCL::ParseResult &result) {
 }
 
 static int cmd_configure(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("-V");
+    bool dryrun = result.optionIsSet("-d");
+    bool verbose = dryrun || result.optionIsSet("-V");
     const auto &fileName = str2tstr(result.value(0).toString());
 
     // Add defines
@@ -457,6 +458,32 @@ static int cmd_configure(const SCL::ParseResult &result) {
         hash = ss.str();
     }
 
+    // Generate content
+    std::string content;
+    {
+        std::string guard = tstr2str(fs::path(fileName).filename()); // Header guard
+        std::replace(guard.begin(), guard.end(), '.', '_');
+        for (char &c : guard) {
+            c = char(std::toupper(c));
+        }
+
+        std::stringstream ss;
+        ss << "#ifndef " << guard << "\n";
+        ss << "#define " << guard << "\n\n";
+
+        ss << STR_WARNING << "\n\n";           // Warning
+        ss << "// SHA256: " << hash << "\n\n"; // Hash
+        ss << definitions << "\n";             // Definitions
+        ss << "#endif // " << guard << "\n";   // Header guard end
+
+        content = ss.str();
+    }
+
+    if (dryrun) {
+        u8printf("%s", content.data());
+        return 0;
+    }
+
     // Read file
     do {
         // Check if file exists and has the same hash
@@ -465,10 +492,11 @@ static int cmd_configure(const SCL::ParseResult &result) {
             break;
         }
 
+        bool matched = false;
+
         std::regex hashPattern(R"(^// SHA256: (\w+)$)");
         std::smatch match;
         std::string line;
-        bool matched = false;
 
         int pp_cnt = 0;
         while (std::getline(inFile, line)) {
@@ -493,7 +521,6 @@ static int cmd_configure(const SCL::ParseResult &result) {
                 break;
             }
         }
-
         inFile.close();
 
         if (matched) {
@@ -501,9 +528,9 @@ static int cmd_configure(const SCL::ParseResult &result) {
                 SCL::u8debug(SCL::MessageType::MT_Warning, true, "Content matched. (%s)\n",
                              hash.data());
             }
-            return 0; // Same hash found, no need to overwrite the file
+            // Same hash found, no need to overwrite the file
+            return 0;
         }
-
     } while (false);
 
     // Create file
@@ -519,26 +546,12 @@ static int cmd_configure(const SCL::ParseResult &result) {
                                      "\": " + standardError());
         }
 
-        // Header guard
-        std::string guard = tstr2str(fs::path(fileName).filename());
-        std::replace(guard.begin(), guard.end(), '.', '_');
-        for (char &c : guard) {
-            c = char(std::toupper(c));
-        }
-
-        outFile << "#ifndef " << guard << "\n";
-        outFile << "#define " << guard << "\n\n";
-
-        outFile << STR_WARNING << "\n\n";           // Warning
-        outFile << "// SHA256: " << hash << "\n\n"; // Hash
-        outFile << definitions << "\n";             // Definitions
-        outFile << "#endif // " << guard << "\n";   // Header guard end
-
+        outFile << content;
         outFile.close();
-    }
 
-    if (verbose) {
-        u8printf("SHA256: %s\n", hash.data());
+        if (verbose) {
+            u8printf("SHA256: %s\n", hash.data());
+        }
     }
 
     return 0;
@@ -943,7 +956,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
 #  if defined(__APPLE__)
     // Ignore Header files and unused library
-    const auto &frameworkIgnore = [](const fs::path &path, const fs::path &frameworkName,
+    static const auto &frameworkIgnore = [](const fs::path &path, const fs::path &frameworkName,
                                      int type) -> bool {
         if (!(type & Release)) {
             if (path.filename() == frameworkName)
@@ -1186,6 +1199,7 @@ int main(int argc, char *argv[]) {
                 .arg("expr")
                 .multi()
                 .short_match(SCL::Option::ShortMatchSingleChar),
+            SCL::Option({"-d", "--dryrun"}, "Print contents only"),
         });
         command.addOption(verbose);
         command.setHandler(cmd_configure);
@@ -1193,10 +1207,10 @@ int main(int argc, char *argv[]) {
     }();
 
     SCL::Command incsyncCommand = []() {
-        SCL::Command command("incsync", "Reorganize the header directory structure");
+        SCL::Command command("incsync", "Reorganize header files of include directory");
         command.addArguments({
-            SCL::Argument("src dir", "Source files directory"),
-            SCL::Argument("dest dir", "Destination directory"),
+            SCL::Argument("src", "Input directory containing source headers"),
+            SCL::Argument("dest", "Output directory of reorganized headers"),
         });
         command.addOptions({
             SCL::Option({"-i", "--include"}, "Add a path pattern and corresponding subdirectory")
