@@ -115,6 +115,84 @@ function(qtmediate_add_win_rc _target)
 endfunction()
 
 #[[
+    Attach windows RC file to a target, enhanced edition.
+
+    qtmediate_add_win_rc_enhanced(<target>
+        [NAME              name]
+        [VERSION           version]
+        [DESCRIPTION       description]
+        [COPYRIGHT         copyright]
+        [COMMENTS          comments]
+        [COMPANY           company]
+        [INTERNAL_NAME     internal name]
+        [TRADEMARK         trademark]
+        [ORIGINAL_FILENAME original filename]
+        [ICONS             icon file paths]
+        [OUTPUT            output]
+    )
+]] #
+function(qtmediate_add_win_rc_enhanced _target)
+    if(NOT WIN32)
+        return()
+    endif()
+
+    set(options)
+    set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT COMMENTS COMPANY INTERNAL_NAME TRADEMARK ORIGINAL_FILENAME OUTPUT)
+    set(multiValueArgs ICONS)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+
+    qtmediate_set_value(_name FUNC_NAME ${_target})
+    qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
+    qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qtmediate_set_value(_copyright FUNC_COPYRIGHT ${_name})
+    qtmediate_set_value(_comments FUNC_COMMENTS "")
+    qtmediate_set_value(_company FUNC_COMPANY "")
+    qtmediate_set_value(_internal_name FUNC_INTERNAL_NAME "")
+    qtmediate_set_value(_trademark FUNC_TRADEMARK "")
+    qtmediate_set_value(_original_filename FUNC_ORIGINAL_FILENAME "")
+
+    qtmediate_parse_version(_ver ${_version})
+    set(RC_VERSION ${_ver_1},${_ver_2},${_ver_3},${_ver_4})
+
+    set(RC_APPLICATION_NAME ${_name})
+    set(RC_VERSION_STRING ${_version})
+    set(RC_DESCRIPTION ${_desc})
+    set(RC_COPYRIGHT ${_copyright})
+    set(RC_COMMENTS ${_comments})
+    set(RC_COMPANY ${_company})
+    set(RC_INTERNAL_NAME ${_internal_name})
+    set(RC_TRADEMARK ${_trademark})
+    set(RC_ORIGINAL_FILENAME ${_original_filename})
+
+    set(_file_type)
+    set(_target_type)
+    get_target_property(_target_type ${_target} TYPE)
+    if("x${_target_type}" STREQUAL "xEXECUTABLE")
+        set(_file_type "VFT_APP")
+    else()
+        set(_file_type "VFT_DLL")
+    endif()
+    set(RC_FILE_TYPE ${_file_type})
+
+    set(_icons)
+    if(FUNC_ICONS)
+        set(_index 1)
+        foreach(_icon IN LISTS FUNC_ICONS)
+            string(APPEND _icons "IDI_ICON${_index}    ICON    \"${_icon}\"\n")
+            math(EXPR _index "${_index} +1")
+        endforeach()
+    endif()
+    set(RC_ICONS ${_icons})
+
+    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
+
+    configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
+    target_sources(${_target} PRIVATE ${_out_path})
+endfunction()
+
+#[[
     Attach windows manifest file to a target.
 
     qtmediate_add_win_manifest(<target>
