@@ -642,9 +642,9 @@ function(qtmediate_get_subdirs _var)
 endfunction()
 
 macro(_qtmediate_get_core_tool _out _func)
-    if(NOT TARGET qtmediateCM::corecmd)
+    if(NOT TARGET qmcmake::corecmd)
         message(FATAL_ERROR "${_func}: tool \"corecmd\" not found.")
     endif()
 
-    get_target_property(${_out} qtmediateCM::corecmd LOCATION)
+    get_target_property(${_out} qmcmake::corecmd LOCATION)
 endmacro()

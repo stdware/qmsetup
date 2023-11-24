@@ -463,9 +463,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
     {
         std::string guard = tstr2str(fs::path(fileName).filename()); // Header guard
         std::replace(guard.begin(), guard.end(), '.', '_');
-        for (char &c : guard) {
-            c = char(std::toupper(c));
-        }
+        guard = Utils::toUpper(guard);
 
         std::stringstream ss;
         ss << "#ifndef " << guard << "\n";
@@ -957,7 +955,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #  if defined(__APPLE__)
     // Ignore Header files and unused library
     static const auto &frameworkIgnore = [](const fs::path &path, const fs::path &frameworkName,
-                                     int type) -> bool {
+                                            int type) -> bool {
         if (!(type & Release)) {
             if (path.filename() == frameworkName)
                 return true;

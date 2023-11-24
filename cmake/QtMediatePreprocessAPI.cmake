@@ -5,13 +5,16 @@ include_guard(DIRECTORY)
     The generated file has the same timestamp as the source file.
 
     qtmediate_sync_include(<src> <dest>
+        [NO_STANDARD] [NO_ALL]
+        [INCLUDE_PATTERNS <pair...>]
+        [EXCLUDE_PATTERNS <expr...>]
         [FORCE] [INSTALL_DIR <dir>]
     )
 #]]
 function(qtmediate_sync_include _src_dir _dest_dir)
-    set(options FORCE)
+    set(options FORCE NO_STANDARD NO_ALL)
     set(oneValueArgs INSTALL_DIR)
-    set(multiValueArgs)
+    set(multiValueArgs INCLUDE_PATTERNS EXCLUDE_PATTERNS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
@@ -33,13 +36,33 @@ function(qtmediate_sync_include _src_dir _dest_dir)
     if(IS_DIRECTORY ${_src_dir})
         file(GLOB_RECURSE header_files ${_src_dir}/*.h ${_src_dir}/*.hpp)
 
+        set(_args)
+
+        if(NOT FUNC_NO_STANDARD)
+            list(APPEND _args -s)
+        endif()
+
+        if(FUNC_NO_ALL)
+            list(APPEND _args -n)
+        endif()
+
+        foreach(_item ${FUNC_INCLUDE_PATTERNS})
+            list(APPEND _args -i ${_item})
+        endforeach()
+
+        foreach(_item ${FUNC_EXCULDE_PATTERNS})
+            list(APPEND _args -e ${_item})
+        endforeach()
+
+        list(APPEND _args)
+
         if(NOT FUNC_FORCE OR NOT EXISTS ${_dest_dir})
             if(EXISTS ${_dest_dir})
                 file(REMOVE_RECURSE ${_dest_dir})
             endif()
 
             execute_process(
-                COMMAND ${_tool} incsync -s ${_src_dir} ${_dest_dir}
+                COMMAND ${_tool} incsync ${_args} ${_src_dir} ${_dest_dir}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMAND_ERROR_IS_FATAL ANY
             )
@@ -47,11 +70,17 @@ function(qtmediate_sync_include _src_dir _dest_dir)
 
         if(FUNC_INSTALL_DIR)
             get_filename_component(_install_dir ${FUNC_INSTALL_DIR} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
-            
+
+            set(_args_quoted)
+
+            foreach(_item ${_args})
+                set(_args_quoted "${_args_quoted}\"${_item}\" ")
+            endforeach()
+
             # Get command output only and use file(INSTALL) to install files
             install(CODE "
                 execute_process(
-                    COMMAND \"${_tool}\" incsync -c -d -s \"${_src_dir}\" \"${_install_dir}\"
+                    COMMAND \"${_tool}\" incsync -d ${_args_quoted} \"${_src_dir}\" \"${_install_dir}\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                     OUTPUT_VARIABLE _output_contents
                     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -62,7 +91,7 @@ function(qtmediate_sync_include _src_dir _dest_dir)
 
                 foreach(_line \${_lines})
                     if(_is_even_line)
-                        string(SUBSTRING \${_line} 7 -1 _target_path)
+                        string(SUBSTRING \${_line} 7 -1 _target_path) # Skip `Create ` token
                         get_filename_component(_target_path \${_target_path} DIRECTORY)
                         set(_is_even_line FALSE)
                     else()

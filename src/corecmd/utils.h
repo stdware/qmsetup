@@ -92,6 +92,12 @@ namespace Utils {
         return s;
     }
 
+    template <class T>
+    std::basic_string<T> toUpper(std::basic_string<T> s) {
+        std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+        return s;
+    }
+
     // OS Utils
 #ifdef _WIN32
     std::string local8bit_to_utf8(const std::string &s);

@@ -55,11 +55,11 @@ cmake -B build --target install
 
 ### Import
 ```sh
-cmake -DqtmediateCM_DIR=/path/to/lib/cmake/qtmediateCM ...
+cmake -Dqmcmake_DIR=/path/to/lib/cmake/qmcmake ...
 ```
 ```cmake
 # CMakeLists.txt
-find_package(qtmediateCM REQUIRED)
+find_package(qmcmake REQUIRED)
 ```
 
 ## Thanks
