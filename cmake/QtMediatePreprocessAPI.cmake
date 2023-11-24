@@ -6,15 +6,15 @@ include_guard(DIRECTORY)
 
     qtmediate_sync_include(<src> <dest>
         [NO_STANDARD] [NO_ALL]
-        [INCLUDE_PATTERNS <pair...>]
-        [EXCLUDE_PATTERNS <expr...>]
+        [INCLUDE <pair...>]
+        [EXCLUDE <expr...>]
         [FORCE] [INSTALL_DIR <dir>]
     )
 #]]
 function(qtmediate_sync_include _src_dir _dest_dir)
     set(options FORCE NO_STANDARD NO_ALL)
     set(oneValueArgs INSTALL_DIR)
-    set(multiValueArgs INCLUDE_PATTERNS EXCLUDE_PATTERNS)
+    set(multiValueArgs INCLUDE EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get tool
@@ -46,11 +46,11 @@ function(qtmediate_sync_include _src_dir _dest_dir)
             list(APPEND _args -n)
         endif()
 
-        foreach(_item ${FUNC_INCLUDE_PATTERNS})
+        foreach(_item ${FUNC_INCLUDE})
             list(APPEND _args -i ${_item})
         endforeach()
 
-        foreach(_item ${FUNC_EXCULDE_PATTERNS})
+        foreach(_item ${FUNC_EXCLUDE})
             list(APPEND _args -e ${_item})
         endforeach()
 

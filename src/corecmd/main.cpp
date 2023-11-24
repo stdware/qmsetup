@@ -80,8 +80,11 @@ static std::string time2str(const std::chrono::system_clock::time_point &t) {
 }
 
 template <class T>
-static bool searchInRegexList(const std::basic_string<T> &s,
+static bool searchInRegexList(std::basic_string<T> s,
                               const std::vector<std::basic_string<T>> &regexList) {
+    // Replace separator
+    std::replace(s.begin(), s.end(), _TSTR('\\'), _TSTR('/'));
+
     bool found = false;
     for (const auto &pattern : regexList) {
         if (std::regex_search(s.begin(), s.end(), std::basic_regex<T>(pattern))) {
@@ -605,14 +608,18 @@ static int cmd_incsync(const SCL::ParseResult &result) {
     for (const auto &entry : fs::recursive_directory_iterator(src)) {
         if (entry.is_regular_file()) {
             const auto &path = entry.path();
-            if (!(path.extension() == _TSTR(".h") || path.extension() == _TSTR(".hpp"))) {
+            const auto &ext = Utils::toLower(TString(path.extension()));
+            if (!(ext == _TSTR(".h") || ext == _TSTR(".hpp"))) {
                 continue;
             }
 
             // Get subdirectory
             fs::path subdir;
             for (const auto &pair : includes) {
-                const TString &pathString = path;
+                TString pathString = path;
+                // Replace separator
+                std::replace(pathString.begin(), pathString.end(), _TSTR('\\'), _TSTR('/'));
+
                 if (std::regex_search(pathString.begin(), pathString.end(),
                                       std::basic_regex<TChar>(pair.first))) {
                     subdir = pair.second;
