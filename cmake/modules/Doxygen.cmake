@@ -33,7 +33,7 @@ function(qtmediate_setup_doxygen _target)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT DOXYGEN_EXECUTABLE)
-        message(FATAL_ERROR "qtmediate_setup_doxygen: doxygen executable not defined!")
+        message(FATAL_ERROR "qtmediate_setup_doxygen: DOXYGEN_EXECUTABLE not defined. Add find_package(Doxygen) to CMake to enable.")
     endif()
 
     set(DOXYGEN_FILE_DIR ${QTMEDIATE_MODULES_DIR}/doxygen)

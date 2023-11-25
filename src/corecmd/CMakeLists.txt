@@ -19,9 +19,15 @@ else()
 endif()
 
 add_executable(${PROJECT_NAME} ${_src})
-
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} PRIVATE syscmdline::syscmdline)
+
+# Add features
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    CXX_EXTENSIONS OFF
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+)
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE shlwapi)

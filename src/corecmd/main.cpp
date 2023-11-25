@@ -161,6 +161,7 @@ static void copyDirectory(const fs::path &srcRootDir, const fs::path &srcDir,
         if (ignore && ignore(entryPath))
             continue;
 
+#ifndef _WIN32
         if (fs::is_symlink(entryPath)) {
             fs::path linkPath;
             try {
@@ -177,7 +178,11 @@ static void copyDirectory(const fs::path &srcRootDir, const fs::path &srcDir,
                          ? fs::relative(linkPath, fs::canonical(entryPath.parent_path())).string()
                          : std::string(),
                      force, verbose);
-        } else if (fs::is_regular_file(entryPath)) {
+            continue;
+        }
+#endif
+
+        if (fs::is_regular_file(entryPath)) {
             copyFile(entryPath, destDir, {}, force, verbose);
         } else if (fs::is_directory(entryPath)) {
             copyDirectory(srcRootDir, entryPath, destDir / entryPath.filename(), force, verbose,
@@ -1069,13 +1074,13 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     }
 
 #  else
-    const auto &setInterpreter = [verbose](const std::string &file, const std::string &interp) {
-        if (verbose) {
-            u8printf("Set interpreter: %s\n", file.data());
-            u8printf("    %s\n", interp.data());
-        }
-        Utils::setFileInterpreter(file, interp);
-    };
+    // const auto &setInterpreter = [verbose](const std::string &file, const std::string &interp) {
+    //     if (verbose) {
+    //         u8printf("Set interpreter: %s\n", file.data());
+    //         u8printf("    %s\n", interp.data());
+    //     }
+    //     Utils::setFileInterpreter(file, interp);
+    // };
 
     // Copy original files
     auto targetOrgFiles = orgFiles;
@@ -1176,7 +1181,7 @@ int main(int argc, char *argv[]) {
     }();
 
     SCL::Command rmdirCommand = []() {
-        SCL::Command command("rmdir", "Remove all empty directories");
+        SCL::Command command("rmdir", "Remove empty directories recursively");
         command.addArguments({
             SCL::Argument("dir", "Directories").multi(),
         });
