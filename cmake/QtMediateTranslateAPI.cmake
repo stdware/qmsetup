@@ -1,7 +1,7 @@
 include_guard(DIRECTORY)
 
 #[[
-Add qt translation target.
+    Add qt translation target.
 
     qtmediate_add_translation(<target>
         [LOCALES locales]

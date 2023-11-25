@@ -100,6 +100,8 @@ namespace Utils {
 
     // OS Utils
 #ifdef _WIN32
+    std::wstring executeCommand(const std::wstring &command, const std::vector<std::wstring> &args);
+
     std::string local8bit_to_utf8(const std::string &s);
 
     std::vector<std::wstring>
@@ -107,6 +109,8 @@ namespace Utils {
                                      const std::vector<std::filesystem::path> &searchingPaths,
                                      std::vector<std::string> *unparsed);
 #else
+    std::string executeCommand(const std::string &command, const std::vector<std::string> &args);
+
     void setFileRPaths(const std::string &file, const std::vector<std::string> &paths);
 
     std::vector<std::string>

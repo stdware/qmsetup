@@ -14,8 +14,7 @@ namespace fs = std::filesystem;
 
 namespace Utils {
 
-    static std::string executeCommand(const std::string &command,
-                                      const std::vector<std::string> &args) {
+    std::string executeCommand(const std::string &command, const std::vector<std::string> &args) {
         // printf("Executing command: %s", command.data());
         // for (const auto &arg : args) {
         //     printf(" %s", arg.data());
@@ -125,7 +124,9 @@ namespace Utils {
                                      std::to_string(sig));
         }
 
-        throw std::runtime_error("command \"" + command + "\" terminated abnormally");
+        throw std::runtime_error("command \"" + command +
+                                 "\" terminated abnormally with exit code " +
+                                 std::to_string(exitCode));
     }
 
     FileTime fileTime(const fs::path &path) {
@@ -153,13 +154,13 @@ namespace Utils {
     std::vector<fs::path> getPathsFromEnv() {
         const char *pathEnv = std::getenv("PATH");
         if (pathEnv == nullptr) {
-            return {}; 
+            return {};
         }
 
         std::string pathStr = pathEnv;
         std::stringstream ss(pathStr);
         std::string item;
-        
+
         std::vector<fs::path> paths;
         while (std::getline(ss, item, ':')) {
             if (!item.empty()) {

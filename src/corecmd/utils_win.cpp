@@ -19,6 +19,140 @@ namespace fs = std::filesystem;
 
 namespace Utils {
 
+    static constexpr const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
+
+    static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage = true) {
+        std::wstring rc;
+        wchar_t *lpMsgBuf;
+
+        const DWORD len =
+            ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                                 FORMAT_MESSAGE_IGNORE_INSERTS,
+                             NULL, error, nativeLanguage ? 0 : g_EnglishLangId,
+                             reinterpret_cast<LPWSTR>(&lpMsgBuf), 0, NULL);
+
+        if (len) {
+            // Remove tail line breaks
+            if (lpMsgBuf[len - 1] == L'\n') {
+                lpMsgBuf[len - 1] = L'\0';
+                if (len > 2 && lpMsgBuf[len - 2] == L'\r') {
+                    lpMsgBuf[len - 2] = L'\0';
+                }
+            }
+            rc = std::wstring(lpMsgBuf, int(len));
+            ::LocalFree(lpMsgBuf);
+        } else {
+            rc += L"unknown error";
+        }
+
+        return rc;
+    }
+
+    static std::wstring quoteAndEscapeArg(const std::wstring &arg) {
+        if (arg.find_first_of(L" \t\"") == std::wstring::npos) {
+            // No need to quote or escape
+            return arg;
+        }
+
+        std::wstring escapedArg = L"\"";
+        for (auto ch : arg) {
+            if (ch == L'"') {
+                // Escape double quotes
+                escapedArg += L"\"\"";
+            } else {
+                escapedArg += ch;
+            }
+        }
+        escapedArg += L"\"";
+        return escapedArg;
+    }
+
+    std::wstring executeCommand(const std::wstring &command,
+                                const std::vector<std::wstring> &args) {
+        SECURITY_ATTRIBUTES sa;
+        HANDLE hReadPipe, hWritePipe;
+        STARTUPINFOW si;
+        PROCESS_INFORMATION pi;
+        DWORD read;
+        wchar_t buffer[4096]; // For captured output
+
+        // Initialize security attributes to allow pipe handles to be inherited.
+        sa.nLength = sizeof(SECURITY_ATTRIBUTES);
+        sa.bInheritHandle = TRUE;
+        sa.lpSecurityDescriptor = NULL;
+
+        // Create a pipe for the child process's STDOUT.
+        if (!CreatePipe(&hReadPipe, &hWritePipe, &sa, 0)) {
+            throw std::runtime_error("failed to call \"CreatePipe\": " +
+                                     SCL::wideToUtf8(winErrorMessage(::GetLastError())));
+        }
+
+        // Ensure the read handle to the pipe for STDOUT is not inherited.
+        if (!SetHandleInformation(hReadPipe, HANDLE_FLAG_INHERIT, 0)) {
+            CloseHandle(hWritePipe);
+            CloseHandle(hReadPipe);
+            throw std::runtime_error("failed to call \"SetHandleInformation\": " +
+                                     SCL::wideToUtf8(winErrorMessage(::GetLastError())));
+        }
+
+        // Set up members of the STARTUPINFO structure.
+        ZeroMemory(&si, sizeof(STARTUPINFO));
+        si.cb = sizeof(STARTUPINFO);
+        si.hStdError = hWritePipe;
+        si.hStdOutput = hWritePipe;
+        si.dwFlags |= STARTF_USESTDHANDLES;
+
+        // Construct command line
+        std::wstringstream cmdLineStream;
+        cmdLineStream << quoteAndEscapeArg(command) << L" ";
+        for (const auto &arg : args) {
+            cmdLineStream << quoteAndEscapeArg(arg) << L" ";
+        }
+        std::wstring cmdLine = cmdLineStream.str();
+
+        // Start the child process.
+        if (!CreateProcessW(NULL, cmdLine.data(), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+            CloseHandle(hWritePipe);
+            CloseHandle(hReadPipe);
+
+            throw std::runtime_error("failed to call \"CreateProcess\": " +
+                                     SCL::wideToUtf8(winErrorMessage(::GetLastError())));
+        }
+
+        // Close the write end of the pipe before reading from the read end of the pipe.
+        CloseHandle(hWritePipe);
+
+        // Read output from the child process's pipe for STDOUT
+        // and write to the parent process's STDOUT.
+        std::wstring output;
+        while (true) {
+            if (!ReadFile(hReadPipe, buffer, sizeof(buffer) - sizeof(wchar_t), &read, NULL) ||
+                read == 0)
+                break;
+
+            buffer[read / sizeof(wchar_t)] = L'\0';
+            output += buffer;
+        }
+
+        // Wait until child process exits.
+        WaitForSingleObject(pi.hProcess, INFINITE);
+
+        DWORD exitCode;
+        GetExitCodeProcess(pi.hProcess, &exitCode);
+
+        // Close process and thread handles and the read end of the pipe.
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        CloseHandle(hReadPipe);
+
+        if (exitCode == 0)
+            return output;
+
+        throw std::runtime_error("command \"" + SCL::wideToUtf8(command) +
+                                 "\" terminated abnormally with exit code " +
+                                 std::to_string(exitCode));
+    }
+
     // Helper functions to convert between FILETIME and std::chrono::system_clock::time_point
     static std::chrono::system_clock::time_point filetime_to_timepoint(const FILETIME &ft) {
         // Windows file time starts from January 1, 1601
@@ -105,35 +239,6 @@ namespace Utils {
             }
         }
         return paths;
-    }
-
-    static constexpr const DWORD g_EnglishLangId = MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US);
-
-    static std::wstring winErrorMessage(uint32_t error, bool nativeLanguage = true) {
-        std::wstring rc;
-        wchar_t *lpMsgBuf;
-
-        const DWORD len =
-            ::FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                                 FORMAT_MESSAGE_IGNORE_INSERTS,
-                             NULL, error, nativeLanguage ? 0 : g_EnglishLangId,
-                             reinterpret_cast<LPWSTR>(&lpMsgBuf), 0, NULL);
-
-        if (len) {
-            // Remove tail line breaks
-            if (lpMsgBuf[len - 1] == L'\n') {
-                lpMsgBuf[len - 1] = L'\0';
-                if (len > 2 && lpMsgBuf[len - 2] == L'\r') {
-                    lpMsgBuf[len - 2] = L'\0';
-                }
-            }
-            rc = std::wstring(lpMsgBuf, int(len));
-            ::LocalFree(lpMsgBuf);
-        } else {
-            rc += L"unknown error";
-        }
-
-        return rc;
     }
 
     // ================================================================================
@@ -375,7 +480,7 @@ namespace Utils {
                 result.push_back(fullPath);
                 continue;
             }
-            
+
             if (unparsed) {
                 unparsed->push_back(item);
             }

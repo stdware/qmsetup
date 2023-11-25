@@ -1,7 +1,7 @@
 include_guard(DIRECTORY)
 
 #[[
-Add a resources copying command for whole project.
+    Add a resources copying command for whole project.
 
     qtmediate_add_copy_command(<target>
         [CUSTOM_TARGET <target>]
@@ -83,7 +83,7 @@ function(qtmediate_add_copy_command _target)
 endfunction()
 
 #[[
-Add a resources copying command for whole project.
+    Add a resources copying command for whole project.
 
     qtmediate_parse_copy_args(<args> <RESULT> <ERROR>)
 
