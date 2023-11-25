@@ -88,7 +88,7 @@ function(qtmediate_install_package _name)
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S ${_src_dir} -B ${_build_dir}
             ${_generator} ${_build_type}
-            -DCMAKE_INSTALL_PREFIX=${_install_dir} ${FUNC_CONFIGURE_ARGS}
+            "-DCMAKE_INSTALL_PREFIX=${_install_dir}" ${FUNC_CONFIGURE_ARGS}
             OUTPUT_FILE ${_log_file}
             ERROR_FILE ${_log_file}
             RESULT_VARIABLE _code

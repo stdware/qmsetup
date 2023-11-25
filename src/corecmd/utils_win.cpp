@@ -148,9 +148,7 @@ namespace Utils {
         if (exitCode == 0)
             return output;
 
-        throw std::runtime_error("command \"" + SCL::wideToUtf8(command) +
-                                 "\" terminated abnormally with exit code " +
-                                 std::to_string(exitCode));
+        throw std::runtime_error(SCL::wideToUtf8(output));
     }
 
     // Helper functions to convert between FILETIME and std::chrono::system_clock::time_point
@@ -160,7 +158,7 @@ namespace Utils {
         static constexpr const long long WIN_EPOCH =
             116444736000000000LL; // in hundreds of nanoseconds
         long long duration = (static_cast<long long>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
-        duration -= WIN_EPOCH;    // convert to Unix epoch
+        duration -= WIN_EPOCH; // convert to Unix epoch
         return std::chrono::system_clock::from_time_t(duration / 10000000LL);
     }
 

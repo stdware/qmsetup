@@ -124,9 +124,8 @@ namespace Utils {
                                      std::to_string(sig));
         }
 
-        throw std::runtime_error("command \"" + command +
-                                 "\" terminated abnormally with exit code " +
-                                 std::to_string(exitCode));
+        throw std::runtime_error("command \"" + command + "\" terminated abnormally with status " +
+                                 std::to_string(status));
     }
 
     FileTime fileTime(const fs::path &path) {
