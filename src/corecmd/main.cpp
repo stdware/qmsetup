@@ -104,7 +104,7 @@ static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
     // Remove self if empty
     if (isEmpty) {
         if (verbose) {
-            u8printf("Remove %s\n", tstr2str(path).data());
+            u8printf("Remove: \"%s\"\n", tstr2str(path).data());
         }
         fs::remove(path);
     }
@@ -128,8 +128,8 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path 
 
     if (!symlinkContent.empty()) {
         if (verbose) {
-            u8printf("Link %s\n", tstr2str(target).data());
-            u8printf("   %s\n", tstr2str(symlinkContent).data());
+            u8printf("Link: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
+                     tstr2str(symlinkContent).data());
         }
 
         if (fs::exists(target))
@@ -137,7 +137,7 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path 
         fs::create_symlink(symlinkContent, target);
     } else {
         if (verbose) {
-            u8printf("Copy %s\n", tstr2str(target).data());
+            u8printf("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(), tstr2str(target).data());
         }
         fs::copy(file, dest, fs::copy_options::overwrite_existing);
         Utils::syncFileTime(target, file); // Sync time for each file
@@ -349,7 +349,7 @@ static int cmd_copy(const SCL::ParseResult &result) {
         }
     }
 
-    const auto &dest = fs::absolute(str2tstr(result.value(1).toString()));
+    const auto &dest = Utils::cleanPath(fs::absolute(str2tstr(result.value(1).toString())));
 
     // Add excludes
     TStringList excludes;
@@ -381,7 +381,7 @@ static int cmd_copy(const SCL::ParseResult &result) {
 
 static int cmd_rmdir(const SCL::ParseResult &result) {
     bool verbose = isVerboseSet(result);
-    
+
     std::vector<fs::path> dirs;
     {
         const auto &dirsResult = result.values(0);
@@ -711,8 +711,8 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 
             auto targetPath = targetDir / path.filename();
             if (verbose) {
-                u8printf("Create %s\n", tstr2str(targetPath).data());
-                u8printf("    %s\n", tstr2str(path).data());
+                u8printf("Sync: from \"%s\" to \"%s\"\n", tstr2str(targetPath).data(),
+                         tstr2str(path).data());
             }
 
             if (dryrun)
@@ -888,7 +888,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             std::set<TString> result;
             for (const auto &path : std::as_const(paths)) {
                 if (verbose) {
-                    u8printf("Resolve %s\n", tstr2str(path).data());
+                    u8printf("Resolve: \"%s\"\n", tstr2str(path).data());
                 }
 
                 std::vector<std::string> unparsed;
@@ -1025,7 +1025,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     const auto &fixRPaths = [verbose](const std::string &file,
                                       const std::vector<std::string> &paths) {
         if (verbose) {
-            u8printf("Fix rpath: %s\n", file.data());
+            u8printf("Fix rpath: \"%s\"\n", file.data());
             for (const auto &path : paths) {
                 u8printf("    %s\n", path.data());
             }
@@ -1145,7 +1145,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #  else
     // const auto &setInterpreter = [verbose](const std::string &file, const std::string &interp) {
     //     if (verbose) {
-    //         u8printf("Set interpreter: %s\n", file.data());
+    //         u8printf("Set interpreter: \"%s\"\n", file.data());
     //         u8printf("    %s\n", interp.data());
     //     }
     //     Utils::setFileInterpreter(file, interp);
@@ -1209,7 +1209,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     //     interpreter = dest / interpreterName;
 
     //     if (verbose) {
-    //         u8printf("Interpreter: %s\n", interpreter.string().data());
+    //         u8printf("Interpreter: \"%s\"\n", interpreter.string().data());
     //     }
 
     //     // Set interpreter for original files
