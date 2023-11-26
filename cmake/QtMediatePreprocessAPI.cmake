@@ -213,10 +213,13 @@ endfunction()
     qtmediate_generate_config(<file>
         [TARGET <target>]
         [PROPERTY <prop>]
+        [WARNING_FILE <file>]
+        [NO_WARNING]
+        [NO_HASH]
     )
 ]] #
 function(qtmediate_generate_config _file)
-    set(options GLOBAL)
+    set(options NO_WARNING NO_HASH)
     set(oneValueArgs TARGET PROPERTY)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -240,7 +243,17 @@ function(qtmediate_generate_config _file)
             list(APPEND _args "-D${_item}")
         endforeach()
 
-        execute_process(COMMAND ${_tool} configure ${_args} ${_file}
+        list(APPEND _args ${_file})
+
+        if(NOT FUNC_NO_WARNING)
+            list(APPEND _args "-w" ${FUNC_WARNING_FILE})
+        endif()
+
+        if(FUNC_NO_HASH)
+            list(APPEND _args "-f")
+        endif()
+
+        execute_process(COMMAND ${_tool} configure ${_args}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMAND_ERROR_IS_FATAL ANY
         )
@@ -250,16 +263,39 @@ endfunction()
 #[[
     Generate build info information header.
 
-    qtmediate_generate_build_info(<dir> <prefix> <file>)
+    qtmediate_generate_build_info(<file>
+        [ROOT_DIRECTORY <dir>]
+        [PREFIX <prefix>]
+        [WARNING_FILE <file>]
+        [NO_WARNING]
+        [NO_HASH]
+        [REQUIRED]
+    )
 
-    dir: Repository root directory (CMake will try to run `git` at this directory)
-    prefix: Macros prefix
     file: Output file
+
+    ROOT_DIRECTORY: Repository root directory (CMake will try to run `git` at this directory)
+    PREFIX: Macros prefix, default to `PROJECT_NAME`
+    REQUIRED: Abort if there's any error with git
 ]] #
-function(qtmediate_generate_build_info _dir _prefix _file)
+function(qtmediate_generate_build_info _file)
+    set(options NO_WARNING NO_HASH REQUIRED)
+    set(oneValueArgs ROOT_DIRECTORY PREFIX)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
     # Get tool
     set(_tool)
     _qtmediate_get_core_tool(_tool "qtmediate_generate_build_info")
+
+    if(FUNC_PREFIX)
+        set(_prefix ${FUNC_PREFIX})
+    else()
+        string(TOUPPER "${PROJECT_NAME}" _prefix)
+    endif()
+
+    set(_dir)
+    qtmediate_set_value(_dir FUNC_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
     set(_git_branch "unknown")
     set(_git_hash "unknown")
@@ -270,13 +306,13 @@ function(qtmediate_generate_build_info _dir _prefix _file)
     find_package(Git QUIET)
 
     if(Git_FOUND)
-        # message(STATUS "Git found: ${GIT_EXECUTABLE} (version ${GIT_VERSION_STRING})")
-
         # Branch
         execute_process(
             COMMAND ${GIT_EXECUTABLE} symbolic-ref --short -q HEAD
             OUTPUT_VARIABLE _temp
+            ERROR_VARIABLE _err
             OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
             WORKING_DIRECTORY ${_dir}
             RESULT_VARIABLE _code
@@ -284,13 +320,17 @@ function(qtmediate_generate_build_info _dir _prefix _file)
 
         if(${_code} EQUAL 0)
             set(_git_branch ${_temp})
+        elseif(FUNC_REQUIRED)
+            message(FATAL_ERROR "${_err}")
         endif()
 
         # Hash
         execute_process(
             COMMAND ${GIT_EXECUTABLE} log -1 "--pretty=format:%H\n%aI\n%aN\n%aE"
             OUTPUT_VARIABLE _temp
+            ERROR_VARIABLE _err
             OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
             WORKING_DIRECTORY ${_dir}
             RESULT_VARIABLE _code
@@ -302,9 +342,11 @@ function(qtmediate_generate_build_info _dir _prefix _file)
             list(GET _temp_list 1 _git_commit_time)
             list(GET _temp_list 2 _git_commit_author)
             list(GET _temp_list 3 _git_commit_email)
+        elseif(FUNC_REQUIRED)
+            message(FATAL_ERROR "${_err}")
         endif()
-    else()
-        # message(WARNING "Git not found")
+    elseif(FUNC_REQUIRED)
+        message(FATAL_ERROR "Git not found")
     endif()
 
     set(_compiler_name unknown)
@@ -352,7 +394,17 @@ function(qtmediate_generate_build_info _dir _prefix _file)
         list(APPEND _args "-D${_item}")
     endforeach()
 
-    execute_process(COMMAND ${_tool} configure ${_args} ${_file}
+    list(APPEND _args ${_file})
+
+    if(NOT FUNC_NO_WARNING)
+        list(APPEND _args "-w" ${FUNC_WARNING_FILE})
+    endif()
+
+    if(FUNC_NO_HASH)
+        list(APPEND _args "-f")
+    endif()
+
+    execute_process(COMMAND ${_tool} configure ${_args}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND_ERROR_IS_FATAL ANY
     )
