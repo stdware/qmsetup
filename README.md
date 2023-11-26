@@ -2,7 +2,7 @@
 
 CMake Modules for QtMediate and other projects.
 
-**This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it cannot be included as a subproject.
+**This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it's not suggested to be included as a subproject.
 
 ## Features
 
@@ -46,20 +46,51 @@ Via SSH
 git clone --recursive git@github.com:SineStriker/qtmediate-cmake-modules.git
 ```
 
-### Build & Install
+### Preinstall (Suggested)
+
+#### Build & Install
 ```sh
 cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to
 cmake -B build --target all
 cmake -B build --target install
 ```
 
-### Import
+#### Import
 ```sh
 cmake -Dqmcmake_DIR=/path/to/lib/cmake/qmcmake ...
 ```
 ```cmake
-# CMakeLists.txt
 find_package(qmcmake REQUIRED)
+```
+
+### Sub-project
+
+It still needs to be installed, but the installation occurs during the CMake Configure phase and is executed only once.
+
+```cmake
+find_package(qmcmake QUIET)
+
+if (NOT TARGET qmcmake::library)
+    # Modify this variable according to your project structure
+    set(_source_dir ${CMAKE_CURRENT_SOURCE_DIR}/qmcmake)
+
+    # Import install function
+    include("${_source_dir}/cmake/modules/InstallPackage.cmake")
+
+    # Install package in place
+    set(_package_path)
+    qtmediate_install_package(qmcmake
+        SOURCE_DIR ${_source_dir}
+        BUILD_TYPE Release
+        RESULT_PATH _package_path
+    )
+
+    # Find package again
+    find_package(qmcmake REQUIRED PATHS ${_package_path})
+
+    # Update import path
+    set(qmcmake_DIR ${_package_path} CACHE PATH "" FORCE)
+endif()
 ```
 
 ## Thanks

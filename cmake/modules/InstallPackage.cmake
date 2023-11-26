@@ -92,6 +92,7 @@ function(qtmediate_install_package _name)
             OUTPUT_FILE ${_log_file}
             ERROR_FILE ${_log_file}
             RESULT_VARIABLE _code
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
 
         if(NOT ${_code} EQUAL 0)
@@ -107,6 +108,7 @@ function(qtmediate_install_package _name)
                 OUTPUT_FILE ${_log_file}
                 ERROR_FILE ${_log_file}
                 RESULT_VARIABLE _code
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             )
 
             if(NOT ${_code} EQUAL 0)
@@ -123,6 +125,7 @@ function(qtmediate_install_package _name)
                 OUTPUT_FILE ${_log_file}
                 ERROR_FILE ${_log_file}
                 RESULT_VARIABLE _code
+                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             )
 
             if(NOT ${_code} EQUAL 0)
