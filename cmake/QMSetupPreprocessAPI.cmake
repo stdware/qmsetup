@@ -4,7 +4,7 @@ include_guard(DIRECTORY)
     Generate indirect reference files for header files to make the include statements more orderly.
     The generated file has the same timestamp as the source file.
 
-    qtmediate_sync_include(<src> <dest>
+    qmsetup_sync_include(<src> <dest>
         [NO_STANDARD] [NO_ALL]
         [INCLUDE <pair...>]
         [EXCLUDE <expr...>]
@@ -12,7 +12,7 @@ include_guard(DIRECTORY)
         [FORCE] [VERBOSE]
     )
 #]]
-function(qtmediate_sync_include _src_dir _dest_dir)
+function(qmsetup_sync_include _src_dir _dest_dir)
     set(options FORCE VERBOSE NO_STANDARD NO_ALL)
     set(oneValueArgs INSTALL_DIR)
     set(multiValueArgs INCLUDE EXCLUDE)
@@ -20,7 +20,7 @@ function(qtmediate_sync_include _src_dir _dest_dir)
 
     # Get tool
     set(_tool)
-    _qtmediate_get_core_tool(_tool "qtmediate_sync_include")
+    _qmsetup_get_core_tool(_tool "qmsetup_sync_include")
 
     if(NOT IS_ABSOLUTE ${_src_dir})
         get_filename_component(_src_dir ${_src_dir} ABSOLUTE)
@@ -99,14 +99,14 @@ function(qtmediate_sync_include _src_dir _dest_dir)
             ")
         endif()
     else()
-        message(FATAL_ERROR "qtmediate_sync_include: Source directory doesn't exist.")
+        message(FATAL_ERROR "qmsetup_sync_include: Source directory doesn't exist.")
     endif()
 endfunction()
 
 #[[
     Add a definition to global scope or a given target.
 
-    qtmediate_add_definition( <key | key=value> | <key> <value>
+    qmsetup_add_definition( <key | key=value> | <key> <value>
         [STRING_LITERAL]
         [TARGET <target>]
         [PROPERTY <prop>]
@@ -114,7 +114,7 @@ endfunction()
         [CONDITION <cond>]
     )
 ]] #
-function(qtmediate_add_definition)
+function(qmsetup_add_definition)
     set(options GLOBAL NUMERICAL STRING_LITERAL)
     set(oneValueArgs TARGET PROPERTY CONDITION)
     set(multiValueArgs)
@@ -180,7 +180,7 @@ function(qtmediate_add_definition)
             endif()
         endif()
     else()
-        message(FATAL_ERROR "qtmediate_add_definition: called with incorrect number of arguments")
+        message(FATAL_ERROR "qmsetup_add_definition: called with incorrect number of arguments")
     endif()
 
     if(FUNC_NUMERICAL AND NOT _is_pair)
@@ -193,7 +193,7 @@ function(qtmediate_add_definition)
         return()
     endif()
 
-    qtmediate_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
+    qmsetup_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
 
     if(FUNC_TARGET)
         set_property(TARGET ${FUNC_TARGET} APPEND PROPERTY ${_prop} "${_result}")
@@ -206,7 +206,7 @@ endfunction()
     Generate a configuration header. If the configuration has not changed, the generated file's
     timestemp will not be updated when you reconfigure it.
 
-    qtmediate_generate_config(<file>
+    qmsetup_generate_config(<file>
         [TARGET <target>]
         [PROPERTY <prop>]
         [WARNING_FILE <file>]
@@ -214,7 +214,7 @@ endfunction()
         [NO_HASH]
     )
 ]] #
-function(qtmediate_generate_config _file)
+function(qmsetup_generate_config _file)
     set(options NO_WARNING NO_HASH)
     set(oneValueArgs TARGET PROPERTY)
     set(multiValueArgs)
@@ -222,9 +222,9 @@ function(qtmediate_generate_config _file)
 
     # Get tool
     set(_tool)
-    _qtmediate_get_core_tool(_tool "qtmediate_generate_config")
+    _qmsetup_get_core_tool(_tool "qmsetup_generate_config")
 
-    qtmediate_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
+    qmsetup_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
 
     if(FUNC_TARGET)
         get_target_property(_def_list ${FUNC_TARGET} ${_prop})
@@ -259,7 +259,7 @@ endfunction()
 #[[
     Generate build info information header.
 
-    qtmediate_generate_build_info(<file>
+    qmsetup_generate_build_info(<file>
         [ROOT_DIRECTORY <dir>]
         [PREFIX <prefix>]
         [WARNING_FILE <file>]
@@ -274,7 +274,7 @@ endfunction()
     PREFIX: Macros prefix, default to `PROJECT_NAME`
     REQUIRED: Abort if there's any error with git
 ]] #
-function(qtmediate_generate_build_info _file)
+function(qmsetup_generate_build_info _file)
     set(options NO_WARNING NO_HASH REQUIRED)
     set(oneValueArgs ROOT_DIRECTORY PREFIX)
     set(multiValueArgs)
@@ -282,7 +282,7 @@ function(qtmediate_generate_build_info _file)
 
     # Get tool
     set(_tool)
-    _qtmediate_get_core_tool(_tool "qtmediate_generate_build_info")
+    _qmsetup_get_core_tool(_tool "qmsetup_generate_build_info")
 
     if(FUNC_PREFIX)
         set(_prefix ${FUNC_PREFIX})
@@ -291,7 +291,7 @@ function(qtmediate_generate_build_info _file)
     endif()
 
     set(_dir)
-    qtmediate_set_value(_dir FUNC_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    qmsetup_set_value(_dir FUNC_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
     set(_git_branch "unknown")
     set(_git_hash "unknown")

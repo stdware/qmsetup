@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.17)
 
-project(qmcmake VERSION 0.0.1.5)
+project(qmsetup VERSION 0.0.1.5)
 
 # ----------------------------------
 # Configure Options
 # ----------------------------------
-option(QTMEDIATE_MODULES_VCPKG_TOOLS_HINT "Install executables to tools directory" OFF)
+option(QMSETUP_VCPKG_TOOLS_HINT "Install executables to tools directory" OFF)
 
 # ----------------------------------
 # CMake Settings
@@ -36,10 +36,10 @@ endif()
 # ----------------------------------
 # Project Variables
 # ----------------------------------
-set(QTMEDIATE_MODULES_VERSION ${PROJECT_VERSION})
-set(QTMEDIATE_MODULES_INSTALL_NAME ${PROJECT_NAME})
-set(QTMEDIATE_MODULES_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(QMSETUP_VERSION ${PROJECT_VERSION})
+set(QMSETUP_INSTALL_NAME ${PROJECT_NAME})
+set(QMSETUP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
-include(cmake/QtMediateAPI.cmake)
+include(cmake/QMSetupAPI.cmake)
 
 add_subdirectory(src)

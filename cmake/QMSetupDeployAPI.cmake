@@ -3,9 +3,9 @@ include_guard(DIRECTORY)
 #[[
     Record searching paths for Windows Executables.
 
-    qtmediate_win_record_deps(<target>)
+    qmsetup_win_record_deps(<target>)
 ]] #
-function(qtmediate_win_record_deps _target)
+function(qmsetup_win_record_deps _target)
     set(_paths)
     get_target_property(_link_libraries ${_target} LINK_LIBRARIES)
 
@@ -49,7 +49,7 @@ endfunction()
 #[[
     Automatically copy dependencies for Windows Executables after build.
 
-    qtmediate_win_applocal_deps(<target>
+    qmsetup_win_applocal_deps(<target>
         [CUSTOM_TARGET <target>]
         [FORCE] [VERBOSE]
         [EXTRA_SEARCHING_PATHS <path...>]
@@ -57,7 +57,7 @@ endfunction()
         [OUTPUT_DIR <dir>]
     )
 ]] #
-function(qtmediate_win_applocal_deps _target)
+function(qmsetup_win_applocal_deps _target)
     if(NOT WIN32)
         return()
     endif()
@@ -69,7 +69,7 @@ function(qtmediate_win_applocal_deps _target)
 
     # Get tool
     set(_tool)
-    _qtmediate_get_core_tool(_tool "qtmediate_win_applocal_deps")
+    _qmsetup_get_core_tool(_tool "qmsetup_win_applocal_deps")
 
     # Get output directory and deploy target
     set(_out_dir)
@@ -92,7 +92,7 @@ function(qtmediate_win_applocal_deps _target)
     endif()
 
     if(NOT _out_dir)
-        message(FATAL_ERROR "qtmediate_win_applocal_deps: cannot determine output directory.")
+        message(FATAL_ERROR "qmsetup_win_applocal_deps: cannot determine output directory.")
     endif()
 
     # Get record files
@@ -133,7 +133,7 @@ endfunction()
 #[[
     Add deploy command when install project.
 
-    qtmediate_deploy_directory(<install_dir>
+    qmsetup_deploy_directory(<install_dir>
         [FORCE] [STANDARD] [VERBOSE]
         [LIBRARY_DIR <dir>]
         [EXTRA_PLUGIN_PATHS <path>...]
@@ -150,7 +150,7 @@ endfunction()
         [COMMENT <comment]
     )
 ]] #
-function(qtmediate_deploy_directory _install_dir)
+function(qmsetup_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
     set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS WIN_SEARCHING_PATHS)
@@ -158,14 +158,14 @@ function(qtmediate_deploy_directory _install_dir)
 
     # Get tool
     set(_tool)
-    _qtmediate_get_core_tool(_tool "qtmediate_deploy_directory")
+    _qmsetup_get_core_tool(_tool "qmsetup_deploy_directory")
 
     # Get qmake
     if((FUNC_PLUGINS OR FUNC_QML) AND NOT DEFINED QT_QMAKE_EXECUTABLE)
         if(TARGET Qt${QT_VERSION_MAJOR}::qmake)
             get_target_property(QT_QMAKE_EXECUTABLE Qt${QT_VERSION_MAJOR}::qmake IMPORTED_LOCATION)
         elseif((FUNC_PLUGINS AND NOT FUNC_EXTRA_PLUGIN_PATHS) OR FUNC_QML)
-            message(FATAL_ERROR "qtmediate_deploy_directory: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
+            message(FATAL_ERROR "qmsetup_deploy_directory: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
         endif()
     endif()
 
@@ -176,9 +176,9 @@ function(qtmediate_deploy_directory _install_dir)
     endif()
 
     # Set values
-    qtmediate_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${_default_lib_dir}")
-    qtmediate_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
-    qtmediate_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
+    qmsetup_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${_default_lib_dir}")
+    qmsetup_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
+    qmsetup_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
 
     get_filename_component(_lib_dir ${_lib_dir} ABSOLUTE BASE_DIR ${_install_dir})
     get_filename_component(_plugin_dir ${_plugin_dir} ABSOLUTE BASE_DIR ${_install_dir})
@@ -226,9 +226,9 @@ function(qtmediate_deploy_directory _install_dir)
             list(APPEND _args -@ "${_item}")
         endforeach()
 
-        set(_script_quoted "cmd /c \"${QTMEDIATE_MODULES_DIR}/scripts/windeps.bat\"")
+        set(_script_quoted "cmd /c \"${QMSETUP_MODULES_DIR}/scripts/windeps.bat\"")
     else()
-        set(_script_quoted "bash \"${QTMEDIATE_MODULES_DIR}/scripts/unixdeps.sh\"")
+        set(_script_quoted "bash \"${QMSETUP_MODULES_DIR}/scripts/unixdeps.sh\"")
     endif()
 
     # Add options

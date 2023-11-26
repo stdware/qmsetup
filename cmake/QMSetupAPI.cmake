@@ -1,15 +1,15 @@
 include_guard(DIRECTORY)
 
-if(NOT DEFINED QTMEDIATE_MODULES_DIR)
-    set(QTMEDIATE_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
+if(NOT DEFINED QMSETUP_MODULES_DIR)
+    set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 endif()
 
 #[[
     Skip CMAKE_AUTOMOC for all source files in directory.
 
-    qtmediate_dir_skip_automoc()
+    qmsetup_dir_skip_automoc()
 ]] #
-macro(qtmediate_dir_skip_automoc)
+macro(qmsetup_dir_skip_automoc)
     foreach(_item ${ARGN})
         file(GLOB _src ${_item}/*.h ${_item}/*.cpp ${_item}/*.cc)
         set_source_files_properties(
@@ -21,9 +21,9 @@ endmacro()
 #[[
     Find Qt libraries.
 
-    qtmediate_find_qt_libraries(<modules...>)
+    qmsetup_find_qt_libraries(<modules...>)
 #]]
-macro(qtmediate_find_qt_libraries)
+macro(qmsetup_find_qt_libraries)
     foreach(_module ${ARGN})
         find_package(QT NAMES Qt6 Qt5 COMPONENTS ${_module} REQUIRED)
         find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${_module} REQUIRED)
@@ -33,13 +33,13 @@ endmacro()
 #[[
     Link Qt libraries.
 
-    qtmediate_link_qt_libraries(<target> <scope> <modules...>)
+    qmsetup_link_qt_libraries(<target> <scope> <modules...>)
 #]]
-macro(qtmediate_link_qt_libraries _target _scope)
+macro(qmsetup_link_qt_libraries _target _scope)
     foreach(_module ${ARGN})
         # Find
         if(NOT QT_VERSION_MAJOR OR NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})
-            qtmediate_find_qt_libraries(${_module})
+            qmsetup_find_qt_libraries(${_module})
         endif()
 
         # Link
@@ -50,13 +50,13 @@ endmacro()
 #[[
     Include Qt private header directories.
 
-    qtmediate_include_qt_private(<target> <scope> <modules...>)
+    qmsetup_include_qt_private(<target> <scope> <modules...>)
 #]]
-macro(qtmediate_include_qt_private _target _scope)
+macro(qmsetup_include_qt_private _target _scope)
     foreach(_module ${ARGN})
         # Find
         if(NOT QT_VERSION_MAJOR OR NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})
-            qtmediate_find_qt_libraries(${_module})
+            qmsetup_find_qt_libraries(${_module})
         endif()
 
         # Include
@@ -67,7 +67,7 @@ endmacro()
 #[[
     Attach windows RC file to a target.
 
-    qtmediate_add_win_rc(<target>
+    qmsetup_add_win_rc(<target>
         [NAME           name] 
         [VERSION        version] 
         [DESCRIPTION    desc]
@@ -76,7 +76,7 @@ endmacro()
         [OUTPUT         output]
     )
 ]] #
-function(qtmediate_add_win_rc _target)
+function(qmsetup_add_win_rc _target)
     if(NOT WIN32)
         return()
     endif()
@@ -86,14 +86,14 @@ function(qtmediate_add_win_rc _target)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+    qmsetup_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
 
-    qtmediate_set_value(_name FUNC_NAME ${_target})
-    qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
-    qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
-    qtmediate_set_value(_copyright FUNC_COPYRIGHT ${_name})
+    qmsetup_set_value(_name FUNC_NAME ${_target})
+    qmsetup_set_value(_version FUNC_VERSION ${_version_temp})
+    qmsetup_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qmsetup_set_value(_copyright FUNC_COPYRIGHT ${_name})
 
-    qtmediate_parse_version(_ver ${_version})
+    qmsetup_parse_version(_ver ${_version})
     set(RC_VERSION ${_ver_1},${_ver_2},${_ver_3},${_ver_4})
 
     set(RC_APPLICATION_NAME ${_name})
@@ -108,16 +108,16 @@ function(qtmediate_add_win_rc _target)
         set(RC_ICON_PATH ${FUNC_ICON})
     endif()
 
-    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
+    qmsetup_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
 
-    configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
+    configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
 
 #[[
     Attach windows RC file to a target, enhanced edition.
 
-    qtmediate_add_win_rc_enhanced(<target>
+    qmsetup_add_win_rc_enhanced(<target>
         [NAME              name]
         [VERSION           version]
         [DESCRIPTION       description]
@@ -131,7 +131,7 @@ endfunction()
         [OUTPUT            output]
     )
 ]] #
-function(qtmediate_add_win_rc_enhanced _target)
+function(qmsetup_add_win_rc_enhanced _target)
     if(NOT WIN32)
         return()
     endif()
@@ -141,19 +141,19 @@ function(qtmediate_add_win_rc_enhanced _target)
     set(multiValueArgs ICONS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+    qmsetup_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
 
-    qtmediate_set_value(_name FUNC_NAME ${_target})
-    qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
-    qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
-    qtmediate_set_value(_copyright FUNC_COPYRIGHT ${_name})
-    qtmediate_set_value(_comments FUNC_COMMENTS "")
-    qtmediate_set_value(_company FUNC_COMPANY "")
-    qtmediate_set_value(_internal_name FUNC_INTERNAL_NAME "")
-    qtmediate_set_value(_trademark FUNC_TRADEMARK "")
-    qtmediate_set_value(_original_filename FUNC_ORIGINAL_FILENAME "")
+    qmsetup_set_value(_name FUNC_NAME ${_target})
+    qmsetup_set_value(_version FUNC_VERSION ${_version_temp})
+    qmsetup_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qmsetup_set_value(_copyright FUNC_COPYRIGHT ${_name})
+    qmsetup_set_value(_comments FUNC_COMMENTS "")
+    qmsetup_set_value(_company FUNC_COMPANY "")
+    qmsetup_set_value(_internal_name FUNC_INTERNAL_NAME "")
+    qmsetup_set_value(_trademark FUNC_TRADEMARK "")
+    qmsetup_set_value(_original_filename FUNC_ORIGINAL_FILENAME "")
 
-    qtmediate_parse_version(_ver ${_version})
+    qmsetup_parse_version(_ver ${_version})
     set(RC_VERSION ${_ver_1},${_ver_2},${_ver_3},${_ver_4})
 
     set(RC_APPLICATION_NAME ${_name})
@@ -191,15 +191,15 @@ function(qtmediate_add_win_rc_enhanced _target)
 
     set(RC_ICONS ${_icons})
 
-    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
-    configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
+    qmsetup_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
+    configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
 
 #[[
     Attach windows manifest file to a target.
 
-    qtmediate_add_win_manifest(<target>
+    qmsetup_add_win_manifest(<target>
         [UTF8]
         [NAME           name] 
         [VERSION        version] 
@@ -207,7 +207,7 @@ endfunction()
         [OUTPUT         output]
     )
 ]] #
-function(qtmediate_add_win_manifest _target)
+function(qmsetup_add_win_manifest _target)
     if(NOT WIN32)
         return()
     endif()
@@ -217,11 +217,11 @@ function(qtmediate_add_win_manifest _target)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+    qmsetup_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
 
-    qtmediate_set_value(_name FUNC_NAME ${_target})
-    qtmediate_set_value(_version FUNC_VERSION ${_version_temp})
-    qtmediate_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qmsetup_set_value(_name FUNC_NAME ${_target})
+    qmsetup_set_value(_version FUNC_VERSION ${_version_temp})
+    qmsetup_set_value(_desc FUNC_DESCRIPTION ${_name})
 
     set(MANIFEST_IDENTIFIER ${_name})
     set(MANIFEST_VERSION ${_version})
@@ -233,15 +233,15 @@ function(qtmediate_add_win_manifest _target)
         set(MANIFEST_UTF8 "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>")
     endif()
 
-    qtmediate_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_manifest.manifest")
-    configure_file("${QTMEDIATE_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
+    qmsetup_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_manifest.manifest")
+    configure_file("${QMSETUP_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
 
 #[[
     Add Mac bundle info.
 
-    qtmediate_add_mac_bundle(<target>
+    qmsetup_add_mac_bundle(<target>
         [NAME           <name>]
         [VERSION        <version>]
         [DESCRIPTION    <desc>]
@@ -249,7 +249,7 @@ endfunction()
         [ICON           <file>]
     )
 ]] #
-function(qtmediate_add_mac_bundle _target)
+function(qmsetup_add_mac_bundle _target)
     if(NOT APPLE)
         return()
     endif()
@@ -259,14 +259,14 @@ function(qtmediate_add_mac_bundle _target)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    qtmediate_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
+    qmsetup_set_value(_version_temp PROJECT_VERSION "0.0.0.0")
 
-    qtmediate_set_value(_app_name FUNC_NAME ${_target})
-    qtmediate_set_value(_app_version FUNC_VERSION ${_version_temp})
-    qtmediate_set_value(_app_desc FUNC_DESCRIPTION ${_app_name})
-    qtmediate_set_value(_app_copyright FUNC_COPYRIGHT ${_app_name})
+    qmsetup_set_value(_app_name FUNC_NAME ${_target})
+    qmsetup_set_value(_app_version FUNC_VERSION ${_version_temp})
+    qmsetup_set_value(_app_desc FUNC_DESCRIPTION ${_app_name})
+    qmsetup_set_value(_app_copyright FUNC_COPYRIGHT ${_app_name})
 
-    qtmediate_parse_version(_app_version ${_app_version})
+    qmsetup_parse_version(_app_version ${_app_version})
 
     # configure mac plist
     set_target_properties(${_target} PROPERTIES
@@ -304,11 +304,11 @@ endfunction()
 #[[
     Generate Windows shortcut after building target.
 
-    qtmediate_create_win_shortcut(<target> <dir>
+    qmsetup_create_win_shortcut(<target> <dir>
         [OUTPUT_NAME <name]
     )
 ]] #
-function(qtmediate_create_win_shortcut _target _dir)
+function(qmsetup_create_win_shortcut _target _dir)
     if(NOT WIN32)
         return()
     endif()
@@ -318,7 +318,7 @@ function(qtmediate_create_win_shortcut _target _dir)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    qtmediate_set_value(_output_name FUNC_OUTPUT_NAME $<TARGET_FILE_BASE_NAME:${_target}>)
+    qmsetup_set_value(_output_name FUNC_OUTPUT_NAME $<TARGET_FILE_BASE_NAME:${_target}>)
 
     set(_vbs_name ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut_$<CONFIG>.vbs)
     set(_vbs_temp ${_vbs_name}.in)
@@ -332,7 +332,7 @@ function(qtmediate_create_win_shortcut _target _dir)
     set(SHORTCUT_ICON_LOCATION $<TARGET_FILE:${_target}>)
 
     configure_file(
-        "${QTMEDIATE_MODULES_DIR}/windows/WinCreateShortcut.vbs.in"
+        "${QMSETUP_MODULES_DIR}/windows/WinCreateShortcut.vbs.in"
         ${_vbs_temp}
         @ONLY
     )
@@ -348,9 +348,9 @@ endfunction()
 #[[
     Parse version and create seq vars with specified prefix.
 
-    qtmediate_parse_version(<prefix> <version>)
+    qmsetup_parse_version(<prefix> <version>)
 ]] #
-function(qtmediate_parse_version _prefix _version)
+function(qmsetup_parse_version _prefix _version)
     string(REGEX MATCH "([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)" _ ${_version})
 
     foreach(_i RANGE 1 4)
@@ -367,10 +367,10 @@ endfunction()
 #[[
     Get shorter version number.
 
-    qtmediate_crop_version(<VAR> <version> <count>)
+    qmsetup_crop_version(<VAR> <version> <count>)
 ]] #
-function(qtmediate_crop_version _var _version _count)
-    qtmediate_parse_version(FUNC ${_version})
+function(qmsetup_crop_version _var _version _count)
+    qmsetup_parse_version(FUNC ${_version})
 
     set(_list)
 
@@ -385,9 +385,9 @@ endfunction()
 #[[
     Tell if there are any generator expressions in the string.
 
-    qtmediate_has_genex(<VAR> <string>)
+    qmsetup_has_genex(<VAR> <string>)
 ]] #
-function(qtmediate_has_genex _out _str)
+function(qmsetup_has_genex _out _str)
     string(GENEX_STRIP "${_str}" _no_genex)
 
     if("${_str}" STREQUAL "${_no_genex}")
@@ -402,7 +402,7 @@ endfunction()
 #[[
     Helper to link libraries and include directories of a target.
 
-    qtmediate_configure_target(<target>
+    qmsetup_configure_target(<target>
         [SOURCES          <files>]
         [LINKS            <libs>]
         [LINKS_PRIVATE    <libs>]
@@ -422,7 +422,7 @@ endfunction()
         [SKIP_AUTOMOC_FILES  <files]
     )
 ]] #
-macro(qtmediate_configure_target _target)
+macro(qmsetup_configure_target _target)
     set(options)
     set(oneValueArgs)
     set(multiValueArgs
@@ -442,11 +442,11 @@ macro(qtmediate_configure_target _target)
     target_compile_definitions(${_target} PRIVATE ${FUNC_DEFINES_PRIVATE})
     target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
     target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
-    qtmediate_link_qt_libraries(${_target} PUBLIC ${FUNC_QT_LINKS})
-    qtmediate_link_qt_libraries(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
+    qmsetup_link_qt_libraries(${_target} PUBLIC ${FUNC_QT_LINKS})
+    qmsetup_link_qt_libraries(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
     target_include_directories(${_target} PRIVATE ${FUNC_INCLUDE_PRIVATE})
-    qtmediate_include_qt_private(${_target} PRIVATE ${FUNC_QT_INCLUDE_PRIVATE})
-    qtmediate_dir_skip_automoc(${FUNC_SKIP_AUTOMOC_DIRS})
+    qmsetup_include_qt_private(${_target} PRIVATE ${FUNC_QT_INCLUDE_PRIVATE})
+    qmsetup_dir_skip_automoc(${FUNC_SKIP_AUTOMOC_DIRS})
 
     if(FUNC_SKIP_AUTOMOC_FILES)
         set_source_files_properties(
@@ -458,13 +458,13 @@ endmacro()
 #[[
     Helper to define export macros.
 
-    qtmediate_export_defines(<target>
+    qmsetup_export_defines(<target>
         [PREFIX     <prefix>]
         [STATIC     <token>]
         [LIBRARY    <token>]
     )
 ]] #
-function(qtmediate_export_defines _target)
+function(qmsetup_export_defines _target)
     set(options)
     set(oneValueArgs PREFIX STATIC LIBRARY)
     set(multiValueArgs)
@@ -475,8 +475,8 @@ function(qtmediate_export_defines _target)
         set(_prefix ${FUNC_PREFIX})
     endif()
 
-    qtmediate_set_value(_static_macro FUNC_STATIC ${_prefix}_STATIC)
-    qtmediate_set_value(_library_macro FUNC_LIBRARY ${_prefix}_LIBRARY)
+    qmsetup_set_value(_static_macro FUNC_STATIC ${_prefix}_STATIC)
+    qmsetup_set_value(_library_macro FUNC_LIBRARY ${_prefix}_LIBRARY)
 
     get_target_property(_type ${_target} TYPE)
 
@@ -490,9 +490,9 @@ endfunction()
 #[[
     Set value if valid, otherwise use default.
 
-    qtmediate_set_value(<key> <maybe_value> <default>)
+    qmsetup_set_value(<key> <maybe_value> <default>)
 ]] #
-macro(qtmediate_set_value _key _maybe_value _default)
+macro(qmsetup_set_value _key _maybe_value _default)
     if(${_maybe_value})
         set(${_key} ${${_maybe_value}})
     else()
@@ -503,13 +503,13 @@ endmacro()
 #[[
     Collect targets of given types recursively in a directory.
 
-    qtmediate_collect_targets(<list> [DIR directory]
+    qmsetup_collect_targets(<list> [DIR directory]
                               [EXECUTABLE] [SHARED] [STATIC] [UTILITY])
 
     If one or more types are specified, return targets matching the types.
     If no type is specified, return all targets.
 ]] #
-function(qtmediate_collect_targets _var)
+function(qmsetup_collect_targets _var)
     set(options EXECUTABLE SHARED STATIC UTILITY)
     set(oneValueArgs DIR)
     set(multiValueArgs)
@@ -571,7 +571,7 @@ endfunction()
 #[[
     Get subdirectories' names or paths.
 
-    qtmediate_get_subdirs(<list>  
+    qmsetup_get_subdirs(<list>  
         [DIRECTORY dir]
         [EXCLUDE names...]
         [REGEX_INCLUDE exps...]
@@ -585,7 +585,7 @@ endfunction()
     If `ABSOLUTE` is specified, return absolute paths.
     If neither of them is specified, return names.
 ]] #
-function(qtmediate_get_subdirs _var)
+function(qmsetup_get_subdirs _var)
     set(options ABSOLUTE)
     set(oneValueArgs DIRECTORY RELATIVE)
     set(multiValueArgs EXCLUDE REGEX_EXLCUDE)
@@ -641,10 +641,10 @@ function(qtmediate_get_subdirs _var)
     set(${_var} ${_res} PARENT_SCOPE)
 endfunction()
 
-macro(_qtmediate_get_core_tool _out _func)
-    if(NOT TARGET qmcmake::corecmd)
+macro(_qmsetup_get_core_tool _out _func)
+    if(NOT TARGET qmsetup::corecmd)
         message(FATAL_ERROR "${_func}: tool \"corecmd\" not found.")
     endif()
 
-    get_target_property(${_out} qmcmake::corecmd LOCATION)
+    get_target_property(${_out} qmsetup::corecmd LOCATION)
 endmacro()

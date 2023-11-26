@@ -1,10 +1,10 @@
-#ifndef QMSharedData_H
-#define QMSharedData_H
+#ifndef SHAREDDATA_H
+#define SHAREDDATA_H
 
 #include <atomic>
 #include <utility>
 
-#include <qmcmake/qtmediate_global.h>
+#include <qmsetup/qmsetup_global.h>
 
 template <class T>
 class QMSharedDataPointer;
@@ -174,4 +174,4 @@ inline void QMSharedDataPointer<T>::detach_helper() {
     d = x;
 }
 
-#endif // QMSharedData_H
+#endif // SHAREDDATA_H
