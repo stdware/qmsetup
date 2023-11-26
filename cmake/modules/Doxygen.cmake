@@ -1,7 +1,9 @@
 include_guard(DIRECTORY)
 
+# Warning: This module depends on `QtMediateAPI.cmake`.
+
 #[[
-    Add Doxygen generate target.
+    Add Doxygen documentation generating target.
 
     qtmediate_setup_doxygen(<target>
         [NAME           <name>]

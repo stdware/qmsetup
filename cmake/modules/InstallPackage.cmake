@@ -1,7 +1,7 @@
 include_guard(DIRECTORY)
 
 #[[
-    Install external package.
+    Install external package at configuration phase.
 
     qtmediate_install_package(<name>
         [SOURCE_DIR <dir>]

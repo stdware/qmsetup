@@ -36,8 +36,6 @@ function(qtmediate_add_translation _target)
     set(multiValueArgs LOCALES SOURCES TARGETS TS_FILES TS_OPTIONS QM_OPTIONS TS_DEPENDS QM_DEPENDS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # ----------------- Template Begin -----------------
-
     # Get linguist tools
     if(NOT TARGET Qt${QT_VERSION_MAJOR}::lupdate OR NOT TARGET Qt${QT_VERSION_MAJOR}::lrelease)
         message(FATAL_ERROR "qtmediate_add_translation: linguist tools not defined. Add find_package(Qt5 COMPONENTS LinguistTools) to CMake to enable.")
@@ -196,8 +194,6 @@ function(qtmediate_add_translation _target)
     foreach(_item ${FUNC_QM_DEPENDS})
         add_dependencies(${_item} ${_target}_lrelease)
     endforeach()
-
-    # ----------------- Template End -----------------
 endfunction()
 
 # ----------------------------------
