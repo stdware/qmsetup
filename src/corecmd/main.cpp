@@ -338,7 +338,7 @@ static int cmd_copy(const SCL::ParseResult &result) {
                 contents = true;
             }
 
-            const auto &path = fs::absolute(str2tstr(rawString));
+            const auto &path = Utils::cleanPath(fs::absolute(str2tstr(rawString)));
             if (fs::is_directory(path)) {
                 (contents ? directoryContents : directories).insert(path);
             } else if (fs::exists(path)) {
