@@ -137,7 +137,8 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path 
         fs::create_symlink(symlinkContent, target);
     } else {
         if (verbose) {
-            u8printf("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(), tstr2str(target).data());
+            u8printf("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
+                     tstr2str(target).data());
         }
         fs::copy(file, dest, fs::copy_options::overwrite_existing);
         Utils::syncFileTime(target, file); // Sync time for each file
@@ -711,8 +712,8 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 
             auto targetPath = targetDir / path.filename();
             if (verbose) {
-                u8printf("Sync: from \"%s\" to \"%s\"\n", tstr2str(targetPath).data(),
-                         tstr2str(path).data());
+                u8printf("Sync: from \"%s\" to \"%s\"\n", tstr2str(path).data(),
+                         tstr2str(targetPath).data());
             }
 
             if (dryrun)

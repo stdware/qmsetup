@@ -8,11 +8,12 @@ include_guard(DIRECTORY)
         [NO_STANDARD] [NO_ALL]
         [INCLUDE <pair...>]
         [EXCLUDE <expr...>]
-        [FORCE] [INSTALL_DIR <dir>]
+        [INSTALL_DIR <dir>]
+        [FORCE] [VERBOSE]
     )
 #]]
 function(qtmediate_sync_include _src_dir _dest_dir)
-    set(options FORCE NO_STANDARD NO_ALL)
+    set(options FORCE VERBOSE NO_STANDARD NO_ALL)
     set(oneValueArgs INSTALL_DIR)
     set(multiValueArgs INCLUDE EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -54,7 +55,9 @@ function(qtmediate_sync_include _src_dir _dest_dir)
             list(APPEND _args -e ${_item})
         endforeach()
 
-        list(APPEND _args)
+        if(FUNC_VERBOSE)
+            list(APPEND _args -V)
+        endif()
 
         if(NOT FUNC_FORCE OR NOT EXISTS ${_dest_dir})
             if(EXISTS ${_dest_dir})
@@ -87,18 +90,11 @@ function(qtmediate_sync_include _src_dir _dest_dir)
                     COMMAND_ERROR_IS_FATAL ANY
                 )
                 string(REPLACE \"\\n\" \";\" _lines \"\${_output_contents}\")
-                set(_is_even_line TRUE)
 
                 foreach(_line \${_lines})
-                    if(_is_even_line)
-                        string(SUBSTRING \${_line} 7 -1 _target_path) # Skip `Create ` token
-                        get_filename_component(_target_path \${_target_path} DIRECTORY)
-                        set(_is_even_line FALSE)
-                    else()
-                        string(STRIP \${_line} _source_path)
-                        file(INSTALL \${_source_path} DESTINATION \${_target_path})
-                        set(_is_even_line TRUE)
-                    endif()
+                    string(REGEX MATCH \"from \\\"([^\\\"]*)\\\" to \\\"([^\\\"]*)\\\"\" _ \${_line})
+                    get_filename_component(_target_path \${CMAKE_MATCH_2} DIRECTORY)
+                    file(INSTALL \${CMAKE_MATCH_1} DESTINATION \${_target_path})
                 endforeach()
             ")
         endif()
