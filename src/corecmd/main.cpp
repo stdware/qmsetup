@@ -306,9 +306,25 @@ static inline fs::path fromFramework(const fs::path &path) {
 
 // ---------------------------------------- Commands ----------------------------------------
 
+static inline bool isForceSet(const SCL::ParseResult &result) {
+    return result.isOptionSet("-f");
+}
+
+static inline bool isDryRunSet(const SCL::ParseResult &result) {
+    return result.isOptionSet("-d");
+}
+
+static inline bool isVerboseSet(const SCL::ParseResult &result) {
+    return result.isRoleSet(SCL::Option::Verbose);
+}
+
+static inline bool isStandardSet(const SCL::ParseResult &result) {
+    return result.isOptionSet("-s");
+}
+
 static int cmd_copy(const SCL::ParseResult &result) {
-    bool force = result.optionIsSet("-f");
-    bool verbose = result.optionIsSet("-V");
+    bool force = isForceSet(result);
+    bool verbose = isVerboseSet(result);
 
     std::set<fs::path> files;
     std::set<fs::path> directories;
@@ -364,7 +380,8 @@ static int cmd_copy(const SCL::ParseResult &result) {
 }
 
 static int cmd_rmdir(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("-V");
+    bool verbose = isVerboseSet(result);
+    
     std::vector<fs::path> dirs;
     {
         const auto &dirsResult = result.values(0);
@@ -384,7 +401,7 @@ static int cmd_rmdir(const SCL::ParseResult &result) {
 }
 
 static int cmd_touch(const SCL::ParseResult &result) {
-    bool verbose = result.optionIsSet("-V");
+    bool verbose = isVerboseSet(result);
 
     const auto &file = str2tstr(result.value(0).toString());
     const auto &refFile = str2tstr(result.value(1).toString());
@@ -418,15 +435,15 @@ static int cmd_touch(const SCL::ParseResult &result) {
 }
 
 static int cmd_configure(const SCL::ParseResult &result) {
-    bool dryrun = result.optionIsSet("-d");
-    bool force = result.optionIsSet("-f");
-    bool verbose = dryrun || result.optionIsSet("-V");
+    bool dryrun = isDryRunSet(result);
+    bool force = isForceSet(result);
+    bool verbose = dryrun || isVerboseSet(result);
 
     const auto &fileName = fs::absolute(str2tstr(result.value(0).toString()));
 
     // Warning file
     std::vector<std::string> warningLines;
-    if (const auto &warningResult = result.option("-w"); warningResult.count() > 0) {
+    if (const auto &warningResult = result.option("-w"); warningResult.isSet()) {
         do {
             const auto &warningFileString = warningResult.value(0).toString();
             if (warningFileString.empty())
@@ -523,8 +540,11 @@ static int cmd_configure(const SCL::ParseResult &result) {
             ss << "// SHA256: " << hash << "\n\n";
         }
 
-        ss << definitions << "\n";           // Definitions
-        ss << "#endif // " << guard << "\n"; // Header guard end
+        // Definitions
+        ss << definitions << "\n";
+
+        // Header guard end
+        ss << "#endif // " << guard << "\n";
 
         content = ss.str();
     }
@@ -613,12 +633,12 @@ static int cmd_configure(const SCL::ParseResult &result) {
 }
 
 static int cmd_incsync(const SCL::ParseResult &result) {
-    bool dryrun = result.optionIsSet("-d");
-    bool verbose = dryrun || result.optionIsSet("-V");
-    bool copy = result.optionIsSet("-c");
-    bool all = !result.optionIsSet("-n");
-    bool force = result.optionIsSet("-f");
-    bool standard = result.optionIsSet("-s");
+    bool dryrun = isDryRunSet(result);
+    bool verbose = dryrun || isVerboseSet(result);
+    bool force = isForceSet(result);
+    bool standard = isStandardSet(result);
+    bool copy = result.isOptionSet("-c");
+    bool all = !result.isOptionSet("-n");
 
     const fs::path &src = Utils::cleanPath(fs::absolute(str2tstr(result.value(0).toString())));
     const fs::path &dest = Utils::cleanPath(fs::absolute(str2tstr(result.value(1).toString())));
@@ -739,14 +759,14 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 }
 
 static int cmd_deploy(const SCL::ParseResult &result) {
-    bool dryrun = result.optionIsSet("-d");
-    bool verbose = dryrun || result.optionIsSet("-V");
-    bool force = result.optionIsSet("-f");
-    bool standard = result.optionIsSet("-s");
+    bool dryrun = isDryRunSet(result);
+    bool verbose = dryrun || isVerboseSet(result);
+    bool force = isForceSet(result);
+    bool standard = isStandardSet(result);
 
     fs::path dest = fs::current_path(); // Default to current path
-    if (result.optionIsSet("-o")) {
-        dest = Utils::cleanPath(fs::absolute(str2tstr(result.valueForOption("-o").toString())));
+    if (auto destResult = result.option("-o"); destResult.isSet()) {
+        dest = Utils::cleanPath(fs::absolute(str2tstr(destResult.value().toString())));
     }
 
     // Add file names
@@ -1211,9 +1231,6 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 }
 
 int main(int argc, char *argv[]) {
-    // Shared option
-    static SCL::Option verbose({"-V", "--verbose"}, "Show verbose");
-
     SCL::Command copyCommand = []() {
         SCL::Command command("copy", "Copy files or directories if different");
         command.addArguments({
@@ -1224,7 +1241,7 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
-        command.addOptions({verbose});
+        command.addOptions({SCL::Option::Verbose});
         command.setHandler(cmd_copy);
         return command;
     }();
@@ -1234,7 +1251,7 @@ int main(int argc, char *argv[]) {
         command.addArguments({
             SCL::Argument("dir", "Directories").multi(),
         });
-        command.addOption(verbose);
+        command.addOption({SCL::Option::Verbose});
         command.setHandler(cmd_rmdir);
         return command;
     }();
@@ -1245,7 +1262,7 @@ int main(int argc, char *argv[]) {
             SCL::Argument("file", "File to update time stamp"),
             SCL::Argument("ref file", "Reference file", false),
         });
-        command.addOption(verbose);
+        command.addOption({SCL::Option::Verbose});
         command.setHandler(cmd_touch);
         return command;
     }();
@@ -1262,7 +1279,7 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-f", "--force"}, "Skip calculating hash and overwrite always"),
             SCL::Option({"-d", "--dryrun"}, "Print contents only"),
         });
-        command.addOption(verbose);
+        command.addOption({SCL::Option::Verbose});
         command.setHandler(cmd_configure);
         return command;
     }();
@@ -1285,7 +1302,7 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-d", "--dryrun"}, "Print reorganizing details only"),
             SCL::Option({"-f", "--force"}, "Force deleting existing directory"),
         });
-        command.addOption(verbose);
+        command.addOption({SCL::Option::Verbose});
         command.setHandler(cmd_incsync);
         return command;
     }();
@@ -1319,7 +1336,7 @@ int main(int argc, char *argv[]) {
             SCL::Option({"-d", "--dryrun"}, "Print dependencies only"),
             SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
-        command.addOption(verbose);
+        command.addOption({SCL::Option::Verbose});
         command.setHandler(cmd_deploy);
         return command;
     }();
