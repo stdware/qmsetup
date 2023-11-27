@@ -4,9 +4,6 @@ include(CMakeFindDependencyMacro)
 
 include("${CMAKE_CURRENT_LIST_DIR}/qmsetupTargets.cmake")
 
-set(QMSETUP_MODULES_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/QMSetupAPI.cmake")
 
-include("${QMSETUP_MODULES_DIR}/QMSetupAPI.cmake")
-include("${QMSETUP_MODULES_DIR}/QMSetupDeployAPI.cmake")
-include("${QMSETUP_MODULES_DIR}/QMSetupPreprocessAPI.cmake")
-include("${QMSETUP_MODULES_DIR}/QMSetupFilesystemAPI.cmake")
+qm_import(${qmsetup_FIND_COMPONENTS})

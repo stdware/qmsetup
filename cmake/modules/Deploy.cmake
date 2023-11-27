@@ -1,11 +1,18 @@
 include_guard(DIRECTORY)
 
 #[[
+    Warning: This module depends on `QMSetupAPI.cmake`.
+]] #
+if(NOT DEFINED QMSETUP_MODULES_DIR)
+    message(FATAL_ERROR "QMSETUP_MODULES_DIR not defined. Add find_package(qmsetup) to CMake first.")
+endif()
+
+#[[
     Record searching paths for Windows Executables.
 
-    qmsetup_win_record_deps(<target>)
+    qm_win_record_deps(<target>)
 ]] #
-function(qmsetup_win_record_deps _target)
+function(qm_win_record_deps _target)
     set(_paths)
     get_target_property(_link_libraries ${_target} LINK_LIBRARIES)
 
@@ -49,7 +56,7 @@ endfunction()
 #[[
     Automatically copy dependencies for Windows Executables after build.
 
-    qmsetup_win_applocal_deps(<target>
+    qm_win_applocal_deps(<target>
         [CUSTOM_TARGET <target>]
         [FORCE] [VERBOSE]
         [EXTRA_SEARCHING_PATHS <path...>]
@@ -57,7 +64,7 @@ endfunction()
         [OUTPUT_DIR <dir>]
     )
 ]] #
-function(qmsetup_win_applocal_deps _target)
+function(qm_win_applocal_deps _target)
     if(NOT WIN32)
         return()
     endif()
@@ -69,7 +76,7 @@ function(qmsetup_win_applocal_deps _target)
 
     # Get tool
     set(_tool)
-    _qmsetup_get_core_tool(_tool "qmsetup_win_applocal_deps")
+    _qm_query_corecmd(_tool "qm_win_applocal_deps")
 
     # Get output directory and deploy target
     set(_out_dir)
@@ -92,15 +99,15 @@ function(qmsetup_win_applocal_deps _target)
     endif()
 
     if(NOT _out_dir)
-        message(FATAL_ERROR "qmsetup_win_applocal_deps: cannot determine output directory.")
+        message(FATAL_ERROR "qm_win_applocal_deps: cannot determine output directory.")
     endif()
 
     # Get record files
     set(_path_files)
-    _qtmeidate_win_get_all_record_files(_path_files ${_target})
+    _qm_win_get_all_record_files(_path_files ${_target})
 
     foreach(_item ${FUNC_EXTRA_TARGETS})
-        _qtmeidate_win_get_all_record_files(_path_files ${_item})
+        _qm_win_get_all_record_files(_path_files ${_item})
     endforeach()
 
     # Prepare command
@@ -133,7 +140,7 @@ endfunction()
 #[[
     Add deploy command when install project.
 
-    qmsetup_deploy_directory(<install_dir>
+    qm_deploy_directory(<install_dir>
         [FORCE] [STANDARD] [VERBOSE]
         [LIBRARY_DIR <dir>]
         [EXTRA_PLUGIN_PATHS <path>...]
@@ -150,7 +157,7 @@ endfunction()
         [COMMENT <comment]
     )
 ]] #
-function(qmsetup_deploy_directory _install_dir)
+function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
     set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS WIN_SEARCHING_PATHS)
@@ -158,14 +165,14 @@ function(qmsetup_deploy_directory _install_dir)
 
     # Get tool
     set(_tool)
-    _qmsetup_get_core_tool(_tool "qmsetup_deploy_directory")
+    _qm_query_corecmd(_tool "qm_deploy_directory")
 
     # Get qmake
     if((FUNC_PLUGINS OR FUNC_QML) AND NOT DEFINED QT_QMAKE_EXECUTABLE)
         if(TARGET Qt${QT_VERSION_MAJOR}::qmake)
             get_target_property(QT_QMAKE_EXECUTABLE Qt${QT_VERSION_MAJOR}::qmake IMPORTED_LOCATION)
         elseif((FUNC_PLUGINS AND NOT FUNC_EXTRA_PLUGIN_PATHS) OR FUNC_QML)
-            message(FATAL_ERROR "qmsetup_deploy_directory: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
+            message(FATAL_ERROR "qm_deploy_directory: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
         endif()
     endif()
 
@@ -176,9 +183,9 @@ function(qmsetup_deploy_directory _install_dir)
     endif()
 
     # Set values
-    qmsetup_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${_default_lib_dir}")
-    qmsetup_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
-    qmsetup_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
+    qm_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${_default_lib_dir}")
+    qm_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
+    qm_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
 
     get_filename_component(_lib_dir ${_lib_dir} ABSOLUTE BASE_DIR ${_install_dir})
     get_filename_component(_plugin_dir ${_plugin_dir} ABSOLUTE BASE_DIR ${_install_dir})
@@ -215,7 +222,7 @@ function(qmsetup_deploy_directory _install_dir)
         set(_path_files)
 
         if(FUNC_WIN_TARGETS)
-            _qtmeidate_win_get_all_record_files(_path_files ${FUNC_WIN_TARGETS})
+            _qm_win_get_all_record_files(_path_files ${FUNC_WIN_TARGETS})
         endif()
 
         foreach(_item ${FUNC_WIN_SEARCHING_PATHS})
@@ -267,7 +274,10 @@ function(qmsetup_deploy_directory _install_dir)
     ")
 endfunction()
 
-function(_qtmeidate_win_get_all_record_files _out)
+# ----------------------------------
+# Private functions
+# ----------------------------------
+function(_qm_win_get_all_record_files _out)
     # Get searching paths
     macro(get_recursive_dynamic_dependencies _current_target _result)
         get_target_property(_deps ${_current_target} LINK_LIBRARIES)

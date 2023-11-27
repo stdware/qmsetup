@@ -35,7 +35,7 @@ if(WIN32)
 endif()
 
 if(WIN32)
-    qmsetup_add_win_rc(${PROJECT_NAME}
+    qm_add_win_rc(${PROJECT_NAME}
         COPYRIGHT ${RC_COPYRIGHT}
         DESCRIPTION ${RC_DESCRIPTION}
     )

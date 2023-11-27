@@ -1,11 +1,16 @@
 include_guard(DIRECTORY)
 
-# Warning: This module depends on `QMSetupAPI.cmake`.
+#[[
+    Warning: This module depends on `QMSetupAPI.cmake`.
+]] #
+if(NOT DEFINED QMSETUP_MODULES_DIR)
+    message(FATAL_ERROR "QMSETUP_MODULES_DIR not defined. Add find_package(qmsetup) to CMake first.")
+endif()
 
 #[[
     Add Doxygen documentation generating target.
 
-    qmsetup_setup_doxygen(<target>
+    qm_setup_doxygen(<target>
         [NAME           <name>]
         [VERSION        <version>]
         [DESCRIPTION    <desc>]
@@ -26,7 +31,7 @@ include_guard(DIRECTORY)
         [DEPENDS                <dependency> ...]
     )
 ]] #
-function(qmsetup_setup_doxygen _target)
+function(qm_setup_doxygen _target)
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION LOGO MDFILE OUTPUT_DIR INSTALL_DIR GENERATE_TAGFILE)
     set(multiValueArgs INPUT TAGFILES INCLUDE_DIRECTORIES COMPILE_DEFINITIONS TARGETS ENVIRONMENT_EXPORTS
@@ -35,17 +40,17 @@ function(qmsetup_setup_doxygen _target)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT DOXYGEN_EXECUTABLE)
-        message(FATAL_ERROR "qmsetup_setup_doxygen: DOXYGEN_EXECUTABLE not defined. Add find_package(Doxygen) to CMake to enable.")
+        message(FATAL_ERROR "qm_setup_doxygen: DOXYGEN_EXECUTABLE not defined. Add find_package(Doxygen) to CMake to enable.")
     endif()
 
     set(DOXYGEN_FILE_DIR ${QMSETUP_MODULES_DIR}/doxygen)
 
-    qmsetup_set_value(_name FUNC_NAME "${PROJECT_NAME}")
-    qmsetup_set_value(_version FUNC_VERSION "${PROJECT_VERSION}")
-    qmsetup_set_value(_desc FUNC_DESCRIPTION "${PROJECT_DESCRIPTION}")
-    qmsetup_set_value(_logo FUNC_LOGO "")
-    qmsetup_set_value(_mdfile FUNC_MDFILE "")
-    qmsetup_set_value(_tagfile FUNC_GENERATE_TAGFILE "")
+    qm_set_value(_name FUNC_NAME "${PROJECT_NAME}")
+    qm_set_value(_version FUNC_VERSION "${PROJECT_VERSION}")
+    qm_set_value(_desc FUNC_DESCRIPTION "${PROJECT_DESCRIPTION}")
+    qm_set_value(_logo FUNC_LOGO "")
+    qm_set_value(_mdfile FUNC_MDFILE "")
+    qm_set_value(_tagfile FUNC_GENERATE_TAGFILE "")
 
     if(_desc STREQUAL "")
         set(${_desc} "${_name}")
@@ -127,7 +132,7 @@ function(qmsetup_setup_doxygen _target)
 
     foreach(_export ${FUNC_ENVIRONMENT_EXPORTS})
         if(NOT DEFINED "${_export}")
-            message(FATAL_ERROR "qmsetup_setup_doxygen: ${_export} is not known when trying to export it.")
+            message(FATAL_ERROR "qm_setup_doxygen: ${_export} is not known when trying to export it.")
         endif()
 
         list(APPEND _env "${_export}=${${_export}}")

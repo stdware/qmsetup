@@ -3,7 +3,7 @@ include_guard(DIRECTORY)
 #[[
     Install external package at configuration phase.
 
-    qmsetup_install_package(<name>
+    qm_install_package(<name>
         [SOURCE_DIR <dir>]
         [BUILD_TREE_DIR <dir>]
         [INSTALL_DIR <dir>]
@@ -15,7 +15,7 @@ include_guard(DIRECTORY)
         [RESULT_PATH <VAR>]
     )
 ]] #
-function(qmsetup_install_package _name)
+function(qm_install_package _name)
     set(options)
     set(oneValueArgs SOURCE_DIR BUILD_TREE_DIR INSTALL_DIR CMAKE_PACKAGE_SUBDIR BUILD_TYPE RESULT_PATH)
     set(multiValueArgs CONFIGURE_ARGS)

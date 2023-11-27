@@ -3,7 +3,7 @@ include_guard(DIRECTORY)
 #[[
     Add qt translation target.
 
-    qmsetup_add_translation(<target>
+    qm_add_translation(<target>
         [LOCALES locales]
         [PREFIX prefix]
         [SOURCES files... | TARGETS targets... | TS_FILES files...]
@@ -30,7 +30,7 @@ include_guard(DIRECTORY)
         QM_DEPENDS: add lrelease task as a dependency to the given targets
     
 ]] #
-function(qmsetup_add_translation _target)
+function(qm_add_translation _target)
     set(options)
     set(oneValueArgs PREFIX TS_DIR QM_DIR)
     set(multiValueArgs LOCALES SOURCES TARGETS TS_FILES TS_OPTIONS QM_OPTIONS TS_DEPENDS QM_DEPENDS)
@@ -38,7 +38,7 @@ function(qmsetup_add_translation _target)
 
     # Get linguist tools
     if(NOT TARGET Qt${QT_VERSION_MAJOR}::lupdate OR NOT TARGET Qt${QT_VERSION_MAJOR}::lrelease)
-        message(FATAL_ERROR "qmsetup_add_translation: linguist tools not defined. Add find_package(Qt5 COMPONENTS LinguistTools) to CMake to enable.")
+        message(FATAL_ERROR "qm_add_translation: linguist tools not defined. Add find_package(Qt5 COMPONENTS LinguistTools) to CMake to enable.")
     endif()
 
     set(_src_files)
@@ -130,7 +130,7 @@ function(qmsetup_add_translation _target)
             list(PREPEND _ts_options OPTIONS)
         endif()
 
-        _qmsetup_add_lupdate_target(${_target}_lupdate
+        _qm_add_lupdate_target(${_target}_lupdate
             INPUT ${_src_files}
             OUTPUT ${_ts_files}
             ${_ts_options}
@@ -175,7 +175,7 @@ function(qmsetup_add_translation _target)
         list(PREPEND _qm_options OPTIONS)
     endif()
 
-    _qmsetup_add_lrelease_target(${_target}_lrelease
+    _qm_add_lrelease_target(${_target}_lrelease
         INPUT ${_ts_files} ${FUNC_TS_FILES}
         DESTINATION ${_qm_dir}
         ${_qm_options}
@@ -201,7 +201,7 @@ endfunction()
 # ----------------------------------
 # Input: cxx source files
 # Output: target ts files
-function(_qmsetup_add_lupdate_target _target)
+function(_qm_add_lupdate_target _target)
     set(options CREATE_ONCE)
     set(oneValueArgs)
     set(multiValueArgs INPUT OUTPUT OPTIONS DEPENDS)
@@ -275,7 +275,7 @@ endfunction()
 
 # Input: ts files
 # Output: list to append qm files
-function(_qmsetup_add_lrelease_target _target)
+function(_qm_add_lrelease_target _target)
     set(options)
     set(oneValueArgs DESTINATION OUTPUT)
     set(multiValueArgs INPUT OPTIONS DEPENDS)
