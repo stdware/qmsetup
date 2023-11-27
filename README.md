@@ -1,6 +1,6 @@
-# QtMediate CMake Modules
+# QMSetup: QtMediate CMake Modules
 
-**QMSetup**: CMake Modules for QtMediate and other projects.
+**QMSetup** is a set of CMake Modules for QtMediate and other projects.
 
 **This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it's not suggested to be included as a subproject.
 
@@ -9,9 +9,9 @@
 ## Features
 
 + Helpful CMake utilities
-+ Deploy project dependencies and fix rpaths
-+ Re-organize header files
 + Generate configuration header files
++ Re-organize header files
++ Deploy project dependencies and fix rpaths
 
 ## Support Platforms
 
@@ -93,6 +93,49 @@ if (NOT TARGET qmsetup::library)
     # Update import path
     set(qmsetup_DIR ${_package_path} CACHE PATH "" FORCE)
 endif()
+```
+
+## Quick Start
+
+### Examples
+
+Here are some common use cases of CMake project, you can simplify many operations when using this library.
+
+#### Generate Configuration Header
+```cmake
+qm_import(Preprocess)
+
+qm_add_definition(FOO false)
+qm_add_definition(BAR 114514)
+qm_add_definition(BAZ "ABC" STRING_LITERAL)
+
+qm_generate_config(${CMAKE_BINARY_DIR}/conf.h)
+```
+
+#### Sync Resource Files After Build
+```cmake
+qm_import(Filesystem)
+
+qm_add_copy_command(${PROJECT_NAME}
+    SOURCES
+        file.txt
+        dir_to_copy
+        dir_contents_to_copy/
+    DESTINATION .
+)
+```
+
+#### Deploy Project And All Dependencies
+```cmake
+qm_import(Deploy)
+
+qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
+    COMMENT "Deploy project spectacularly"
+    PLUGINS "iconengines/qsvgicon" "bearer/qgenericbearer"
+    QML Qt QtQml
+    PLUGIN_DIR share/plugins
+    QML_DIR share/qml
+)
 ```
 
 ## Thanks
