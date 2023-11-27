@@ -2,6 +2,13 @@ include_guard(DIRECTORY)
 
 set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+# Deafult variables
+if(WIN32)
+    set(QMSETUP_SHARED_LIBRARY_CATEGORY bin)
+else()
+    set(QMSETUP_SHARED_LIBRARY_CATEGORY lib)
+endif()
+
 #[[
     Include modules of this library.
 
@@ -24,7 +31,7 @@ macro(qm_import)
 endmacro()
 
 #[[
-    Skip CMAKE_AUTOMOC for all source files in directory.
+    Skip CMAKE_AUTOMOC for sources files or ones in directories.
 
     qm_skip_automoc(<file/dir...>)
 ]] #

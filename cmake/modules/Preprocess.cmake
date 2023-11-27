@@ -118,18 +118,20 @@ endfunction()
     Add a definition to global scope or a given target.
 
     qm_add_definition( <key | key=value> | <key> <value>
-        [STRING_LITERAL]
         [TARGET <target>]
         [PROPERTY <prop>]
         [CONDITION <cond>]
+        [STRING_LITERAL] [NO_KEYWORD]
         [NUMERICAL] [CLASSICAL]
     )
 
+    STRING_LITERAL: Force quotes on values
+    NO_KEYWORD: Treat any keyword as string
     NUMERICAL: Use 1/-1 as defined/undefined, can be forced to enable by setting QMSETUP_DEFINITION_NUMERICAL
     CLASSICAL: Use classical definition, enable it to override QMSETUP_DEFINITION_NUMERICAL
 ]] #
 function(qm_add_definition)
-    set(options GLOBAL NUMERICAL STRING_LITERAL)
+    set(options STRING_LITERAL NO_KEYWORD NUMERICAL CLASSICAL)
     set(oneValueArgs TARGET PROPERTY CONDITION)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -175,14 +177,14 @@ function(qm_add_definition)
         # Boolean
         string(TOLOWER ${_val} _val_lower)
 
-        if(${_val_lower} STREQUAL "off" OR ${_val_lower} STREQUAL "false")
+        if(NOT FUNC_NO_KEYWORD AND(${_val_lower} STREQUAL "off" OR ${_val_lower} STREQUAL "false"))
             set(_result ${_key})
             set(_defined off)
 
             if(NOT _cond)
                 set(_defined on)
             endif()
-        elseif(${_val_lower} STREQUAL "on" OR ${_val_lower} STREQUAL "true")
+        elseif(NOT FUNC_NO_KEYWORD AND(${_val_lower} STREQUAL "on" OR ${_val_lower} STREQUAL "true"))
             set(_result ${_key})
             set(_defined on)
 

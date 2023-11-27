@@ -50,7 +50,7 @@ function(qm_win_record_deps _target)
 
     set(_deps_file "${CMAKE_CURRENT_BINARY_DIR}/${_target}_deps_$<CONFIG>.txt")
     file(GENERATE OUTPUT ${_deps_file} CONTENT "$<JOIN:${_paths},\n>")
-    set_target_properties(${_target} PROPERTIES DEPENDENCIES_RECORD_FILE ${_deps_file})
+    set_target_properties(${_target} PROPERTIES QMSETUP_DEPENDENCIES_FILE ${_deps_file})
 endfunction()
 
 #[[
@@ -102,12 +102,12 @@ function(qm_win_applocal_deps _target)
         message(FATAL_ERROR "qm_win_applocal_deps: cannot determine output directory.")
     endif()
 
-    # Get record files
-    set(_path_files)
-    _qm_win_get_all_record_files(_path_files ${_target})
+    # Get dep files
+    set(_dep_files)
+    _qm_win_get_all_dep_files(_dep_files ${_target})
 
     foreach(_item ${FUNC_EXTRA_TARGETS})
-        _qm_win_get_all_record_files(_path_files ${_item})
+        _qm_win_get_all_dep_files(_dep_files ${_item})
     endforeach()
 
     # Prepare command
@@ -125,7 +125,7 @@ function(qm_win_applocal_deps _target)
         list(APPEND _args "-L${_item}")
     endforeach()
 
-    foreach(_item ${_path_files})
+    foreach(_item ${_dep_files})
         list(APPEND _args "-@${_item}")
     endforeach()
 
@@ -176,14 +176,8 @@ function(qm_deploy_directory _install_dir)
         endif()
     endif()
 
-    if(WIN32)
-        set(_default_lib_dir bin)
-    else()
-        set(_default_lib_dir lib)
-    endif()
-
     # Set values
-    qm_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${_default_lib_dir}")
+    qm_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${QMSETUP_SHARED_LIBRARY_CATEGORY}")
     qm_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
     qm_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
 
@@ -219,17 +213,17 @@ function(qm_deploy_directory _install_dir)
     endforeach()
 
     if(WIN32)
-        set(_path_files)
+        set(_dep_files)
 
         if(FUNC_WIN_TARGETS)
-            _qm_win_get_all_record_files(_path_files ${FUNC_WIN_TARGETS})
+            _qm_win_get_all_dep_files(_dep_files ${FUNC_WIN_TARGETS})
         endif()
 
         foreach(_item ${FUNC_WIN_SEARCHING_PATHS})
             list(APPEND _args -L "${_item}")
         endforeach()
 
-        foreach(_item ${_path_files})
+        foreach(_item ${_dep_files})
             list(APPEND _args -@ "${_item}")
         endforeach()
 
@@ -277,7 +271,7 @@ endfunction()
 # ----------------------------------
 # Private functions
 # ----------------------------------
-function(_qm_win_get_all_record_files _out)
+function(_qm_win_get_all_dep_files _out)
     # Get searching paths
     macro(get_recursive_dynamic_dependencies _current_target _result)
         get_target_property(_deps ${_current_target} LINK_LIBRARIES)
@@ -310,18 +304,18 @@ function(_qm_win_get_all_record_files _out)
         endforeach()
     endforeach()
 
-    set(_path_files)
+    set(_dep_files)
 
     foreach(_target ${_visited_targets})
         # Add file
-        get_target_property(_file ${_target} DEPENDENCIES_RECORD_FILE)
+        get_target_property(_file ${_target} QMSETUP_DEPENDENCIES_FILE)
 
         if(NOT _file)
             continue()
         endif()
 
-        list(APPEND _path_files ${_file})
+        list(APPEND _dep_files ${_file})
     endforeach()
 
-    set(${_out} ${_path_files} PARENT_SCOPE)
+    set(${_out} ${_dep_files} PARENT_SCOPE)
 endfunction()

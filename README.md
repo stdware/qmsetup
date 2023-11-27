@@ -81,7 +81,7 @@ if (NOT TARGET qmsetup::library)
 
     # Install package in place
     set(_package_path)
-    qmsetup_install_package(qmsetup
+    qm_install_package(qmsetup
         SOURCE_DIR ${_source_dir}
         BUILD_TYPE Release
         RESULT_PATH _package_path
@@ -135,6 +135,45 @@ qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
     QML Qt QtQml
     PLUGIN_DIR share/plugins
     QML_DIR share/qml
+)
+```
+
+#### Add Qt Translations
+```cmake
+qm_import(Translate)
+
+qm_find_qt(LinguistTools)
+qm_add_translation(${PROJECT_NAME}_translations
+    LOCALES ja_JP zh_CN zh_TW
+    PREFIX ${PROJECT_NAME}
+    TARGETS ${PROJECT_NAME}
+    TS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/translations
+    QM_DIR ${CMAKE_CURRENT_BINARY_DIR}/translations
+)
+```
+
+#### Generate Doxygen Document
+```cmake
+qm_import(Doxygen)
+
+find_package(Doxygen REQUIRED)
+qm_setup_doxygen(${PROJECT_NAME}_RunDoxygen
+    NAME ${PROJECT_NAME}
+    DESCRIPTION "my project"
+    MDFILE "${CMAKE_SOURCE_DIR}/README.md"
+    OUTPUT_DIR "${CMAK_BINARY_DIR}/doc"
+    INPUT src
+    TARGETS ${PROJECT_NAME}
+    DEPENDS ${PROJECT_NAME}
+    NO_EXPAND_MACROS
+        Q_OBJECT
+        Q_GADGET
+        Q_DECLARE_TR_FUNCTIONS
+    COMPILE_DEFINITIONS 
+        Q_SIGNALS=Q_SIGNALS
+        Q_SLOTS=Q_SLOTS
+    GENERATE_TAGFILE "${PROJECT_NAME}_tagfile.xml"
+    INSTALL_DIR "doc"
 )
 ```
 
