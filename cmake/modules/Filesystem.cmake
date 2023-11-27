@@ -32,24 +32,21 @@ function(qm_add_copy_command _target)
         message(FATAL_ERROR "qm_add_copy_command: SOURCES not specified.")
     endif()
 
-    set(_dest)
-
     if(NOT TARGET ${_target})
         add_custom_target(${_target})
     endif()
 
     get_target_property(_type ${_target} TYPE)
 
+    set(_dest)
+
     if(FUNC_DESTINATION)
-        # Determine destination
         qm_has_genex(_has_genex ${FUNC_DESTINATION})
 
-        if(NOT _has_genex)
-            if(IS_ABSOLUTE ${FUNC_DESTINATION})
-                set(_dest ${FUNC_DESTINATION})
-            elseif(NOT ${_type} STREQUAL "UTILITY")
-                set(_dest "$<TARGET_FILE_DIR:${_target}>/${FUNC_DESTINATION}")
-            endif()
+        if(_has_genex OR IS_ABSOLUTE ${FUNC_DESTINATION})
+            set(_dest ${FUNC_DESTINATION})
+        elseif(NOT ${_type} STREQUAL "UTILITY")
+            set(_dest "$<TARGET_FILE_DIR:${_target}>/${FUNC_DESTINATION}")
         endif()
     else()
         if(NOT ${_type} STREQUAL "UTILITY")

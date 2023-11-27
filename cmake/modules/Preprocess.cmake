@@ -7,6 +7,10 @@ if(NOT DEFINED QMSETUP_MODULES_DIR)
     message(FATAL_ERROR "QMSETUP_MODULES_DIR not defined. Add find_package(qmsetup) to CMake first.")
 endif()
 
+if(NOT DEFINED QMSETUP_DEFINITION_NUMERICAL)
+    set(QMSETUP_DEFINITION_NUMERICAL off)
+endif()
+
 #[[
     Generate indirect reference files for header files to make the include statements more orderly.
     The generated file has the same timestamp as the source file.
@@ -117,9 +121,12 @@ endfunction()
         [STRING_LITERAL]
         [TARGET <target>]
         [PROPERTY <prop>]
-        [NUMERICAL]
         [CONDITION <cond>]
+        [NUMERICAL] [CLASSICAL]
     )
+
+    NUMERICAL: Use 1/-1 as defined/undefined, can be forced to enable by setting QMSETUP_DEFINITION_NUMERICAL
+    CLASSICAL: Use classical definition, enable it to override QMSETUP_DEFINITION_NUMERICAL
 ]] #
 function(qm_add_definition)
     set(options GLOBAL NUMERICAL STRING_LITERAL)
@@ -135,6 +142,11 @@ function(qm_add_definition)
     list(LENGTH _list _len)
 
     set(_cond on)
+    set(_numerical off)
+
+    if(NOT FUNC_CLASSICAL AND(QMSETUP_DEFINITION_NUMERICAL OR FUNC_NUMERICAL))
+        set(_numerical on)
+    endif()
 
     if(FUNC_CONDITION)
         if(NOT ${FUNC_CONDITION})
@@ -190,7 +202,7 @@ function(qm_add_definition)
         message(FATAL_ERROR "qm_add_definition: called with incorrect number of arguments")
     endif()
 
-    if(FUNC_NUMERICAL AND NOT _is_pair)
+    if(_numerical AND NOT _is_pair)
         if(_defined)
             set(_result "${_result}=1")
         else()
