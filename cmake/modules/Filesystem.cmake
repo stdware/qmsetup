@@ -1,9 +1,16 @@
 include_guard(DIRECTORY)
 
 #[[
+    Warning: This module depends on `QMSetupAPI.cmake`.
+]] #
+if(NOT DEFINED QMSETUP_MODULES_DIR)
+    message(FATAL_ERROR "QMSETUP_MODULES_DIR not defined. Add find_package(qmsetup) to CMake first.")
+endif()
+
+#[[
     Add a resources copying command for whole project.
 
-    qtmediate_add_copy_command(<target>
+    qm_add_copy_command(<target>
         [CUSTOM_TARGET <target>]
         [FORCE] [VERBOSE]
 
@@ -11,7 +18,7 @@ include_guard(DIRECTORY)
         DESTINATION <dir>
     )
 ]] #
-function(qtmediate_add_copy_command _target)
+function(qm_add_copy_command _target)
     set(options FORCE VERBOSE)
     set(oneValueArgs CUSTOM_TARGET DESTINATION)
     set(multiValueArgs SOURCES)
@@ -19,13 +26,11 @@ function(qtmediate_add_copy_command _target)
 
     # Get tool
     set(_tool)
-    _qtmediate_get_core_tool(_tool "qtmediate_add_copy_command")
+    _qm_query_corecmd(_tool "qm_add_copy_command")
 
     if(NOT FUNC_SOURCES)
-        message(FATAL_ERROR "qtmediate_add_copy_command: SOURCES not specified.")
+        message(FATAL_ERROR "qm_add_copy_command: SOURCES not specified.")
     endif()
-
-    set(_dest)
 
     if(NOT TARGET ${_target})
         add_custom_target(${_target})
@@ -33,16 +38,15 @@ function(qtmediate_add_copy_command _target)
 
     get_target_property(_type ${_target} TYPE)
 
-    if(FUNC_DESTINATION)
-        # Determine destination
-        qtmediate_has_genex(_has_genex ${FUNC_DESTINATION})
+    set(_dest)
 
-        if(NOT _has_genex)
-            if(IS_ABSOLUTE ${FUNC_DESTINATION})
-                set(_dest ${FUNC_DESTINATION})
-            elseif(NOT ${_type} STREQUAL "UTILITY")
-                set(_dest "$<TARGET_FILE_DIR:${_target}>/${FUNC_DESTINATION}")
-            endif()
+    if(FUNC_DESTINATION)
+        qm_has_genex(_has_genex ${FUNC_DESTINATION})
+
+        if(_has_genex OR IS_ABSOLUTE ${FUNC_DESTINATION})
+            set(_dest ${FUNC_DESTINATION})
+        elseif(NOT ${_type} STREQUAL "UTILITY")
+            set(_dest "$<TARGET_FILE_DIR:${_target}>/${FUNC_DESTINATION}")
         endif()
     else()
         if(NOT ${_type} STREQUAL "UTILITY")
@@ -51,7 +55,7 @@ function(qtmediate_add_copy_command _target)
     endif()
 
     if(NOT _dest)
-        message(FATAL_ERROR "qtmediate_add_copy_command: destination cannot be determined.")
+        message(FATAL_ERROR "qm_add_copy_command: destination cannot be determined.")
     endif()
 
     set(_deploy_target)
