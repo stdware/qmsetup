@@ -513,6 +513,27 @@ function(qm_has_genex _out _str)
 endfunction()
 
 #[[
+    Tell if the given paths are same in canonical form.
+
+    qm_paths_equal(<VAR> <path1> <path2>)
+]] #
+function(qm_paths_equal _out _path1 _path2)
+    # cmake_path(NORMAL_PATH) is introduced in CMake 3.20, we don't use it
+    # We call `get_filename_component` twice to normalize the paths
+    get_filename_component(_path1 ${_path1} ABSOLUTE)
+    get_filename_component(_path1 ${_path1} REALPATH)
+
+    get_filename_component(_path2 ${_path2} ABSOLUTE)
+    get_filename_component(_path2 ${_path2} REALPATH)
+
+    if(_path2 STREQUAL _path2)
+        set(${_out} on PARENT_SCOPE)
+    else()
+        set(${_out} off PARENT_SCOPE)
+    endif()
+endfunction()
+
+#[[
     Set value if valid, otherwise use default.
 
     qm_set_value(<key> <maybe_value...> <default>)

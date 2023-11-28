@@ -233,6 +233,38 @@ function(qm_add_definition _first)
 endfunction()
 
 #[[
+    Remove a definition to global scope or a given target.
+
+    qm_remove_definition(<key>
+        [TARGET <target>]
+        [PROPERTY <prop>]
+    )
+]] #
+function(qm_remove_definition _key)
+    set(options)
+    set(oneValueArgs TARGET PROPERTY)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    qm_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
+
+    if(FUNC_TARGET)
+        get_target_property(_definitions ${FUNC_TARGET} ${_prop})
+    else()
+        get_property(_definitions GLOBAL PROPERTY ${_prop})
+    endif()
+
+    # Filter
+    list(FILTER _definitions EXCLUDE REGEX "^${_key}(=.*)?$")
+
+    if(FUNC_TARGET)
+        set_property(TARGET ${FUNC_TARGET} PROPERTY ${_prop} "${_definitions}")
+    else()
+        set_property(GLOBAL PROPERTY ${_prop} "${_definitions}")
+    endif()
+endfunction()
+
+#[[
     Generate a configuration header. If the configuration has not changed, the generated file's
     timestemp will not be updated when you reconfigure it.
 
