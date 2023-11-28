@@ -11,6 +11,14 @@ if(NOT DEFINED QMSETUP_DEFINITION_NUMERICAL)
     set(QMSETUP_DEFINITION_NUMERICAL off)
 endif()
 
+if(NOT DEFINED QMSETUP_DEFINITION_SCOPE)
+    set(QMSETUP_DEFINITION_SCOPE)
+endif()
+
+if(NOT DEFINED QMSETUP_DEFINITION_PROPERTY)
+    set(QMSETUP_DEFINITION_PROPERTY)
+endif()
+
 if(NOT DEFINED QMSETUP_SYNC_INCLUDE_STANDARD)
     set(QMSETUP_SYNC_INCLUDE_STANDARD on)
 endif()
@@ -127,8 +135,9 @@ endfunction()
     Add a definition to global scope or a given target.
 
     qm_add_definition( <key | key=value> | <key> <value>
-        [TARGET <target>]
+        [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
         [PROPERTY <prop>]
+
         [CONDITION <cond...>]
         [STRING_LITERAL] [NO_KEYWORD]
         [NUMERICAL] [CLASSICAL]
@@ -141,7 +150,7 @@ endfunction()
 ]] #
 function(qm_add_definition _first)
     set(options STRING_LITERAL NO_KEYWORD NUMERICAL CLASSICAL)
-    set(oneValueArgs TARGET PROPERTY)
+    set(oneValueArgs TARGET SOURCE DIRECTORY PROPERTY)
     set(multiValueArgs CONDITION)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -223,20 +232,15 @@ function(qm_add_definition _first)
         return()
     endif()
 
-    qm_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
-
-    if(FUNC_TARGET)
-        set_property(TARGET ${FUNC_TARGET} APPEND PROPERTY ${_prop} "${_result}")
-    else()
-        set_property(GLOBAL APPEND PROPERTY ${_prop} "${_result}")
-    endif()
+    _qm_calc_property_scope(FUNC _scope _prop)
+    set_property(${_scope} APPEND PROPERTY ${_prop} "${_result}")
 endfunction()
 
 #[[
     Remove a definition to global scope or a given target.
 
     qm_remove_definition(<key>
-        [TARGET <target>]
+        [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
         [PROPERTY <prop>]
     )
 ]] #
@@ -245,8 +249,6 @@ function(qm_remove_definition _key)
     set(oneValueArgs TARGET PROPERTY)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    qm_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
 
     if(FUNC_TARGET)
         get_target_property(_definitions ${FUNC_TARGET} ${_prop})
@@ -257,11 +259,8 @@ function(qm_remove_definition _key)
     # Filter
     list(FILTER _definitions EXCLUDE REGEX "^${_key}(=.*)?$")
 
-    if(FUNC_TARGET)
-        set_property(TARGET ${FUNC_TARGET} PROPERTY ${_prop} "${_definitions}")
-    else()
-        set_property(GLOBAL PROPERTY ${_prop} "${_definitions}")
-    endif()
+    _qm_calc_property_scope(FUNC _scope _prop)
+    set_property(${_scope} PROPERTY ${_prop} "${_definitions}")
 endfunction()
 
 #[[
@@ -269,8 +268,9 @@ endfunction()
     timestemp will not be updated when you reconfigure it.
 
     qm_generate_config(<file>
-        [TARGET <target>]
+        [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
         [PROPERTY <prop>]
+
         [WARNING_FILE <file>]
         [NO_WARNING]
         [NO_HASH]
@@ -287,18 +287,13 @@ function(qm_generate_config _file)
         message(FATAL_ERROR "qm_generate_config: corecmd tool not found.")
     endif()
 
-    qm_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
+    _qm_calc_property_scope(FUNC _scope _prop)
+    get_property(_definitions ${_scope} PROPERTY ${_prop})
 
-    if(FUNC_TARGET)
-        get_target_property(_def_list ${FUNC_TARGET} ${_prop})
-    else()
-        get_property(_def_list GLOBAL PROPERTY ${_prop})
-    endif()
-
-    if(_def_list)
+    if(_definitions)
         set(_args)
 
-        foreach(_item ${_def_list})
+        foreach(_item ${_definitions})
             list(APPEND _args "-D${_item}")
         endforeach()
 
@@ -435,22 +430,22 @@ function(qm_generate_build_info _file)
 
     # string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
     # string(TIMESTAMP _build_year "%Y")
-    set(_def_list)
-    list(APPEND _def_list ${_prefix}_BUILD_COMPILER_ID=\"${_compiler_name}\")
-    list(APPEND _def_list ${_prefix}_BUILD_COMPILER_VERSION=\"${_compiler_version}\")
-    list(APPEND _def_list ${_prefix}_BUILD_COMPILER_ARCH=\"${_compiler_arch}\")
+    set(_definitions)
+    list(APPEND _definitions ${_prefix}_BUILD_COMPILER_ID=\"${_compiler_name}\")
+    list(APPEND _definitions ${_prefix}_BUILD_COMPILER_VERSION=\"${_compiler_version}\")
+    list(APPEND _definitions ${_prefix}_BUILD_COMPILER_ARCH=\"${_compiler_arch}\")
 
-    # list(APPEND _def_list ${_prefix}_BUILD_DATE_TIME=\"${_build_time}\")
-    # list(APPEND _def_list ${_prefix}_BUILD_YEAR=\"${_build_year}\")
-    list(APPEND _def_list ${_prefix}_GIT_BRANCH=\"${_git_branch}\")
-    list(APPEND _def_list ${_prefix}_GIT_LAST_COMMIT_HASH=\"${_git_hash}\")
-    list(APPEND _def_list ${_prefix}_GIT_LAST_COMMIT_TIME=\"${_git_commit_time}\")
-    list(APPEND _def_list ${_prefix}_GIT_LAST_COMMIT_AUTHOR=\"${_git_commit_author}\")
-    list(APPEND _def_list ${_prefix}_GIT_LAST_COMMIT_EMAIL=\"${_git_commit_email}\")
+    # list(APPEND _definitions ${_prefix}_BUILD_DATE_TIME=\"${_build_time}\")
+    # list(APPEND _definitions ${_prefix}_BUILD_YEAR=\"${_build_year}\")
+    list(APPEND _definitions ${_prefix}_GIT_BRANCH=\"${_git_branch}\")
+    list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_HASH=\"${_git_hash}\")
+    list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_TIME=\"${_git_commit_time}\")
+    list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_AUTHOR=\"${_git_commit_author}\")
+    list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_EMAIL=\"${_git_commit_email}\")
 
     set(_args)
 
-    foreach(_item ${_def_list})
+    foreach(_item ${_definitions})
         list(APPEND _args "-D${_item}")
     endforeach()
 
@@ -468,4 +463,28 @@ function(qm_generate_build_info _file)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND_ERROR_IS_FATAL ANY
     )
+endfunction()
+
+# ----------------------------------
+# Private functions
+# ----------------------------------
+function(_qm_calc_property_scope _prefix _scope _prop)
+    if(${_prefix}_TARGET)
+        set(_scope TARGET ${${_prefix}_TARGET})
+    elseif(${_prefix}_SOURCE)
+        set(_scope SOURCE ${${_prefix}__SOURCE})
+    elseif(${_prefix}_DIRECTORY)
+        set(_scope DIRECTORY ${${_prefix}_DIRECTORY})
+    elseif(${_prefix}_GLOBAL)
+        set(_scope GLOBAL)
+    elseif(QMSETUP_DEFINITION_SCOPE)
+        set(_scope ${QMSETUP_DEFINITION_SCOPE})
+    else()
+        set(_scope GLOBAL)
+    endif()
+
+    qm_set_value(_prop FUNC_PROPERTY QMSETUP_DEFINITION_PROPERTY "CONFIG_DEFINITIONS")
+
+    set(_scope ${_scope} PARENT_SCOPE)
+    set(_prop ${_prop} PARENT_SCOPE)
 endfunction()

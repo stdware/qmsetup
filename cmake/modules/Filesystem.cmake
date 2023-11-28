@@ -7,6 +7,32 @@ if(NOT DEFINED QMSETUP_MODULES_DIR)
     message(FATAL_ERROR "QMSETUP_MODULES_DIR not defined. Add find_package(qmsetup) to CMake first.")
 endif()
 
+if(NOT DEFINED QMSETUP_BUILD_TREE_DIR)
+    set(QMSETUP_BUILD_TREE_DIR ${CMAKE_BINARY_DIR})
+endif()
+
+if(NOT DEFINED QMSETUP_BUILD_DIR)
+    set(QMSETUP_BUILD_DIR "${QMSETUP_BUILD_TREE_DIR}/out-$<LOWER_CASE:${CMAKE_SYSTEM_PROCESSOR}>-$<CONFIG>")
+endif()
+
+macro(qm_setup_project)
+    if(NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/bin)
+    endif()
+
+    if(NOT DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/lib)
+    endif()
+
+    if(NOT DEFINED CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/lib)
+    endif()
+
+    if(NOT DEFINED CMAKE_BUILD_SHARE_DIR)
+        set(CMAKE_BUILD_SHARE_DIR ${QMSETUP_BUILD_DIR}/share)
+    endif()
+endmacro()
+
 #[[
     Add a resources copying command for whole project.
 
