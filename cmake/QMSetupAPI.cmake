@@ -555,7 +555,7 @@ endfunction()
 #[[
     Collect targets of given types recursively in a directory.
 
-    qm_collect_targets(<list> [DIR directory]
+    qm_collect_targets(<list> [DIRECTORY directory]
                               [EXECUTABLE] [SHARED] [STATIC] [UTILITY])
 
     If one or more types are specified, return targets matching the types.
@@ -567,8 +567,8 @@ function(qm_collect_targets _var)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(FUNC_DIR)
-        set(_dir ${FUNC_DIR})
+    if(FUNC_DIRECTORY)
+        set(_dir ${FUNC_DIRECTORY})
     else()
         set(_dir ${CMAKE_CURRENT_SOURCE_DIR})
     endif()

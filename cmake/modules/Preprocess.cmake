@@ -381,7 +381,7 @@ function(qm_generate_build_info _file)
 
         # Hash
         execute_process(
-            COMMAND ${GIT_EXECUTABLE} log -1 "--pretty=format:%H\n%aI\n%aN\n%aE"
+            COMMAND ${GIT_EXECUTABLE} log -1 "--pretty=format:%H;%aI;%aN;%aE" # Use `;` as separator
             OUTPUT_VARIABLE _temp
             ERROR_VARIABLE _err
             OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -392,11 +392,10 @@ function(qm_generate_build_info _file)
         )
 
         if(${_code} EQUAL 0)
-            string(REPLACE "\n" ";" _temp_list "${_temp}")
-            list(GET _temp_list 0 _git_hash)
-            list(GET _temp_list 1 _git_commit_time)
-            list(GET _temp_list 2 _git_commit_author)
-            list(GET _temp_list 3 _git_commit_email)
+            list(GET _temp 0 _git_hash)
+            list(GET _temp 1 _git_commit_time)
+            list(GET _temp 2 _git_commit_author)
+            list(GET _temp 3 _git_commit_email)
         elseif(FUNC_REQUIRED)
             message(FATAL_ERROR "${_err}")
         endif()
@@ -404,39 +403,49 @@ function(qm_generate_build_info _file)
         message(FATAL_ERROR "Git not found")
     endif()
 
-    set(_compiler_name unknown)
+    qm_set_value(_system_name CMAKE_SYSTEM_NAME unknown)
+    qm_set_value(_system_version CMAKE_SYSTEM_VERSION unknown)
+    qm_set_value(_system_processor CMAKE_SYSTEM_PROCESSOR unknown)
 
-    if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-        set(_compiler_name "Clang")
-    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-        set(_compiler_name "GCC")
-    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-        set(_compiler_name "MSVC")
-    elseif(CMAKE_CXX_COMPILER_ID)
-        set(_compiler_name ${CMAKE_CXX_COMPILER_ID})
-    endif()
+    qm_set_value(_host_system_name CMAKE_HOST_SYSTEM_NAME unknown)
+    qm_set_value(_host_system_version CMAKE_HOST_SYSTEM_VERSION unknown)
+    qm_set_value(_host_system_processor CMAKE_HOST_SYSTEM_PROCESSOR unknown)
 
-    set(_compiler_arch ${CMAKE_CXX_COMPILER_ARCHITECTURE_ID})
-
-    if(NOT _compiler_arch)
-        string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} _compiler_arch)
-    endif()
-
-    set(_compiler_version ${CMAKE_CXX_COMPILER_VERSION})
-
-    if(NOT _compiler_version)
-        set(_compiler_version 0)
-    endif()
+    qm_set_value(_compiler_name CMAKE_CXX_COMPILER_ID unknown)
+    qm_set_value(_compiler_version CMAKE_CXX_COMPILER_VERSION unknown)
+    qm_set_value(_compiler_arch CMAKE_CXX_COMPILER_ARCHITECTURE_ID unknown)
+    qm_set_value(_compiler_abi CMAKE_CXX_COMPILER_ABI unknown)
 
     # string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
     # string(TIMESTAMP _build_year "%Y")
     set(_definitions)
-    list(APPEND _definitions ${_prefix}_BUILD_COMPILER_ID=\"${_compiler_name}\")
-    list(APPEND _definitions ${_prefix}_BUILD_COMPILER_VERSION=\"${_compiler_version}\")
-    list(APPEND _definitions ${_prefix}_BUILD_COMPILER_ARCH=\"${_compiler_arch}\")
 
+    # system
+    list(APPEND _definitions ${_prefix}_SYSTEM_NAME=\"${_system_name}\")
+    list(APPEND _definitions ${_prefix}_SYSTEM_VERSION=\"${_system_version}\")
+    list(APPEND _definitions ${_prefix}_SYSTEM_PROCESSOR=\"${_system_processor}\")
+
+    list(APPEND _definitions ${_prefix}_HOST_SYSTEM_NAME=\"${_host_system_name}\")
+    list(APPEND _definitions ${_prefix}_HOST_SYSTEM_VERSION=\"${_host_system_version}\")
+    list(APPEND _definitions ${_prefix}_HOST_SYSTEM_PROCESSOR=\"${_host_system_processor}\")
+
+    list(APPEND _definitions "%")
+
+    # compiler
+    list(APPEND _definitions ${_prefix}_COMPILER_ID=\"${_compiler_name}\")
+    list(APPEND _definitions ${_prefix}_COMPILER_VERSION=\"${_compiler_version}\")
+    list(APPEND _definitions ${_prefix}_COMPILER_ARCH=\"${_compiler_arch}\")
+    list(APPEND _definitions ${_prefix}_COMPILER_ABI=\"${_compiler_abi}\")
+
+    list(APPEND _definitions "%")
+
+    # build time (deprecated)
     # list(APPEND _definitions ${_prefix}_BUILD_DATE_TIME=\"${_build_time}\")
     # list(APPEND _definitions ${_prefix}_BUILD_YEAR=\"${_build_year}\")
+
+    # list(APPEND _definitions "%")
+
+    # git info
     list(APPEND _definitions ${_prefix}_GIT_BRANCH=\"${_git_branch}\")
     list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_HASH=\"${_git_hash}\")
     list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_TIME=\"${_git_commit_time}\")

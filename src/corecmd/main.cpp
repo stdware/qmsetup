@@ -492,9 +492,15 @@ static int cmd_configure(const SCL::ParseResult &result) {
         std::map<std::string, size_t> definitionMap;
         std::vector<std::pair<std::string, std::string>> definitionSequence; // Preserve order
         for (const auto &def : std::as_const(defines)) {
-            size_t pos = def.find('=');
+            // Raw line
+            if (def.front() == '%') {
+                definitionSequence.push_back(std::make_pair("%", def.substr(1)));
+                continue;
+            }
+
             std::string key;
             std::string val;
+            size_t pos = def.find('=');
             if (pos == std::string::npos) {
                 key = def;
             } else {
@@ -513,7 +519,9 @@ static int cmd_configure(const SCL::ParseResult &result) {
 
         std::stringstream ss;
         for (const auto &pair : std::as_const(definitionSequence)) {
-            if (pair.second.empty()) {
+            if (pair.first == "%") {
+                ss << pair.second << "\n";
+            } else if (pair.second.empty()) {
                 ss << "#define " << pair.first << "\n";
             } else {
                 ss << "#define " << pair.first << " " << pair.second << "\n";
@@ -1293,7 +1301,7 @@ int main(int argc, char *argv[]) {
         SCL::Command command("configure", "Generate configuration header");
         command.addArgument(SCL::Argument("output file", "Output header path"));
         command.addOptions({
-            SCL::Option({"-D", "--define"}, R"(Define a variable, format: "key" or "key=value")")
+            SCL::Option({"-D", "--define"}, R"(Define a variable, format: <key>, <key>=<value>, %<raw>)")
                 .arg("expr")
                 .multi()
                 .short_match(SCL::Option::ShortMatchSingleChar),
