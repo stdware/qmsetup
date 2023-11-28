@@ -9,6 +9,10 @@ else()
     set(QMSETUP_SHARED_LIBRARY_CATEGORY lib)
 endif()
 
+if(NOT DEFINED QMSETUP_FIND_QT_ORDER)
+    set(QMSETUP_FIND_QT_ORDER Qt6 Qt5)
+endif()
+
 set(QMSETUP_CORECMD_EXECUTABLE)
 
 if(TARGET qmsetup::corecmd)
@@ -46,7 +50,7 @@ function(qm_skip_automoc)
         get_filename_component(_item ${_item} ABSOLUTE)
 
         if(IS_DIRECTORY ${_item})
-            file(GLOB _src ${_item}/*.h ${_item}/*.cpp ${_item}/*.cc)
+            file(GLOB _src ${_item}/*.h ${_item}/*.hpp ${_item}/*.cpp ${_item}/*.cc)
             set_source_files_properties(
                 ${_src} PROPERTIES SKIP_AUTOMOC ON
             )
@@ -66,7 +70,7 @@ endfunction()
 macro(qm_find_qt)
     foreach(_module ${ARGN})
         if(NOT QT_VERSION_MAJOR)
-            find_package(QT NAMES Qt6 Qt5 COMPONENTS ${_module} REQUIRED)
+            find_package(QT NAMES ${QMSETUP_FIND_QT_ORDER} COMPONENTS ${_module} REQUIRED)
         endif()
 
         if(NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})

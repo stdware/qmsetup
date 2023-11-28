@@ -132,7 +132,7 @@ function(qm_sync_include _src_dir _dest_dir)
 endfunction()
 
 #[[
-    Add a definition to global scope or a given target.
+    Add a definition to a property scope.
 
     qm_add_definition( <key | key=value> | <key> <value>
         [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
@@ -232,12 +232,12 @@ function(qm_add_definition _first)
         return()
     endif()
 
-    _qm_calc_property_scope(FUNC _scope _prop)
+    _qm_calc_property_scope(_scope _prop)
     set_property(${_scope} APPEND PROPERTY ${_prop} "${_result}")
 endfunction()
 
 #[[
-    Remove a definition to global scope or a given target.
+    Remove a definition from a property scope.
 
     qm_remove_definition(<key>
         [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
@@ -259,18 +259,19 @@ function(qm_remove_definition _key)
     # Filter
     list(FILTER _definitions EXCLUDE REGEX "^${_key}(=.*)?$")
 
-    _qm_calc_property_scope(FUNC _scope _prop)
+    _qm_calc_property_scope(_scope _prop)
     set_property(${_scope} PROPERTY ${_prop} "${_definitions}")
 endfunction()
 
 #[[
-    Generate a configuration header. If the configuration has not changed, the generated file's
-    timestemp will not be updated when you reconfigure it.
+    Generate a configuration header of a property scope. If the configuration has not changed,
+    the generated file's timestemp will not be updated when you reconfigure it.
 
     qm_generate_config(<file>
         [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
         [PROPERTY <prop>]
 
+        [PROJECT_NAME <name>]
         [WARNING_FILE <file>]
         [NO_WARNING]
         [NO_HASH]
@@ -278,7 +279,7 @@ endfunction()
 ]] #
 function(qm_generate_config _file)
     set(options NO_WARNING NO_HASH)
-    set(oneValueArgs TARGET PROPERTY)
+    set(oneValueArgs TARGET PROPERTY PROJECT_NAME WARNING_FILE)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -287,30 +288,11 @@ function(qm_generate_config _file)
         message(FATAL_ERROR "qm_generate_config: corecmd tool not found.")
     endif()
 
-    _qm_calc_property_scope(FUNC _scope _prop)
+    _qm_calc_property_scope(_scope _prop)
     get_property(_definitions ${_scope} PROPERTY ${_prop})
 
     if(_definitions)
-        set(_args)
-
-        foreach(_item ${_definitions})
-            list(APPEND _args "-D${_item}")
-        endforeach()
-
-        list(APPEND _args ${_file})
-
-        if(NOT FUNC_NO_WARNING)
-            list(APPEND _args "-w" ${FUNC_WARNING_FILE})
-        endif()
-
-        if(FUNC_NO_HASH)
-            list(APPEND _args "-f")
-        endif()
-
-        execute_process(COMMAND ${QMSETUP_CORECMD_EXECUTABLE} configure ${_args}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            COMMAND_ERROR_IS_FATAL ANY
-        )
+        _qm_generate_config_helper()
     endif()
 endfunction()
 
@@ -320,6 +302,8 @@ endfunction()
     qm_generate_build_info(<file>
         [ROOT_DIRECTORY <dir>]
         [PREFIX <prefix>]
+        
+        [PROJECT_NAME <name>]
         [WARNING_FILE <file>]
         [NO_WARNING]
         [NO_HASH]
@@ -334,7 +318,7 @@ endfunction()
 ]] #
 function(qm_generate_build_info _file)
     set(options NO_WARNING NO_HASH REQUIRED)
-    set(oneValueArgs ROOT_DIRECTORY PREFIX)
+    set(oneValueArgs ROOT_DIRECTORY PREFIX PROJECT_NAME WARNING_FILE)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -452,6 +436,34 @@ function(qm_generate_build_info _file)
     list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_AUTHOR=\"${_git_commit_author}\")
     list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_EMAIL=\"${_git_commit_email}\")
 
+    _qm_generate_config_helper()
+endfunction()
+
+# ----------------------------------
+# Private functions
+# ----------------------------------
+function(_qm_calc_property_scope _scope _prop)
+    if(FUNC_TARGET)
+        set(_scope TARGET ${FUNC_TARGET})
+    elseif(FUNC_SOURCE)
+        set(_scope SOURCE ${FUNC__SOURCE})
+    elseif(FUNC_DIRECTORY)
+        set(_scope DIRECTORY ${FUNC_DIRECTORY})
+    elseif(FUNC_GLOBAL)
+        set(_scope GLOBAL)
+    elseif(QMSETUP_DEFINITION_SCOPE)
+        set(_scope ${QMSETUP_DEFINITION_SCOPE})
+    else()
+        set(_scope GLOBAL)
+    endif()
+
+    qm_set_value(_prop FUNC_PROPERTY QMSETUP_DEFINITION_PROPERTY "CONFIG_DEFINITIONS")
+
+    set(_scope ${_scope} PARENT_SCOPE)
+    set(_prop ${_prop} PARENT_SCOPE)
+endfunction()
+
+function(_qm_generate_config_helper)
     set(_args)
 
     foreach(_item ${_definitions})
@@ -464,6 +476,10 @@ function(qm_generate_build_info _file)
         list(APPEND _args "-w" ${FUNC_WARNING_FILE})
     endif()
 
+    if(FUNC_PROJECT_NAME)
+        list(APPEND _args "-p" ${FUNC_PROJECT_NAME})
+    endif()
+
     if(FUNC_NO_HASH)
         list(APPEND _args "-f")
     endif()
@@ -472,28 +488,4 @@ function(qm_generate_build_info _file)
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND_ERROR_IS_FATAL ANY
     )
-endfunction()
-
-# ----------------------------------
-# Private functions
-# ----------------------------------
-function(_qm_calc_property_scope _prefix _scope _prop)
-    if(${_prefix}_TARGET)
-        set(_scope TARGET ${${_prefix}_TARGET})
-    elseif(${_prefix}_SOURCE)
-        set(_scope SOURCE ${${_prefix}__SOURCE})
-    elseif(${_prefix}_DIRECTORY)
-        set(_scope DIRECTORY ${${_prefix}_DIRECTORY})
-    elseif(${_prefix}_GLOBAL)
-        set(_scope GLOBAL)
-    elseif(QMSETUP_DEFINITION_SCOPE)
-        set(_scope ${QMSETUP_DEFINITION_SCOPE})
-    else()
-        set(_scope GLOBAL)
-    endif()
-
-    qm_set_value(_prop FUNC_PROPERTY QMSETUP_DEFINITION_PROPERTY "CONFIG_DEFINITIONS")
-
-    set(_scope ${_scope} PARENT_SCOPE)
-    set(_prop ${_prop} PARENT_SCOPE)
 endfunction()

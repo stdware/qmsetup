@@ -440,6 +440,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
     bool force = isForceSet(result);
     bool verbose = dryrun || isVerboseSet(result);
 
+    const auto &projectName = result.valueForOption("-p").toString();
     const auto &fileName = fs::absolute(str2tstr(result.value(0).toString()));
 
     // Warning file
@@ -548,8 +549,25 @@ static int cmd_configure(const SCL::ParseResult &result) {
     std::string content;
     {
         std::string guard = tstr2str(fileName.filename());
-        std::replace(guard.begin(), guard.end(), '.', '_');
-        guard = Utils::toUpper(guard);
+        {
+            // Prepend project name
+            if (!projectName.empty()) {
+                guard = projectName + "_" + guard;
+            }
+
+            // Replace punctuation signs
+            std::replace_if(
+                guard.begin(), guard.end(), [](const char &c) { return !isalnum(c) && c != '_'; },
+                '_');
+
+            // Macro token can not start with a number, fix it
+            if (std::isdigit(guard.front())) {
+                guard = "_" + guard;
+            }
+
+            // To upper case
+            guard = Utils::toUpper(guard);
+        }
 
         std::stringstream ss;
 
@@ -1301,10 +1319,12 @@ int main(int argc, char *argv[]) {
         SCL::Command command("configure", "Generate configuration header");
         command.addArgument(SCL::Argument("output file", "Output header path"));
         command.addOptions({
-            SCL::Option({"-D", "--define"}, R"(Define a variable, format: <key>, <key>=<value>, %<raw>)")
+            SCL::Option({"-D", "--define"},
+                        R"(Define a variable, format: <key>, <key>=<value>, %<raw>)")
                 .arg("expr")
                 .multi()
                 .short_match(SCL::Option::ShortMatchSingleChar),
+            SCL::Option({"-p", "--project"}, "Set project name").arg("name"),
             SCL::Option({"-w", "--warning"}, "Generate warning text").arg("file", false),
             SCL::Option({"-f", "--force"}, "Skip calculating hash and overwrite always"),
             SCL::Option({"-d", "--dryrun"}, "Print contents only"),
