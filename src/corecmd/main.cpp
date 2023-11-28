@@ -489,13 +489,34 @@ static int cmd_configure(const SCL::ParseResult &result) {
     // Generate definitions content
     std::string definitions;
     {
-        std::stringstream ss;
+        std::map<std::string, size_t> definitionMap;
+        std::vector<std::pair<std::string, std::string>> definitionSequence; // Preserve order
         for (const auto &def : std::as_const(defines)) {
             size_t pos = def.find('=');
-            if (pos != std::string::npos) {
-                ss << "#define " << def.substr(0, pos) << " " << def.substr(pos + 1) << "\n";
+            std::string key;
+            std::string val;
+            if (pos == std::string::npos) {
+                key = def;
             } else {
-                ss << "#define " << def << "\n";
+                key = def.substr(0, pos);
+                val = def.substr(pos + 1);
+            }
+
+            auto it = definitionMap.find(key);
+            if (it == definitionMap.end()) {
+                definitionMap[key] = definitionSequence.size();
+                definitionSequence.push_back(std::make_pair(key, val));
+            } else {
+                definitionSequence[it->second].second = val;
+            }
+        }
+
+        std::stringstream ss;
+        for (const auto &pair : std::as_const(definitionSequence)) {
+            if (pair.second.empty()) {
+                ss << "#define " << pair.first << "\n";
+            } else {
+                ss << "#define " << pair.first << " " << pair.second << "\n";
             }
         }
         definitions = ss.str();
