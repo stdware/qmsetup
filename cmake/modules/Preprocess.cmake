@@ -11,17 +11,24 @@ if(NOT DEFINED QMSETUP_DEFINITION_NUMERICAL)
     set(QMSETUP_DEFINITION_NUMERICAL off)
 endif()
 
+if(NOT DEFINED QMSETUP_SYNC_INCLUDE_STANDARD)
+    set(QMSETUP_SYNC_INCLUDE_STANDARD on)
+endif()
+
 #[[
     Generate indirect reference files for header files to make the include statements more orderly.
     The generated file has the same timestamp as the source file.
 
     qm_sync_include(<src> <dest>
-        [NO_STANDARD] [NO_ALL]
+        [STANDARD] [NO_STANDARD] [NO_ALL]
         [INCLUDE <pair...>]
         [EXCLUDE <expr...>]
         [INSTALL_DIR <dir>]
         [FORCE] [VERBOSE]
     )
+
+    STANDARD: Enable standard public-private pattern, can be forced to enable by enabling `QMSETUP_SYNC_INCLUDE_STANDARD`
+    NO_STANDARD: Disable standard public-private pattern, enable it to override `QMSETUP_SYNC_INCLUDE_STANDARD`
 #]]
 function(qm_sync_include _src_dir _dest_dir)
     set(options FORCE VERBOSE NO_STANDARD NO_ALL)
@@ -29,9 +36,10 @@ function(qm_sync_include _src_dir _dest_dir)
     set(multiValueArgs INCLUDE EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Get tool
-    set(_tool)
-    _qm_query_corecmd(_tool "qm_sync_include")
+    # Check tool
+    if(NOT QMSETUP_CORECMD_EXECUTABLE)
+        message(FATAL_ERROR "qm_sync_include: corecmd tool not found.")
+    endif()
 
     if(NOT IS_ABSOLUTE ${_src_dir})
         get_filename_component(_src_dir ${_src_dir} ABSOLUTE)
@@ -50,7 +58,7 @@ function(qm_sync_include _src_dir _dest_dir)
 
         set(_args)
 
-        if(NOT FUNC_NO_STANDARD)
+        if(FUNC_STANDARD OR(QMSETUP_SYNC_INCLUDE_STANDARD AND NOT FUNC_NO_STANDARD))
             list(APPEND _args -s)
         endif()
 
@@ -76,7 +84,7 @@ function(qm_sync_include _src_dir _dest_dir)
             endif()
 
             execute_process(
-                COMMAND ${_tool} incsync ${_args} ${_src_dir} ${_dest_dir}
+                COMMAND ${QMSETUP_CORECMD_EXECUTABLE} incsync ${_args} ${_src_dir} ${_dest_dir}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                 COMMAND_ERROR_IS_FATAL ANY
             )
@@ -94,7 +102,8 @@ function(qm_sync_include _src_dir _dest_dir)
             # Get command output only and use file(INSTALL) to install files
             install(CODE "
                 execute_process(
-                    COMMAND \"${_tool}\" incsync -d ${_args_quoted} \"${_src_dir}\" \"${_install_dir}\"
+                    COMMAND \"${QMSETUP_CORECMD_EXECUTABLE}\" incsync -d 
+                        ${_args_quoted} \"${_src_dir}\" \"${_install_dir}\"
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                     OUTPUT_VARIABLE _output_contents
                     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -120,27 +129,27 @@ endfunction()
     qm_add_definition( <key | key=value> | <key> <value>
         [TARGET <target>]
         [PROPERTY <prop>]
-        [CONDITION <cond>]
+        [CONDITION <cond...>]
         [STRING_LITERAL] [NO_KEYWORD]
         [NUMERICAL] [CLASSICAL]
     )
 
     STRING_LITERAL: Force quotes on values
     NO_KEYWORD: Treat any keyword as string
-    NUMERICAL: Use 1/-1 as defined/undefined, can be forced to enable by setting QMSETUP_DEFINITION_NUMERICAL
-    CLASSICAL: Use classical definition, enable it to override QMSETUP_DEFINITION_NUMERICAL
+    NUMERICAL: Use 1/-1 as defined/undefined, can be forced to enable by enabling `QMSETUP_DEFINITION_NUMERICAL`
+    CLASSICAL: Use classical definition, enable it to override `QMSETUP_DEFINITION_NUMERICAL`
 ]] #
-function(qm_add_definition)
+function(qm_add_definition _first)
     set(options STRING_LITERAL NO_KEYWORD NUMERICAL CLASSICAL)
-    set(oneValueArgs TARGET PROPERTY CONDITION)
-    set(multiValueArgs)
+    set(oneValueArgs TARGET PROPERTY)
+    set(multiValueArgs CONDITION)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     set(_result)
     set(_is_pair off)
     set(_defined off)
 
-    set(_list ${FUNC_UNPARSED_ARGUMENTS})
+    set(_list ${_first} ${FUNC_UNPARSED_ARGUMENTS})
     list(LENGTH _list _len)
 
     set(_cond on)
@@ -151,7 +160,7 @@ function(qm_add_definition)
     endif()
 
     if(FUNC_CONDITION)
-        if(NOT ${FUNC_CONDITION})
+        if(NOT(${FUNC_CONDITION}))
             set(_cond off)
         endif()
     elseif(DEFINED FUNC_CONDITION)
@@ -241,9 +250,10 @@ function(qm_generate_config _file)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Get tool
-    set(_tool)
-    _qm_query_corecmd(_tool "qm_generate_config")
+    # Check tool
+    if(NOT QMSETUP_CORECMD_EXECUTABLE)
+        message(FATAL_ERROR "qm_generate_config: corecmd tool not found.")
+    endif()
 
     qm_set_value(_prop FUNC_PROPERTY CONFIG_DEFINITIONS)
 
@@ -270,7 +280,7 @@ function(qm_generate_config _file)
             list(APPEND _args "-f")
         endif()
 
-        execute_process(COMMAND ${_tool} configure ${_args}
+        execute_process(COMMAND ${QMSETUP_CORECMD_EXECUTABLE} configure ${_args}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             COMMAND_ERROR_IS_FATAL ANY
         )
@@ -301,9 +311,10 @@ function(qm_generate_build_info _file)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Get tool
-    set(_tool)
-    _qm_query_corecmd(_tool "qm_generate_build_info")
+    # Check tool
+    if(NOT QMSETUP_CORECMD_EXECUTABLE)
+        message(FATAL_ERROR "qm_generate_build_info: corecmd tool not found.")
+    endif()
 
     if(FUNC_PREFIX)
         set(_prefix ${FUNC_PREFIX})
@@ -421,7 +432,7 @@ function(qm_generate_build_info _file)
         list(APPEND _args "-f")
     endif()
 
-    execute_process(COMMAND ${_tool} configure ${_args}
+    execute_process(COMMAND ${QMSETUP_CORECMD_EXECUTABLE} configure ${_args}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND_ERROR_IS_FATAL ANY
     )

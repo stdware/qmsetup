@@ -8,7 +8,8 @@ if(NOT DEFINED QMSETUP_MODULES_DIR)
 endif()
 
 #[[
-    Record searching paths for Windows Executables.
+    Record searching paths for Windows Executables, must be called before calling `qm_win_applocal_deps`
+    or `qm_deploy_directory` if your project supports Windows.
 
     qm_win_record_deps(<target>)
 ]] #
@@ -74,9 +75,10 @@ function(qm_win_applocal_deps _target)
     set(multiValueArgs EXTRA_SEARCHING_PATHS EXTRA_TARGETS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Get tool
-    set(_tool)
-    _qm_query_corecmd(_tool "qm_win_applocal_deps")
+    # Check tool
+    if(NOT QMSETUP_CORECMD_EXECUTABLE)
+        message(FATAL_ERROR "qm_win_applocal_deps: corecmd tool not found.")
+    endif()
 
     # Get output directory and deploy target
     set(_out_dir)
@@ -132,7 +134,7 @@ function(qm_win_applocal_deps _target)
     list(APPEND _args "$<TARGET_FILE:${_target}>")
 
     add_custom_command(TARGET ${_deploy_target} POST_BUILD
-        COMMAND ${_tool} deploy ${_args}
+        COMMAND ${QMSETUP_CORECMD_EXECUTABLE} deploy ${_args}
         WORKING_DIRECTORY ${_out_dir}
     )
 endfunction()
@@ -163,9 +165,10 @@ function(qm_deploy_directory _install_dir)
     set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS WIN_SEARCHING_PATHS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Get tool
-    set(_tool)
-    _qm_query_corecmd(_tool "qm_deploy_directory")
+    # Check tool
+    if(NOT QMSETUP_CORECMD_EXECUTABLE)
+        message(FATAL_ERROR "qm_deploy_directory: corecmd tool not found.")
+    endif()
 
     # Get qmake
     if((FUNC_PLUGINS OR FUNC_QML) AND NOT DEFINED QT_QMAKE_EXECUTABLE)
@@ -187,7 +190,7 @@ function(qm_deploy_directory _install_dir)
     # Prepare commands
     set(_args
         -i "${_install_dir}"
-        -m "${_tool}"
+        -m "${QMSETUP_CORECMD_EXECUTABLE}"
         --plugindir "${_plugin_dir}"
         --libdir "${_lib_dir}"
         --qmldir "${_qml_dir}"

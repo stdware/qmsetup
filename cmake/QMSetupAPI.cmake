@@ -2,11 +2,17 @@ include_guard(DIRECTORY)
 
 set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-# Deafult variables
+# Set deafult variables
 if(WIN32)
     set(QMSETUP_SHARED_LIBRARY_CATEGORY bin)
 else()
     set(QMSETUP_SHARED_LIBRARY_CATEGORY lib)
+endif()
+
+set(QMSETUP_CORECMD_EXECUTABLE)
+
+if(TARGET qmsetup::corecmd)
+    get_target_property(QMSETUP_CORECMD_EXECUTABLE qmsetup::corecmd LOCATION)
 endif()
 
 #[[
@@ -59,12 +65,13 @@ endfunction()
 #]]
 macro(qm_find_qt)
     foreach(_module ${ARGN})
-        if(QT_VERSION_MAJOR AND TARGET Qt${QT_VERSION_MAJOR}::${_module})
-            continue()
+        if(NOT QT_VERSION_MAJOR)
+            find_package(QT NAMES Qt6 Qt5 COMPONENTS ${_module} REQUIRED)
         endif()
 
-        find_package(QT NAMES Qt6 Qt5 COMPONENTS ${_module} REQUIRED)
-        find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${_module} REQUIRED)
+        if(NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})
+            find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${_module} REQUIRED)
+        endif()
     endforeach()
 endmacro()
 
@@ -75,12 +82,7 @@ endmacro()
 #]]
 macro(qm_link_qt _target _scope)
     foreach(_module ${ARGN})
-        # Find
-        if(NOT QT_VERSION_MAJOR OR NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})
-            qm_find_qt(${_module})
-        endif()
-
-        # Link
+        qm_find_qt(${_module})
         target_link_libraries(${_target} ${_scope} Qt${QT_VERSION_MAJOR}::${_module})
     endforeach()
 endmacro()
@@ -92,15 +94,91 @@ endmacro()
 #]]
 macro(qm_include_qt_private _target _scope)
     foreach(_module ${ARGN})
-        # Find
-        if(NOT QT_VERSION_MAJOR OR NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})
-            qm_find_qt(${_module})
-        endif()
-
-        # Include
+        qm_find_qt(${_module})
         target_include_directories(${_target} ${_scope} ${Qt${QT_VERSION_MAJOR}${_module}_PRIVATE_INCLUDE_DIRS})
     endforeach()
 endmacro()
+
+#[[
+    Helper to link libraries and include directories of a target.
+
+    qm_configure_target(<target>
+        [SOURCES          <files>]
+        [LINKS            <libs>]
+        [LINKS_PRIVATE    <libs>]
+        [INCLUDE_PRIVATE  <dirs>]
+
+        [DEFINES          <defs>]
+        [DEFINES_PRIVATE  <defs>]
+
+        [CCFLAGS          <flags>]
+        [CCFLAGS_PRIVATE  <flags>]
+
+        [QT_LINKS            <modules>]
+        [QT_LINKS_PRIVATE    <modules>]
+        [QT_INCLUDE_PRIVATE  <modules>]
+
+        [SKIP_AUTOMOC   <dir/file...>]
+    )
+]] #
+macro(qm_configure_target _target)
+    set(options)
+    set(oneValueArgs)
+    set(multiValueArgs
+        SOURCES LINKS LINKS_PRIVATE
+        QT_LINKS QT_LINKS_PRIVATE QT_INCLUDE_PRIVATE
+        INCLUDE_PRIVATE
+        DEFINES DEFINES_PRIVATE
+        CCFLAGS CCFLAGS_PUBLIC
+        SKIP_AUTOMOC
+    )
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    target_sources(${_target} PRIVATE ${FUNC_SOURCES})
+    target_link_libraries(${_target} PUBLIC ${FUNC_LINKS})
+    target_link_libraries(${_target} PRIVATE ${FUNC_LINKS_PRIVATE})
+    target_compile_definitions(${_target} PUBLIC ${FUNC_DEFINES})
+    target_compile_definitions(${_target} PRIVATE ${FUNC_DEFINES_PRIVATE})
+    target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
+    target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
+    qm_link_qt(${_target} PUBLIC ${FUNC_QT_LINKS})
+    qm_link_qt(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
+    target_include_directories(${_target} PRIVATE ${FUNC_INCLUDE_PRIVATE})
+    qm_include_qt_private(${_target} PRIVATE ${FUNC_QT_INCLUDE_PRIVATE})
+    qm_skip_automoc(${FUNC_SKIP_AUTOMOC})
+endmacro()
+
+#[[
+    Helper to define export macros.
+
+    qm_export_defines(<target>
+        [PREFIX     <prefix>]
+        [STATIC     <token>]
+        [LIBRARY    <token>]
+    )
+]] #
+function(qm_export_defines _target)
+    set(options)
+    set(oneValueArgs PREFIX STATIC LIBRARY)
+    set(multiValueArgs)
+
+    if(NOT FUNC_PREFIX)
+        string(TOUPPER ${_target} _prefix)
+    else()
+        set(_prefix ${FUNC_PREFIX})
+    endif()
+
+    qm_set_value(_static_macro FUNC_STATIC ${_prefix}_STATIC)
+    qm_set_value(_library_macro FUNC_LIBRARY ${_prefix}_LIBRARY)
+
+    get_target_property(_type ${_target} TYPE)
+
+    if(${_type} STREQUAL STATIC_LIBRARY)
+        target_compile_definitions(${_target} PUBLIC ${_static_macro})
+    endif()
+
+    target_compile_definitions(${_target} PRIVATE ${_library_macro})
+endfunction()
 
 #[[
     Attach windows RC file to a target.
@@ -173,7 +251,10 @@ function(qm_add_win_rc_enhanced _target)
     endif()
 
     set(options)
-    set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT COMMENTS COMPANY INTERNAL_NAME TRADEMARK ORIGINAL_FILENAME OUTPUT)
+    set(oneValueArgs
+        NAME VERSION DESCRIPTION COPYRIGHT COMMENTS COMPANY
+        INTERNAL_NAME TRADEMARK ORIGINAL_FILENAME OUTPUT
+    )
     set(multiValueArgs ICONS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -370,7 +451,7 @@ function(qm_create_win_shortcut _target _dir)
 
     add_custom_command(
         TARGET ${_target} POST_BUILD
-        COMMAND cscript ${_vbs_name}
+        COMMAND cscript ${_vbs_name} >nul 2>&1
         BYPRODUCTS ${_lnk_path}
     )
 endfunction()
@@ -429,87 +510,6 @@ function(qm_has_genex _out _str)
     endif()
 
     set(${_out} ${_res} PARENT_SCOPE)
-endfunction()
-
-#[[
-    Helper to link libraries and include directories of a target.
-
-    qm_configure_target(<target>
-        [SOURCES          <files>]
-        [LINKS            <libs>]
-        [LINKS_PRIVATE    <libs>]
-        [INCLUDE_PRIVATE  <dirs>]
-
-        [DEFINES          <defs>]
-        [DEFINES_PRIVATE  <defs>]
-
-        [CCFLAGS          <flags>]
-        [CCFLAGS_PRIVATE  <flags>]
-
-        [QT_LINKS            <modules>]
-        [QT_LINKS_PRIVATE    <modules>]
-        [QT_INCLUDE_PRIVATE  <modules>]
-
-        [SKIP_AUTOMOC   <dir/file...>]
-    )
-]] #
-macro(qm_configure_target _target)
-    set(options)
-    set(oneValueArgs)
-    set(multiValueArgs
-        SOURCES LINKS LINKS_PRIVATE
-        QT_LINKS QT_LINKS_PRIVATE QT_INCLUDE_PRIVATE
-        INCLUDE_PRIVATE
-        DEFINES DEFINES_PRIVATE
-        CCFLAGS CCFLAGS_PUBLIC
-        SKIP_AUTOMOC
-    )
-    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    target_sources(${_target} PRIVATE ${FUNC_SOURCES})
-    target_link_libraries(${_target} PUBLIC ${FUNC_LINKS})
-    target_link_libraries(${_target} PRIVATE ${FUNC_LINKS_PRIVATE})
-    target_compile_definitions(${_target} PUBLIC ${FUNC_DEFINES})
-    target_compile_definitions(${_target} PRIVATE ${FUNC_DEFINES_PRIVATE})
-    target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
-    target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
-    qm_link_qt(${_target} PUBLIC ${FUNC_QT_LINKS})
-    qm_link_qt(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
-    target_include_directories(${_target} PRIVATE ${FUNC_INCLUDE_PRIVATE})
-    qm_include_qt_private(${_target} PRIVATE ${FUNC_QT_INCLUDE_PRIVATE})
-    qm_skip_automoc(${FUNC_SKIP_AUTOMOC})
-endmacro()
-
-#[[
-    Helper to define export macros.
-
-    qm_export_defines(<target>
-        [PREFIX     <prefix>]
-        [STATIC     <token>]
-        [LIBRARY    <token>]
-    )
-]] #
-function(qm_export_defines _target)
-    set(options)
-    set(oneValueArgs PREFIX STATIC LIBRARY)
-    set(multiValueArgs)
-
-    if(NOT FUNC_PREFIX)
-        string(TOUPPER ${_target} _prefix)
-    else()
-        set(_prefix ${FUNC_PREFIX})
-    endif()
-
-    qm_set_value(_static_macro FUNC_STATIC ${_prefix}_STATIC)
-    qm_set_value(_library_macro FUNC_LIBRARY ${_prefix}_LIBRARY)
-
-    get_target_property(_type ${_target} TYPE)
-
-    if(${_type} STREQUAL STATIC_LIBRARY)
-        target_compile_definitions(${_target} PUBLIC ${_static_macro})
-    endif()
-
-    target_compile_definitions(${_target} PRIVATE ${_library_macro})
 endfunction()
 
 #[[
@@ -671,14 +671,3 @@ function(qm_get_subdirs _var)
 
     set(${_var} ${_res} PARENT_SCOPE)
 endfunction()
-
-# ----------------------------------
-# Private functions
-# ----------------------------------
-macro(_qm_query_corecmd _out _func)
-    if(NOT TARGET qmsetup::corecmd)
-        message(FATAL_ERROR "${_func}: tool \"corecmd\" not found.")
-    endif()
-
-    get_target_property(${_out} qmsetup::corecmd LOCATION)
-endmacro()

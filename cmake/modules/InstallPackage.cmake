@@ -1,5 +1,9 @@
 include_guard(DIRECTORY)
 
+if(NOT DEFINED QMSETUP_PACKAGE_BUILD_TYPE)
+    set(QMSETUP_PACKAGE_BUILD_TYPE Release)
+endif()
+
 #[[
     Install external package at configuration phase.
 
@@ -52,7 +56,7 @@ function(qm_install_package _name)
     elseif(CMAKE_BUILD_TYPE)
         set(_build_type -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE})
     elseif(NOT CMAKE_CONFIGURATION_TYPES)
-        set(_build_type -DCMAKE_BUILD_TYPE=Release)
+        set(_build_type -DCMAKE_BUILD_TYPE=${QMSETUP_PACKAGE_BUILD_TYPE})
     else()
         set(_build_type)
     endif()
@@ -60,7 +64,7 @@ function(qm_install_package _name)
     if(FUNC_BUILD_TYPE)
         set(_build_types ${FUNC_BUILD_TYPE})
     else()
-        set(_build_types Release)
+        set(_build_types ${QMSETUP_PACKAGE_BUILD_TYPE})
     endif()
 
     # Do it

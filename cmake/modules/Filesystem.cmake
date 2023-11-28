@@ -24,9 +24,10 @@ function(qm_add_copy_command _target)
     set(multiValueArgs SOURCES)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Get tool
-    set(_tool)
-    _qm_query_corecmd(_tool "qm_add_copy_command")
+    # Check tool
+    if(NOT QMSETUP_CORECMD_EXECUTABLE)
+        message(FATAL_ERROR "qm_add_copy_command: corecmd tool not found.")
+    endif()
 
     if(NOT FUNC_SOURCES)
         message(FATAL_ERROR "qm_add_copy_command: SOURCES not specified.")
@@ -81,7 +82,7 @@ function(qm_add_copy_command _target)
     endif()
 
     add_custom_command(TARGET ${_deploy_target} POST_BUILD
-        COMMAND ${_tool} copy ${_extra_args} ${FUNC_SOURCES} ${_dest}
+        COMMAND ${QMSETUP_CORECMD_EXECUTABLE} copy ${_extra_args} ${FUNC_SOURCES} ${_dest}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 endfunction()
