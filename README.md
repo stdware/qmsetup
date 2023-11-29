@@ -1,6 +1,6 @@
-# QMSetup: QtMediate CMake Modules
+# QMSetup
 
-**QMSetup** is a set of CMake Modules for QtMediate and other projects.
+**QMSetup** is a set of CMake Modules and Basic Libraries for C/C++ projects.
 
 **This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it's not suggested to be included as a subproject.
 
@@ -177,8 +177,9 @@ qm_setup_doxygen(${PROJECT_NAME}_RunDoxygen
 )
 ```
 
-## Thanks
+## Contributors
 
-+ RigoLigoRLC
-+ CrSjimo
-+ wangwenx190
++ [SineStriker](https://github.com/SineStriker)
++ [wangwenx190](https://github.com/wangwenx190)
++ [RigoLigoRLC](https://github.com/RigoLigoRLC)
++ [CrSjimo](https://github.com/CrSjimo)
