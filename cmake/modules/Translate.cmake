@@ -54,7 +54,7 @@ function(qm_add_translation _target)
         foreach(_item ${FUNC_TARGETS})
             get_target_property(_type ${_item} TYPE)
 
-            if(${_type} STREQUAL "UTILITY")
+            if("${_type}" STREQUAL "UTILITY")
                 continue()
             endif()
 
@@ -257,7 +257,7 @@ function(_qm_add_lupdate_target _target)
             execute_process(
                 COMMAND ${_lupdate_exe} ${_options_filtered} "@${_ts_lst_file}" -ts ${_ts_file}
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                OUTPUT_VARIABLE _null
+                OUTPUT_QUIET
                 COMMAND_ERROR_IS_FATAL ANY
             )
         endif()

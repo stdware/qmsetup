@@ -283,7 +283,7 @@ function(_qm_win_get_all_dep_files _out)
             foreach(_dep ${_deps})
                 get_target_property(_type ${_dep} TYPE)
 
-                if(${_type} STREQUAL "SHARED_LIBRARY")
+                if("${_type}" STREQUAL "SHARED_LIBRARY")
                     list(APPEND ${_result} ${_dep})
                 endif()
 

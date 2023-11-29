@@ -13,29 +13,14 @@ endif()
     qm_init_directories()
 ]] #
 macro(qm_init_directories)
-    if(NOT DEFINED QMSETUP_BUILD_TREE_DIR)
-        set(QMSETUP_BUILD_TREE_DIR ${CMAKE_BINARY_DIR})
-    endif()
-
     if(NOT DEFINED QMSETUP_BUILD_DIR)
-        set(QMSETUP_BUILD_DIR "${QMSETUP_BUILD_TREE_DIR}/out-$<LOWER_CASE:${CMAKE_SYSTEM_PROCESSOR}>-$<CONFIG>")
+        set(QMSETUP_BUILD_DIR "${CMAKE_BINARY_DIR}/out-$<LOWER_CASE:${CMAKE_SYSTEM_PROCESSOR}>-$<CONFIG>")
     endif()
 
-    if(NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
-        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/bin)
-    endif()
-
-    if(NOT DEFINED CMAKE_LIBRARY_OUTPUT_DIRECTORY)
-        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/lib)
-    endif()
-
-    if(NOT DEFINED CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
-        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/lib)
-    endif()
-
-    if(NOT DEFINED CMAKE_BUILD_SHARE_DIR)
-        set(CMAKE_BUILD_SHARE_DIR ${QMSETUP_BUILD_DIR}/share)
-    endif()
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/bin)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/lib)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/lib)
+    set(CMAKE_BUILD_SHARE_DIR ${QMSETUP_BUILD_DIR}/share)
 endmacro()
 
 #[[
@@ -52,7 +37,7 @@ endmacro()
     DESTINATION: Copy the source file to the destination path. If the given value is a relative path, 
                  the base directory depends on the type of the target
                     - `$<TARGET_FILE_DIR>`: real target
-                    - `QMSETUP_BUILD_TREE_DIR`: custom target
+                    - `QMSETUP_BUILD_DIR`: custom target
     INSTALL_DIR: Install the source files into a subdirectory of the given path. The subdirectory is the
                  relative path from the `QMSETUP_BUILD_DIR` to `DESTINATION`.
 ]] #
@@ -84,11 +69,11 @@ function(qm_add_copy_command _target)
 
         if(_has_genex OR IS_ABSOLUTE ${FUNC_DESTINATION})
             set(_dest ${FUNC_DESTINATION})
-        elseif(NOT ${_type} STREQUAL "UTILITY")
+        elseif(NOT "${_type}" STREQUAL "UTILITY")
             set(_dest "$<TARGET_FILE_DIR:${_target}>/${FUNC_DESTINATION}")
         endif()
     else()
-        if(NOT ${_type} STREQUAL "UTILITY")
+        if(NOT "${_type}" STREQUAL "UTILITY")
             set(_dest "$<TARGET_FILE_DIR:${_target}>")
         endif()
     endif()

@@ -177,20 +177,20 @@ function(qm_setup_doxygen _target)
         ${_dependencies}
     )
 
-    if(FUNC_INSTALL_DIR AND CMAKE_INSTALL_PREFIX)
-        get_filename_component(_install_dir ${FUNC_INSTALL_DIR} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
+    if(FUNC_INSTALL_DIR)
+        set(_install_dir ${FUNC_INSTALL_DIR})
 
         if(_tagfile)
             get_filename_component(_name ${_tagfile} NAME)
-            set(_install_tagfile ${_install_dir}/${_name})
+            set(_install_tagfile ${_name})
         else()
             set(_install_tagfile)
         endif()
 
         set(_install_command "${CMAKE_COMMAND}" "-E" "env"
             ${_env}
-            "DOXY_OUTPUT_DIR=${_install_dir}"
-            "DOXY_GENERATE_TAGFILE=${_install_tagfile}"
+            "DOXY_OUTPUT_DIR=\${_install_dir}"
+            "DOXY_GENERATE_TAGFILE=\${_install_dir}/${_install_tagfile}"
             "${DOXYGEN_EXECUTABLE}"
             "${DOXYGEN_FILE_DIR}/Doxyfile"
         )
@@ -203,7 +203,8 @@ function(qm_setup_doxygen _target)
 
         install(CODE "
             message(STATUS \"Install HTML documentation\")
-            file(MAKE_DIRECTORY \"${_install_dir}\")
+            get_filename_component(_install_dir \"${_install_dir}\" ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
+            file(MAKE_DIRECTORY \${_install_dir})
             execute_process(
                 COMMAND ${_install_command_quoted}
                 WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"

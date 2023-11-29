@@ -99,8 +99,7 @@ function(qm_sync_include _src_dir _dest_dir)
         endif()
 
         if(FUNC_INSTALL_DIR)
-            get_filename_component(_install_dir ${FUNC_INSTALL_DIR} ABSOLUTE BASE_DIR ${CMAKE_INSTALL_PREFIX})
-
+            set(_install_dir ${FUNC_INSTALL_DIR})
             set(_args_quoted)
 
             foreach(_item ${_args})
@@ -109,9 +108,11 @@ function(qm_sync_include _src_dir _dest_dir)
 
             # Get command output only and use file(INSTALL) to install files
             install(CODE "
+                get_filename_component(_install_dir \"${_install_dir}\" ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
+        
                 execute_process(
                     COMMAND \"${QMSETUP_CORECMD_EXECUTABLE}\" incsync -d 
-                        ${_args_quoted} \"${_src_dir}\" \"${_install_dir}\"
+                        ${_args_quoted} \"${_src_dir}\" \${_install_dir}
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                     OUTPUT_VARIABLE _output_contents
                     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -127,7 +128,7 @@ function(qm_sync_include _src_dir _dest_dir)
             ")
         endif()
     else()
-        message(FATAL_ERROR "qm_sync_include: Source directory doesn't exist.")
+        message(FATAL_ERROR "qm_sync_include: source directory doesn't exist.")
     endif()
 endfunction()
 
@@ -232,7 +233,7 @@ function(qm_add_definition _first)
         return()
     endif()
 
-    _qm_calc_property_scope(_scope _prop)
+    _qm_calc_property_scope_helper(_scope _prop)
     set_property(${_scope} APPEND PROPERTY ${_prop} "${_result}")
 endfunction()
 
@@ -259,7 +260,7 @@ function(qm_remove_definition _key)
     # Filter
     list(FILTER _definitions EXCLUDE REGEX "^${_key}(=.*)?$")
 
-    _qm_calc_property_scope(_scope _prop)
+    _qm_calc_property_scope_helper(_scope _prop)
     set_property(${_scope} PROPERTY ${_prop} "${_definitions}")
 endfunction()
 
@@ -288,7 +289,7 @@ function(qm_generate_config _file)
         message(FATAL_ERROR "qm_generate_config: corecmd tool not found.")
     endif()
 
-    _qm_calc_property_scope(_scope _prop)
+    _qm_calc_property_scope_helper(_scope _prop)
     get_property(_definitions ${_scope} PROPERTY ${_prop})
 
     if(_definitions)
@@ -442,7 +443,7 @@ endfunction()
 # ----------------------------------
 # Private functions
 # ----------------------------------
-function(_qm_calc_property_scope _scope _prop)
+function(_qm_calc_property_scope_helper _scope _prop)
     if(FUNC_TARGET)
         set(_scope TARGET ${FUNC_TARGET})
     elseif(FUNC_SOURCE)

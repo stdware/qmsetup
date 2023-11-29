@@ -5,9 +5,15 @@ set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 # Set deafult variables
 if(WIN32)
     set(QMSETUP_SHARED_LIBRARY_CATEGORY bin)
+    set(QMSETUP_NULL_FILE "NUL")
 else()
     set(QMSETUP_SHARED_LIBRARY_CATEGORY lib)
+    set(QMSETUP_NULL_FILE "/dev/null")
 endif()
+
+set(QMSETUP_IGNORE_STDOUT > ${QMSETUP_NULL_FILE})
+set(QMSETUP_IGNORE_STDERR 2> ${QMSETUP_NULL_FILE})
+set(QMSETUP_IGNORE_STDOUT_STDERR > ${QMSETUP_NULL_FILE} 2>&1)
 
 if(NOT DEFINED QMSETUP_FIND_QT_ORDER)
     set(QMSETUP_FIND_QT_ORDER Qt6 Qt5)
@@ -177,7 +183,7 @@ function(qm_export_defines _target)
 
     get_target_property(_type ${_target} TYPE)
 
-    if(${_type} STREQUAL STATIC_LIBRARY)
+    if("${_type}" STREQUAL "STATIC_LIBRARY")
         target_compile_definitions(${_target} PUBLIC ${_static_macro})
     endif()
 
@@ -200,6 +206,8 @@ function(qm_add_win_rc _target)
     if(NOT WIN32)
         return()
     endif()
+
+    _qm_check_target_type_helper(${_target} _ "EXECUTABLE" "SHARED_LIBRARY")
 
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON OUTPUT)
@@ -227,7 +235,6 @@ function(qm_add_win_rc _target)
     endif()
 
     qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
-
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 endfunction()
@@ -253,6 +260,8 @@ function(qm_add_win_rc_enhanced _target)
     if(NOT WIN32)
         return()
     endif()
+
+    _qm_check_target_type_helper(${_target} _type "EXECUTABLE" "SHARED_LIBRARY")
 
     set(options)
     set(oneValueArgs
@@ -286,10 +295,8 @@ function(qm_add_win_rc_enhanced _target)
     set(RC_ORIGINAL_FILENAME ${_original_filename})
 
     set(_file_type)
-    set(_target_type)
-    get_target_property(_target_type ${_target} TYPE)
 
-    if("x${_target_type}" STREQUAL "xEXECUTABLE")
+    if("${_type}" STREQUAL "EXECUTABLE")
         set(_file_type "VFT_APP")
     else()
         set(_file_type "VFT_DLL")
@@ -331,6 +338,8 @@ function(qm_add_win_manifest _target)
         return()
     endif()
 
+    _qm_check_target_type_helper(${_target} _ "EXECUTABLE")
+
     set(options UTF8)
     set(oneValueArgs NAME VERSION DESCRIPTION OUTPUT)
     set(multiValueArgs)
@@ -370,6 +379,8 @@ function(qm_add_mac_bundle _target)
     if(NOT APPLE)
         return()
     endif()
+
+    _qm_check_target_type_helper(${_target} _ "EXECUTABLE")
 
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON)
@@ -455,7 +466,7 @@ function(qm_create_win_shortcut _target _dir)
 
     add_custom_command(
         TARGET ${_target} POST_BUILD
-        COMMAND cscript ${_vbs_name} >nul 2>&1
+        COMMAND cscript ${_vbs_name} ${QMSETUP_IGNORE_STDOUT}
         BYPRODUCTS ${_lnk_path}
     )
 endfunction()
@@ -601,19 +612,19 @@ function(qm_collect_targets _var)
         foreach(_item ${_tmp_targets})
             get_target_property(_type ${_item} TYPE)
 
-            if(${_type} STREQUAL "EXECUTABLE")
+            if("${_type}" STREQUAL "EXECUTABLE")
                 if(FUNC_EXECUTABLE)
                     list(APPEND _targets ${_item})
                 endif()
-            elseif(${_type} STREQUAL "SHARED_LIBRARY")
+            elseif("${_type}" STREQUAL "SHARED_LIBRARY")
                 if(FUNC_SHARED)
                     list(APPEND _targets ${_item})
                 endif()
-            elseif(${_type} STREQUAL "STATIC_LIBRARY")
+            elseif("${_type}" STREQUAL "STATIC_LIBRARY")
                 if(FUNC_STATIC)
                     list(APPEND _targets ${_item})
                 endif()
-            elseif(${_type} STREQUAL "UTILITY")
+            elseif("${_type}" STREQUAL "UTILITY")
                 if(FUNC_UTILITY)
                     list(APPEND _targets ${_item})
                 endif()
@@ -696,3 +707,17 @@ function(qm_get_subdirs _var)
 
     set(${_var} ${_res} PARENT_SCOPE)
 endfunction()
+
+# ----------------------------------
+# Private functions
+# ----------------------------------
+macro(_qm_check_target_type_helper _target _type)
+    get_target_property(_tmp_target_type ${_target} TYPE)
+
+    if(NOT "${_tmp_target_type}" IN_LIST ARGN)
+        return()
+    endif()
+
+    set(${_type} ${_tmp_target_type})
+    unset(_tmp_target_type)
+endmacro()
