@@ -1,3 +1,8 @@
+:: MIT License
+:: Copyright (c) 2023 SineStriker
+
+:: Description: This script calls `qmcorecmd` to deploy dependencies on Windows.
+
 @echo off
 setlocal enabledelayedexpansion
 

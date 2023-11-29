@@ -1,11 +1,8 @@
-include_guard(DIRECTORY)
-
-#[[
-    Warning: This module depends on `QMSetupAPI.cmake`.
-]] #
 if(NOT DEFINED QMSETUP_MODULES_DIR)
-    message(FATAL_ERROR "QMSETUP_MODULES_DIR not defined. Add find_package(qmsetup) to CMake first.")
+    include("${CMAKE_CURRENT_LIST_DIR}/../QMSetupAPI.cmake")
 endif()
+
+include_guard(DIRECTORY)
 
 #[[
     Add Doxygen documentation generating target.

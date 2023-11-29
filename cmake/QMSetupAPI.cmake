@@ -1,29 +1,32 @@
-include_guard(DIRECTORY)
+cmake_minimum_required(VERSION 3.16)
 
 set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 
-# Set deafult variables
 if(WIN32)
     set(QMSETUP_SHARED_LIBRARY_CATEGORY bin)
     set(QMSETUP_NULL_FILE "NUL")
+    set(QMSETUP_REGEX_ABSOLUTE_PATH "^[a-zA-Z]:|\\\\")
 else()
     set(QMSETUP_SHARED_LIBRARY_CATEGORY lib)
     set(QMSETUP_NULL_FILE "/dev/null")
+    set(QMSETUP_REGEX_ABSOLUTE_PATH "^/")
 endif()
 
 set(QMSETUP_IGNORE_STDOUT > ${QMSETUP_NULL_FILE})
 set(QMSETUP_IGNORE_STDERR 2> ${QMSETUP_NULL_FILE})
 set(QMSETUP_IGNORE_STDOUT_STDERR > ${QMSETUP_NULL_FILE} 2>&1)
 
+if(TARGET qmsetup::corecmd)
+    get_target_property(QMSETUP_CORECMD_EXECUTABLE qmsetup::corecmd LOCATION)
+else()
+    set(QMSETUP_CORECMD_EXECUTABLE)
+endif()
+
 if(NOT DEFINED QMSETUP_FIND_QT_ORDER)
     set(QMSETUP_FIND_QT_ORDER Qt6 Qt5)
 endif()
 
-set(QMSETUP_CORECMD_EXECUTABLE)
-
-if(TARGET qmsetup::corecmd)
-    get_target_property(QMSETUP_CORECMD_EXECUTABLE qmsetup::corecmd LOCATION)
-endif()
+include_guard(DIRECTORY)
 
 #[[
     Include modules of this library.

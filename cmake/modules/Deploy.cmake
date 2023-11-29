@@ -1,11 +1,11 @@
-include_guard(DIRECTORY)
-
 #[[
-    Warning: This module depends on `QMSetupAPI.cmake`.
+    Warning: This module depends on `qmcorecmd` after installation.
 ]] #
-if(NOT DEFINED QMSETUP_MODULES_DIR)
-    message(FATAL_ERROR "QMSETUP_MODULES_DIR not defined. Add find_package(qmsetup) to CMake first.")
+if(NOT QMSETUP_CORECMD_EXECUTABLE)
+    message(FATAL_ERROR "QMSETUP_CORECMD_EXECUTABLE not defined. Add find_package(qmsetup) to CMake first.")
 endif()
+
+include_guard(DIRECTORY)
 
 #[[
     Record searching paths for Windows Executables, must be called before calling `qm_win_applocal_deps`
@@ -74,11 +74,6 @@ function(qm_win_applocal_deps _target)
     set(oneValueArgs TARGET CUSTOM_TARGET OUTPUT_DIR)
     set(multiValueArgs EXTRA_SEARCHING_PATHS EXTRA_TARGETS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    # Check tool
-    if(NOT QMSETUP_CORECMD_EXECUTABLE)
-        message(FATAL_ERROR "qm_win_applocal_deps: corecmd tool not found.")
-    endif()
 
     # Get output directory and deploy target
     set(_out_dir)
@@ -164,11 +159,6 @@ function(qm_deploy_directory _install_dir)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
     set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS WIN_SEARCHING_PATHS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    # Check tool
-    if(NOT QMSETUP_CORECMD_EXECUTABLE)
-        message(FATAL_ERROR "qm_deploy_directory: corecmd tool not found.")
-    endif()
 
     # Get qmake
     if((FUNC_PLUGINS OR FUNC_QML) AND NOT DEFINED QT_QMAKE_EXECUTABLE)

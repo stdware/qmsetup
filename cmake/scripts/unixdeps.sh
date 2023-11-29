@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# MIT License
+# Copyright (c) 2023 SineStriker
+
+# Description: This script calls `qmcorecmd` to deploy dependencies on Mac/Linux.
+
 # Show usage
 usage() {
     echo "Usage: $(basename $0) -i <dir> -m <path>"

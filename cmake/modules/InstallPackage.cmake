@@ -1,8 +1,8 @@
-include_guard(DIRECTORY)
-
 if(NOT DEFINED QMSETUP_PACKAGE_BUILD_TYPE)
-    set(QMSETUP_PACKAGE_BUILD_TYPE Release)
+    set(QMSETUP_PACKAGE_BUILD_TYPE "Release")
 endif()
+
+include_guard(DIRECTORY)
 
 #[[
     Install external package at configuration phase.

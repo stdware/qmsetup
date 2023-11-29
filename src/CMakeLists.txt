@@ -31,7 +31,7 @@ if(TRUE)
 
     # Add version file
     write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/${QMSETUP_INSTALL_NAME}Config-version.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${QMSETUP_INSTALL_NAME}ConfigVersion.cmake"
         VERSION ${QMSETUP_VERSION}
         COMPATIBILITY AnyNewerVersion
     )
@@ -47,7 +47,7 @@ if(TRUE)
     # Install cmake files
     install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/${QMSETUP_INSTALL_NAME}Config.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/${QMSETUP_INSTALL_NAME}Config-version.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${QMSETUP_INSTALL_NAME}ConfigVersion.cmake"
         DESTINATION ${_install_dir}
     )
 

@@ -1,10 +1,8 @@
-include_guard(DIRECTORY)
-
 #[[
-    Warning: This module depends on `QMSetupAPI.cmake`.
+    Warning: This module depends on `qmcorecmd` after installation.
 ]] #
-if(NOT DEFINED QMSETUP_MODULES_DIR)
-    message(FATAL_ERROR "QMSETUP_MODULES_DIR not defined. Add find_package(qmsetup) to CMake first.")
+if(NOT QMSETUP_CORECMD_EXECUTABLE)
+    message(FATAL_ERROR "QMSETUP_CORECMD_EXECUTABLE not defined. Add find_package(qmsetup) to CMake first.")
 endif()
 
 if(NOT DEFINED QMSETUP_DEFINITION_NUMERICAL)
@@ -22,6 +20,8 @@ endif()
 if(NOT DEFINED QMSETUP_SYNC_INCLUDE_STANDARD)
     set(QMSETUP_SYNC_INCLUDE_STANDARD on)
 endif()
+
+include_guard(DIRECTORY)
 
 #[[
     Generate indirect reference files for header files to make the include statements more orderly.
@@ -284,11 +284,6 @@ function(qm_generate_config _file)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Check tool
-    if(NOT QMSETUP_CORECMD_EXECUTABLE)
-        message(FATAL_ERROR "qm_generate_config: corecmd tool not found.")
-    endif()
-
     _qm_calc_property_scope_helper(_scope _prop)
     get_property(_definitions ${_scope} PROPERTY ${_prop})
 
@@ -322,11 +317,6 @@ function(qm_generate_build_info _file)
     set(oneValueArgs ROOT_DIRECTORY PREFIX PROJECT_NAME WARNING_FILE)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    # Check tool
-    if(NOT QMSETUP_CORECMD_EXECUTABLE)
-        message(FATAL_ERROR "qm_generate_build_info: corecmd tool not found.")
-    endif()
 
     if(FUNC_PREFIX)
         set(_prefix ${FUNC_PREFIX})
