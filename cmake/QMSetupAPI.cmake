@@ -715,12 +715,14 @@ endfunction()
 # Private functions
 # ----------------------------------
 macro(_qm_check_target_type_helper _target _type)
+set(_tmp_target_type_list ${ARGN})
     get_target_property(_tmp_target_type ${_target} TYPE)
 
-    if(NOT "${_tmp_target_type}" IN_LIST ARGN)
+    if(NOT "${_tmp_target_type}" IN_LIST _tmp_target_type_list)
         return()
     endif()
 
     set(${_type} ${_tmp_target_type})
     unset(_tmp_target_type)
+    unset(_tmp_target_type_list)
 endmacro()

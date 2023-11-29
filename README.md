@@ -41,11 +41,11 @@ sudo apt install patchelf
 
 Via Https
 ```sh
-git clone --recursive https://github.com/SineStriker/qtmediate-cmake-modules.git
+git clone --recursive https://github.com/stdware/qmsetup.git
 ```
 Via SSH
 ```sh
-git clone --recursive git@github.com:SineStriker/qtmediate-cmake-modules.git
+git clone --recursive git@github.com:stdware/qmsetup.git
 ```
 
 ### Preinstall (Suggested)

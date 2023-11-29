@@ -86,7 +86,7 @@ function(qm_sync_include _src_dir _dest_dir)
             list(APPEND _args -V)
         endif()
 
-        if(NOT FUNC_FORCE OR NOT EXISTS ${_dest_dir})
+        if(FUNC_FORCE OR NOT EXISTS ${_dest_dir})
             if(EXISTS ${_dest_dir})
                 file(REMOVE_RECURSE ${_dest_dir})
             endif()

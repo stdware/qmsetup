@@ -1,8 +1,8 @@
 project(corecmd VERSION ${QMSETUP_VERSION})
 
 string(TIMESTAMP _year "%Y")
-set(RC_COPYRIGHT "Copyright ${_year} SineStriker")
-set(RC_DESCRIPTION "QtMediate CMake Modules Tool")
+set(RC_COPYRIGHT "Copyright ${_year} Stdware")
+set(RC_DESCRIPTION "QMSetup CMake Modules Tool")
 
 set(_src
     main.cpp
