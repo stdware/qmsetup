@@ -268,7 +268,8 @@ function(_qm_add_lupdate_target _target)
             ARGS ${_LUPDATE_OPTIONS} "@${_ts_lst_file}" -ts ${_ts_file}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             DEPENDS ${_my_sources}
-            BYPRODUCTS ${_ts_lst_file} VERBATIM
+            BYPRODUCTS ${_ts_lst_file}
+            VERBATIM
         )
     endforeach()
 endfunction()

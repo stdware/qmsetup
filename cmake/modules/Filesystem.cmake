@@ -103,6 +103,7 @@ function(qm_add_copy_command _target)
             ${_extra_args}
             -P "${QMSETUP_MODULES_DIR}/scripts/copy.cmake" ${_ignore_stdout}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            VERBATIM
         )
     endif()
 

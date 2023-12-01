@@ -471,6 +471,7 @@ function(qm_create_win_shortcut _target _dir)
         TARGET ${_target} POST_BUILD
         COMMAND cscript ${_vbs_name} ${QMSETUP_IGNORE_STDOUT}
         BYPRODUCTS ${_lnk_path}
+        VERBATIM
     )
 endfunction()
 

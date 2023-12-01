@@ -131,6 +131,7 @@ function(qm_win_applocal_deps _target)
     add_custom_command(TARGET ${_deploy_target} POST_BUILD
         COMMAND ${QMSETUP_CORECMD_EXECUTABLE} deploy ${_args}
         WORKING_DIRECTORY ${_out_dir}
+        VERBATIM
     )
 endfunction()
 
