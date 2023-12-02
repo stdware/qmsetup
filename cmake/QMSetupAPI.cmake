@@ -50,6 +50,21 @@ macro(qm_import)
 endmacro()
 
 #[[
+    Include all modules of this library.
+
+    qm_import_all()
+]] #
+macro(qm_import_all)
+    file(GLOB _tmp_modules "${QMSETUP_MODULES_DIR}/modules/*")
+
+    foreach(_module IN LISTS _tmp_modules)
+        include("${_module}")
+    endforeach()
+
+    unset(_tmp_modules)
+endmacro()
+
+#[[
     Skip CMAKE_AUTOMOC for sources files or ones in directories.
 
     qm_skip_automoc(<file/dir...>)
@@ -716,7 +731,7 @@ endfunction()
 # Private functions
 # ----------------------------------
 macro(_qm_check_target_type_helper _target _type)
-set(_tmp_target_type_list ${ARGN})
+    set(_tmp_target_type_list ${ARGN})
     get_target_property(_tmp_target_type ${_target} TYPE)
 
     if(NOT "${_tmp_target_type}" IN_LIST _tmp_target_type_list)
