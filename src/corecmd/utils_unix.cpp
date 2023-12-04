@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <utime.h>
 
+#include <cstring>
 #include <filesystem>
 #include <regex>
 #include <set>
