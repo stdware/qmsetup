@@ -573,7 +573,7 @@ endfunction()
     qm_set_value(<key> <maybe_value...> <default>)
 ]] #
 function(qm_set_value _key)
-    set(_args ${ARGN})
+    set(_args "${ARGN}")
     list(POP_BACK _args _default)
 
     foreach(_item ${_args})
