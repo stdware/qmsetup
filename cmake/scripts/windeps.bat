@@ -118,10 +118,6 @@ for /L %%i in (1,1,%PLUGIN_COUNT%) do (
             echo Error: Plugin '!plugin_path!' not found in any search paths.
             exit /b
         )
-        
-        for %%p in (!FOUND_PLUGINS!) do (
-            set "ARGS=!ARGS! -c %%p !DESTINATION_DIR!"
-        )
     )
 )
 
@@ -166,12 +162,14 @@ exit /b
 :: Add plugin if not already found
 :add_plugin
 set "plugin=%~1"
+set "plugin_name=%~nx1"
 for %%i in (!FOUND_PLUGINS!) do (
-    if "%%i"=="!plugin!" (
+    if "%%i"=="!plugin_name!" (
         exit /b
     )
 )
-set "FOUND_PLUGINS=!FOUND_PLUGINS! !plugin!"
+set "FOUND_PLUGINS=!FOUND_PLUGINS! !plugin_name!"
+set "ARGS=!ARGS! -c !plugin! !DESTINATION_DIR!"
 exit /b
 :: ----------------------------------------------------------------------------------
 
