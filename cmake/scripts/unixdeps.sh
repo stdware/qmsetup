@@ -129,14 +129,17 @@ for plugin_path in "${PLUGINS[@]}"; do
         dest_dir="${PLUGIN_DIR}/${category}"
 
         # Initialize an array to store found plugins
-        declare -A found_plugins
+        found_plugins=""
 
         # Traverse the path and find the specific plug-in files
         for search_path in "${PLUGIN_PATHS[@]}"; do
             while IFS= read -r plugin; do
+                # Get name
+                plugin_name=$(basename "$plugin")
+
                 # Check if the plugin was already found to avoid duplicates
-                if [[ ! -v found_plugins["$plugin"] ]]; then
-                    found_plugins["$plugin"]=1
+                if [[ ! $found_plugins =~ $plugin_name ]]; then
+                    found_plugins+="$plugin_name "
                     ARGS+=("-c \"$plugin\" \"$dest_dir\"")
                 fi
             done < <(find "${search_path}/${category}" -name "lib${name}.*" ! -name "*debug*" -print)
