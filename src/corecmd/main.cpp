@@ -1410,7 +1410,7 @@ int main(int argc, char *argv[]) {
 
     SCL::CommandCatalogue cc;
     cc.addCommands("Filesystem Commands", {"copy", "rmdir", "touch"});
-    cc.addCommands("Developer Commands", {"configure", "incsync", "deploy"});
+    cc.addCommands("Buildsystem Commands", {"configure", "incsync", "deploy"});
     rootCommand.setCatalogue(cc);
 
     SCL::Parser parser(rootCommand);

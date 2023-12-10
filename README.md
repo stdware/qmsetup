@@ -4,14 +4,14 @@
 
 **This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it's not suggested to be included as a subproject.
 
----
-
 ## Features
 
 + Helpful CMake utilities
 + Generate configuration header files
 + Re-organize header files
 + Deploy project dependencies and fix rpaths
++ Support calling **Doxygen** via CMake conveniently
++ Support calling **Qt Linguist Tools** via CMake conveniently
 
 ## Support Platforms
 
@@ -177,9 +177,21 @@ qm_setup_doxygen(${PROJECT_NAME}_RunDoxygen
 )
 ```
 
+### Detailed Documents
+
++ [Core Command](docs/core-command.md)
+
+The CMake Modules documentations is provided in the form of comment.
+
+See `examples` to get detailed use cases.
+
 ## Contributors
 
 + [SineStriker](https://github.com/SineStriker)
 + [wangwenx190](https://github.com/wangwenx190)
 + [RigoLigoRLC](https://github.com/RigoLigoRLC)
 + [CrSjimo](https://github.com/CrSjimo)
+
+## License
+
+QMSetup is licensed under the MIT License.
