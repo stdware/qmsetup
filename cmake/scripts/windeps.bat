@@ -16,7 +16,7 @@ set "CORECMD_PATH="
 set "VERBOSE="
 set "FILES="
 set "EXTRA_PLUGIN_PATHS="
-set "PLUGINS="
+set "PLUGINS=" & set /a "PLUGIN_COUNT=0"
 set "QML_REL_PATHS="
 set "ARGS="
 
@@ -30,7 +30,7 @@ if "%1"=="--libdir" set "LIB_DIR=%~2" & shift & shift & goto :parse_args
 if "%1"=="--qmldir" set "QML_DIR=%~2" & shift & shift & goto :parse_args
 if "%1"=="--qmake" set "QMAKE_PATH=%~2" & shift & shift & goto :parse_args
 if "%1"=="--extra" set "EXTRA_PLUGIN_PATHS=!EXTRA_PLUGIN_PATHS! %~2" & shift & shift & goto :parse_args
-if "%1"=="--plugin" set "PLUGINS=!PLUGINS! %~2" & shift & shift & goto :parse_args
+if "%1"=="--plugin" set /a "PLUGIN_COUNT+=1" & set "PLUGINS[!PLUGIN_COUNT!]=%~2" & shift & shift & goto :parse_args
 if "%1"=="--qml" set "QML_REL_PATHS=!QML_REL_PATHS! %~2" & shift & shift & goto :parse_args
 if "%1"=="--copy" set "ARGS=!ARGS! -c %~2 %~3" & shift & shift & shift & goto :parse_args
 if "%1"=="-f" set "ARGS=!ARGS! -f" & shift & goto :parse_args
@@ -92,8 +92,8 @@ for /r "%INPUT_DIR%" %%f in (*.exe *.dll) do (
 )
 
 :: Find the full path to the Qt plugin
-for %%p in (!PLUGINS!) do (
-    set "plugin_path=%%p"
+for /L %%i in (1,1,%PLUGIN_COUNT%) do (
+    set "plugin_path=!PLUGINS[%%i]!"
 
     :: Check format
     echo !plugin_path! | findstr /R "[^/]*\/[^/]*" >nul
@@ -107,19 +107,21 @@ for %%p in (!PLUGINS!) do (
         set "category=%%a"
         set "name=%%b"
 
-        :: Traverse the path and find the specific plug-in file
-        set "FOUND_PLUGIN="
-        call :search_plugin
-        if not defined FOUND_PLUGIN (
-            echo Error: Plugin '!plugin_path!' not found in any search paths.
-            exit /b
-        )
-
+        :: Calculate destination directory
         set "DESTINATION_DIR=!PLUGIN_DIR!\!category!"
         set "DESTINATION_DIR=!DESTINATION_DIR:/=\!"
 
-        mkdir "!DESTINATION_DIR!" >nul 2>&1
-        set "ARGS=!ARGS! -c !FOUND_PLUGIN! !DESTINATION_DIR!"
+        :: Traverse the path and find the specific plug-in file
+        set "FOUND_PLUGINS="
+        call :search_plugin
+        if not defined FOUND_PLUGINS (
+            echo Error: Plugin '!plugin_path!' not found in any search paths.
+            exit /b
+        )
+        
+        for %%p in (!FOUND_PLUGINS!) do (
+            set "ARGS=!ARGS! -c %%p !DESTINATION_DIR!"
+        )
     )
 )
 
@@ -144,13 +146,32 @@ exit /b
 :: Search plugins
 :search_plugin
 for %%d in (!PLUGIN_PATHS!) do (
-    for %%f in ("%%d\!category!\!name!*") do (
+    for %%f in ("%%d\!category!\!name!.dll") do (
         if exist "%%f" (
-            set "FOUND_PLUGIN=%%f"
-            exit /b
+            call :check_debug "%%f"
+            if "!ok!"=="0" (
+                call :add_plugin "%%f"
+            )
         )
     )
 )
+exit /b
+:: ----------------------------------------------------------------------------------
+
+
+
+
+
+:: ----------------------------------------------------------------------------------
+:: Add plugin if not already found
+:add_plugin
+set "plugin=%~1"
+for %%i in (!FOUND_PLUGINS!) do (
+    if "%%i"=="!plugin!" (
+        exit /b
+    )
+)
+set "FOUND_PLUGINS=!FOUND_PLUGINS! !plugin!"
 exit /b
 :: ----------------------------------------------------------------------------------
 
@@ -179,19 +200,36 @@ exit /b
 
 
 :: ----------------------------------------------------------------------------------
+:: Check debug version of a dll
+:check_debug
+set "ok=1"
+set "file_path=%~1"
+if "!file_path:~-4!"==".pdb" exit /b
+if "!file_path:~-10!"==".dll.debug" exit /b
+if "!file_path:~-5!" == "d.dll" (
+    set "prefix=!file_path:~0,-5!"
+    if exist "!prefix!.dll" (
+        exit /b
+    )
+)
+set "ok=0"
+exit /b
+:: ----------------------------------------------------------------------------------
+
+
+
+
+
+:: ----------------------------------------------------------------------------------
 :: Copy or add to a deployment command
 :handle_qml_file
 set "file=%~1"
 set "file=!file:/=\!"
 
 :: Ignore specific files (example)
-if "!file:~-4!"==".pdb" exit /b
-if "!file:~-10!"==".dll.debug" exit /b
-if "!file:~-5!" == "d.dll" (
-    set "prefix=!file:~0,-5!"
-    if exist "!prefix!.dll" (
-        exit /b
-    )
+call :check_debug "%file%"
+if "!ok!"=="1" (
+    exit /b
 )
 
 :: Computes target file and folder in a very stupid way

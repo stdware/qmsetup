@@ -125,22 +125,27 @@ for plugin_path in "${PLUGINS[@]}"; do
         category=${plugin_parts[0]}
         name=${plugin_parts[1]}
 
-        # Traverse the path and find the specific plug-in file
-        found_plugin=""
+        # Calculate destination directory
+        dest_dir="${PLUGIN_DIR}/${category}"
+
+        # Initialize an array to store found plugins
+        declare -A found_plugins
+
+        # Traverse the path and find the specific plug-in files
         for search_path in "${PLUGIN_PATHS[@]}"; do
-            found_plugin=$(find "${search_path}/${category}" -name "*${name}*" ! -name "*debug*" -print -quit)
-            if [[ -n "$found_plugin" ]]; then
-                break
-            fi
+            while IFS= read -r plugin; do
+                # Check if the plugin was already found to avoid duplicates
+                if [[ ! -v found_plugins["$plugin"] ]]; then
+                    found_plugins["$plugin"]=1
+                    ARGS+=("-c \"$plugin\" \"$dest_dir\"")
+                fi
+            done < <(find "${search_path}/${category}" -name "lib${name}.*" ! -name "*debug*" -print)
         done
 
-        if [ -z "$found_plugin" ]; then
+        if [ ${#found_plugins[@]} -eq 0 ]; then
             echo "Error: Plugin '${plugin_path}' not found in any search paths."
             exit 1
         fi
-
-        dest_dir="${PLUGIN_DIR}/${category}"
-        ARGS+=("-c \"$found_plugin\" \"$dest_dir\"")
     else
         echo "Error: Invalid plugin format '${plugin_path}'. Expected format: <category>/<name>"
         exit 1
