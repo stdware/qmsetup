@@ -1,5 +1,17 @@
 cmake_minimum_required(VERSION 3.16)
 
+#[[
+    NOTICE
+    --------
+    Since Qt official CMake modules sets private header directory variables when you call `find_package(Qt)`
+    only if the Qt targets hasn't been defined, if we place `find_package(Qt)` in a function, the variable
+    will be cleared while the target remains after the function feturns, as a result, we can never get the
+    private header directory variables again.
+
+    Therefore, never wrap `find_package(Qt)` in a function, use macro instead, any macros that wraps it also
+    shouldn't be wrapped in any function.
+]]#
+
 set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 if(WIN32)
@@ -87,7 +99,7 @@ function(qm_skip_automoc)
 endfunction()
 
 #[[
-    Find Qt libraries.
+    Find Qt libraries. Don't wrap it in any functions.
 
     qm_find_qt(<modules...>)
 #]]
@@ -104,7 +116,7 @@ macro(qm_find_qt)
 endmacro()
 
 #[[
-    Link Qt libraries.
+    Link Qt libraries. Don't wrap it in any functions.
 
     qm_link_qt(<target> <scope> <modules...>)
 #]]
@@ -116,7 +128,7 @@ macro(qm_link_qt _target _scope)
 endmacro()
 
 #[[
-    Include Qt private header directories.
+    Include Qt private header directories. Don't wrap it in any functions.
 
     qm_include_qt_private(<target> <scope> <modules...>)
 #]]
@@ -128,7 +140,7 @@ macro(qm_include_qt_private _target _scope)
 endmacro()
 
 #[[
-    Helper to link libraries and include directories of a target.
+    Helper to link libraries and include directories of a target. Don't wrap it in any functions.
 
     qm_configure_target(<target>
         [SOURCES          <files>]

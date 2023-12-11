@@ -10,6 +10,7 @@
 #include <sstream>
 #include <filesystem>
 #include <stdexcept>
+#include <utility>
 
 #include <syscmdline/system.h>
 

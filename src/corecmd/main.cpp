@@ -452,7 +452,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
                 break;
 
             const auto &warningFile = str2tstr(warningFileString);
-            std::ifstream inFile(warningFile);
+            std::ifstream inFile((fs::path(warningFile)));
             if (!inFile.is_open()) {
                 break;
             }
