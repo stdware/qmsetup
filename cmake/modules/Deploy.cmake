@@ -14,6 +14,10 @@ include_guard(DIRECTORY)
     qm_win_record_deps(<target>)
 ]] #
 function(qm_win_record_deps _target)
+    if(NOT WIN32)
+        return()
+    endif()
+
     set(_paths)
     get_target_property(_link_libraries ${_target} LINK_LIBRARIES)
 
@@ -63,6 +67,7 @@ endfunction()
         [EXTRA_SEARCHING_PATHS <path...>]
         [EXTRA_TARGETS <target...>]
         [OUTPUT_DIR <dir>]
+        [EXCLUDE <pattern...>]
     )
 ]] #
 function(qm_win_applocal_deps _target)
@@ -124,6 +129,10 @@ function(qm_win_applocal_deps _target)
 
     foreach(_item ${_dep_files})
         list(APPEND _args "-@${_item}")
+    endforeach()
+
+    foreach(_item ${FUNC_EXCLUDE})
+        list(APPEND _args -e ${_item})
     endforeach()
 
     list(APPEND _args "$<TARGET_FILE:${_target}>")
