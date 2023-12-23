@@ -77,7 +77,7 @@ function(qm_win_applocal_deps _target)
 
     set(options FORCE VERBOSE)
     set(oneValueArgs TARGET CUSTOM_TARGET OUTPUT_DIR)
-    set(multiValueArgs EXTRA_SEARCHING_PATHS EXTRA_TARGETS)
+    set(multiValueArgs EXTRA_SEARCHING_PATHS EXTRA_TARGETS EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get output directory and deploy target
@@ -151,7 +151,7 @@ endfunction()
         [FORCE] [STANDARD] [VERBOSE]
         [LIBRARY_DIR <dir>]
         [EXTRA_PLUGIN_PATHS <path>...]
-        
+
         [PLUGINS <plugin>...]
         [PLUGIN_DIR <dir>]
 
