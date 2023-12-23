@@ -224,8 +224,8 @@ endfunction()
     Attach windows RC file to a target.
 
     qm_add_win_rc(<target>
-        [NAME           name] 
-        [VERSION        version] 
+        [NAME           name]
+        [VERSION        version]
         [DESCRIPTION    desc]
         [COPYRIGHT      copyright]
         [ICON           ico]
@@ -358,8 +358,8 @@ endfunction()
 
     qm_add_win_manifest(<target>
         [UTF8]
-        [NAME           name] 
-        [VERSION        version] 
+        [NAME           name]
+        [VERSION        version]
         [DESCRIPTION    desc]
         [OUTPUT         output]
     )
@@ -379,6 +379,8 @@ function(qm_add_win_manifest _target)
     qm_set_value(_name FUNC_NAME ${_target})
     qm_set_value(_version FUNC_VERSION PROJECT_VERSION "0.0.0.0")
     qm_set_value(_desc FUNC_DESCRIPTION ${_name})
+
+    qm_crop_version(_version ${_version} 4)
 
     set(MANIFEST_IDENTIFIER ${_name})
     set(MANIFEST_VERSION ${_version})
@@ -670,7 +672,7 @@ endfunction()
 #[[
     Get subdirectories' names or paths.
 
-    qm_get_subdirs(<list>  
+    qm_get_subdirs(<list>
         [DIRECTORY dir]
         [EXCLUDE names...]
         [REGEX_INCLUDE exps...]
