@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.16)
     --------
     Since Qt official CMake modules sets private header directory variables when you call `find_package(Qt)`
     only if the Qt targets hasn't been defined, if we place `find_package(Qt)` in a function, the variable
-    will be cleared while the target remains after the function feturns, as a result, we can never get the
+    will be cleared while the target remains after the function returns, as a result, we can never get the
     private header directory variables again.
 
     Therefore, never wrap `find_package(Qt)` in a function, use macro instead, any macros that wraps it also
@@ -47,7 +47,7 @@ include_guard(DIRECTORY)
 ]] #
 macro(qm_import)
     foreach(_module ${ARGN})
-        if(NOT _module MATCHES ".+\.cmake")
+        if(NOT _module MATCHES ".+\\.cmake")
             set(_module "${_module}.cmake")
         endif()
 
