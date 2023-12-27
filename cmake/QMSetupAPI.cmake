@@ -201,6 +201,7 @@ function(qm_export_defines _target)
     set(options)
     set(oneValueArgs PREFIX STATIC LIBRARY)
     set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT FUNC_PREFIX)
         string(TOUPPER ${_target} _prefix)
