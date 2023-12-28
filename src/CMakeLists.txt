@@ -1,11 +1,13 @@
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# To avoid a command execution that can't find the library, we choose to link compiler runtime statically
-if(MINGW)
-    add_link_options(-static -static-libgcc -static-libstdc++)
-elseif(MSVC)
-    add_compile_options("$<$<CONFIG:Release>:/MT>" "$<$<CONFIG:Debug>:/MTd>")
+if(QMSETUP_STATIC_RUNTIME)
+    # To avoid a command execution that can't find the library, we choose to link compiler runtime statically
+    if(MINGW)
+        add_link_options(-static -static-libgcc -static-libstdc++)
+    elseif(MSVC)
+        add_compile_options("$<$<CONFIG:Release>:/MT>" "$<$<CONFIG:Debug>:/MTd>")
+    endif()
 endif()
 
 # Get syscmdline
