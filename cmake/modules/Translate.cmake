@@ -6,7 +6,7 @@ include_guard(DIRECTORY)
     qm_add_translation(<target>
         [LOCALES locales]
         [PREFIX prefix]
-        [SOURCES files... | TARGETS targets... | TS_FILES files...]
+        [SOURCES files... | DIRECTORIES dirs... | TARGETS targets... | TS_FILES files...]
         [TS_DIR dir]
         [QM_DIR dir]
         [TS_OPTIONS options...]
@@ -20,6 +20,7 @@ include_guard(DIRECTORY)
         PREFIX: translation file prefix, default to target name
 
         SOURCES: source files
+        DIRECTORIES: source directories
         TARGETS: target names, the source files of which will be collected
         TS_FILES: ts file names, add the specified ts file
 
@@ -33,7 +34,7 @@ include_guard(DIRECTORY)
 function(qm_add_translation _target)
     set(options)
     set(oneValueArgs PREFIX TS_DIR QM_DIR)
-    set(multiValueArgs LOCALES SOURCES TARGETS TS_FILES TS_OPTIONS QM_OPTIONS TS_DEPENDS QM_DEPENDS)
+    set(multiValueArgs LOCALES SOURCES DIRECTORIES TARGETS TS_FILES TS_OPTIONS QM_OPTIONS TS_DEPENDS QM_DEPENDS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get linguist tools
@@ -47,6 +48,14 @@ function(qm_add_translation _target)
     # Collect source files
     if(FUNC_SOURCES)
         list(APPEND _src_files ${FUNC_SOURCES})
+    endif()
+
+    # Collect source directories
+    if(FUNC_DIRECTORIES)
+        foreach(_item ${FUNC_DIRECTORIES})
+            file(GLOB _tmp ${_item}/*.h ${_item}/*.hpp ${_item}/*.cpp ${_item}/*.cc ${_item}/*.mm)
+            list(APPEND _src_files ${_tmp})
+        endforeach()
     endif()
 
     # Collect source files
