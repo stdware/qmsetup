@@ -31,6 +31,11 @@ Unix deploy command acquires the shared library paths by running `ldd`/`otool` c
 sudo apt install patchelf
 ```
 
+### Build System
+
++ C++ 20
++ CMake 3.19
+
 ### Open-Source Libraries
 + https://github.com/SineStriker/syscmdline
 + https://github.com/jothepro/doxygen-awesome-css
