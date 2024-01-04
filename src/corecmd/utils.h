@@ -98,6 +98,31 @@ namespace Utils {
         return s;
     }
 
+    inline bool starts_with(const std::string_view &s, const std::string_view &prefix) {
+#if __cplusplus >= 202002L
+        return s.starts_with(prefix);
+#else
+        return s.size() >= prefix.size() && s.substr(0, prefix.size()) == prefix;
+#endif
+    }
+
+    inline bool starts_with(const std::wstring_view &s, const std::wstring_view &prefix) {
+#if __cplusplus >= 202002L
+        return s.starts_with(prefix);
+#else
+        return s.size() >= prefix.size() && s.substr(0, prefix.size()) == prefix;
+#endif
+    }
+
+    template <class Container, class T>
+    inline bool contains(const Container &container, const T &key) {
+#if __cplusplus >= 202002L
+        return container.contains(key);
+#else
+        return container.count(key) != 0;
+#endif
+    }
+
     // OS Utils
 #ifdef _WIN32
     std::wstring executeCommand(const std::wstring &command, const std::vector<std::wstring> &args);

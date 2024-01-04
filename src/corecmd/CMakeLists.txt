@@ -22,10 +22,10 @@ add_executable(${PROJECT_NAME} ${_src})
 target_link_libraries(${PROJECT_NAME} PRIVATE syscmdline::syscmdline)
 
 # Add features
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20 cxx_std_17)
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_EXTENSIONS OFF
-    CXX_STANDARD 20
+    CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
 )
 

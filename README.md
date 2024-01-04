@@ -33,7 +33,7 @@ sudo apt install patchelf
 
 ### Build System
 
-+ C++ 20
++ C++ 17
 + CMake 3.19
 
 ### Open-Source Libraries

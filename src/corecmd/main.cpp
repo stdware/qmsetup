@@ -224,9 +224,11 @@ static fs::path framework2lib_debug(fs::path path, const fs::path &fallback = {}
 
 #ifdef _WIN32
 static inline bool isMSVCLibrary(const TString &fileName) {
-    return fileName.starts_with(_TSTR("vcruntime")) || fileName.starts_with(_TSTR("msvcp")) ||
-           fileName.starts_with(_TSTR("concrt")) || fileName.starts_with(_TSTR("vccorlib")) ||
-           fileName.starts_with(_TSTR("ucrtbase"));
+    return Utils::starts_with(fileName, _TSTR("vcruntime")) ||
+           Utils::starts_with(fileName, _TSTR("msvcp")) ||
+           Utils::starts_with(fileName, _TSTR("concrt")) ||
+           Utils::starts_with(fileName, _TSTR("vccorlib")) ||
+           Utils::starts_with(fileName, _TSTR("ucrtbase"));
 }
 
 static inline fs::path searchWindowsSystemPaths(const TString &fileName) {
@@ -624,7 +626,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
             if (line.empty())
                 continue;
 
-            if (line.starts_with('#')) {
+            if (line.front() == '#') {
                 pp_cnt++; // Skip header guard
                 if (pp_cnt > 2) {
                     break;
@@ -632,7 +634,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
                 continue;
             }
 
-            if (!line.starts_with("//"))
+            if (!Utils::starts_with(line, "//"))
                 break;
 
             if (std::regex_match(line, match, hashPattern)) {
@@ -893,7 +895,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             else if (!fs::is_directory(item))
                 continue;
 
-            if (visited.contains(item)) {
+            if (Utils::contains(visited, item)) {
                 continue;
             }
             visited.insert(item);
@@ -989,7 +991,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             for (const auto &lib : std::as_const(libs)) {
                 const auto &path = toFramework(lib);
                 // Ignore orginal file
-                if (allOrgFileNames.contains(path.filename()))
+                if (Utils::contains(allOrgFileNames, path.filename()))
                     continue;
 
                 // Ignore files in standard mode
@@ -998,28 +1000,28 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #ifdef _WIN32
                                      isMSVCLibrary(fileName)
 #elif defined(__APPLE__)
-                                     fileName.starts_with("libc++") ||
-                                     fileName.starts_with("libSystem") ||
-                                     fileName.starts_with("/System")
+                                     Utils::starts_with(fileName, "libc++") ||
+                                     Utils::starts_with(fileName, "libSystem") ||
+                                     Utils::starts_with(fileName, "/System")
 #else
-                                     fileName.starts_with("libstdc++") ||
-                                     fileName.starts_with("libgcc") ||
-                                     fileName.starts_with("libglib") ||
-                                     fileName.starts_with("libpthread") ||
-                                     fileName.starts_with("libgthread") ||
-                                     fileName.starts_with("libicu") ||
-                                     fileName.starts_with("libc.so") ||
-                                     fileName.starts_with("libc-") ||
-                                     fileName.starts_with("libdl.so") ||
-                                     fileName.starts_with("libdl-")
+                                     Utils::starts_with(fileName, "libstdc++") ||
+                                     Utils::starts_with(fileName, "libgcc") ||
+                                     Utils::starts_with(fileName, "libglib") ||
+                                     Utils::starts_with(fileName, "libpthread") ||
+                                     Utils::starts_with(fileName, "libgthread") ||
+                                     Utils::starts_with(fileName, "libicu") ||
+                                     Utils::starts_with(fileName, "libc.so") ||
+                                     Utils::starts_with(fileName, "libc-") ||
+                                     Utils::starts_with(fileName, "libdl.so") ||
+                                     Utils::starts_with(fileName, "libdl-")
 #endif
                                          )) ||
 #ifdef _WIN32
                     (!searchWindowsSystemPaths(fileName).empty() ||
-                     fileName.starts_with(_TSTR("api-ms-win-")) ||
-                     fileName.starts_with(_TSTR("ext-ms-win-"))) ||
+                     Utils::starts_with(fileName, _TSTR("api-ms-win-")) ||
+                     Utils::starts_with(fileName, _TSTR("ext-ms-win-"))) ||
 #endif
-                    visited.contains(fileName)) {
+                    Utils::contains(visited, fileName)) {
                     continue;
                 }
                 visited.insert(fileName);

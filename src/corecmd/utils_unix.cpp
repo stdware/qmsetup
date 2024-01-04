@@ -304,7 +304,7 @@ namespace Utils {
             std::vector<std::string> args;
             args.reserve(paths.size() * 2 + 1);
             for (const auto &rpath : std::as_const(paths)) {
-                if (visited.contains(rpath))
+                if (Utils::contains(visited, rpath))
                     continue;
 
                 visited.insert(rpath);
