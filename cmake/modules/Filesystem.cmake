@@ -26,6 +26,7 @@ endmacro()
     qm_add_copy_command(<target>
         [CUSTOM_TARGET <target>]
         [EXTRA_ARGS <args...>]
+        [DEPENDS <targets...>]
         [VERBOSE] [SKIP_BUILD] [SKIP_INSTALL]
 
         SOURCES <file/dir...> [DESTINATION <dir>] [INSTALL_DIR <dir>]
@@ -33,6 +34,7 @@ endmacro()
 
     CUSTOM_TARGET: Use a custom target to control the copy command
     EXTRA_ARGS: Extra arguments to pass to file(INSTALL) statement
+    DEPENDS: Targets that the copy command depends
 
     SOURCES: Source files or directories, directories ending with "/" will have their contents copied
     DESTINATION: Copy the source file to the destination path. If the given value is a relative path, 
@@ -45,7 +47,7 @@ endmacro()
 function(qm_add_copy_command _target)
     set(options VERBOSE SKIP_BUILD SKIP_INSTALL)
     set(oneValueArgs CUSTOM_TARGET DESTINATION INSTALL_DIR)
-    set(multiValueArgs SOURCES EXTRA_ARGS)
+    set(multiValueArgs SOURCES EXTRA_ARGS DEPENDS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT FUNC_SOURCES)
@@ -79,6 +81,10 @@ function(qm_add_copy_command _target)
         endif()
     else()
         set(_deploy_target ${_target})
+    endif()
+
+    if(FUNC_DEPENDS)
+        add_dependencies(${_deploy_target} ${FUNC_DEPENDS})
     endif()
 
     # Prepare arguments
