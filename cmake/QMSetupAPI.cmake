@@ -86,7 +86,7 @@ function(qm_skip_automoc)
         get_filename_component(_item ${_item} ABSOLUTE)
 
         if(IS_DIRECTORY ${_item})
-            file(GLOB _src ${_item}/*.h ${_item}/*.hpp ${_item}/*.cpp ${_item}/*.cc ${_item}/*.mm)
+            file(GLOB _src ${_item}/*.h ${_item}/*.hh ${_item}/*.hpp ${_item}/*.hxx ${_item}/*.c ${_item}/*.cc ${_item}/*.cpp ${_item}/*.cxx ${_item}/*.m ${_item}/*.mm)
             set_source_files_properties(
                 ${_src} PROPERTIES SKIP_AUTOMOC ON
             )
