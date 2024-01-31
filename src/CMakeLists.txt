@@ -6,7 +6,7 @@ if(QMSETUP_STATIC_RUNTIME)
     if(MINGW)
         add_link_options(-static -static-libgcc -static-libstdc++)
     elseif(MSVC)
-        add_compile_options("$<$<CONFIG:Release>:/MT>" "$<$<CONFIG:Debug>:/MTd>")
+        add_compile_options(/MT)
     endif()
 endif()
 
