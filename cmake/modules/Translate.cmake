@@ -53,7 +53,7 @@ function(qm_add_translation _target)
     # Collect source directories
     if(FUNC_DIRECTORIES)
         foreach(_item ${FUNC_DIRECTORIES})
-            file(GLOB _tmp ${_item}/*.h ${_item}/*.hpp ${_item}/*.cpp ${_item}/*.cc ${_item}/*.mm)
+            file(GLOB _tmp ${_item}/*.h ${_item}/*.hh ${_item}/*.hpp ${_item}/*.hxx ${_item}/*.c ${_item}/*.cc ${_item}/*.cpp ${_item}/*.cxx ${_item}/*.m ${_item}/*.mm)
             list(APPEND _src_files ${_tmp})
         endforeach()
     endif()
@@ -69,7 +69,7 @@ function(qm_add_translation _target)
 
             set(_tmp_files)
             get_target_property(_tmp_files ${_item} SOURCES)
-            list(FILTER _tmp_files INCLUDE REGEX ".+\\.(cpp|cc)")
+            list(FILTER _tmp_files INCLUDE REGEX ".+\\.(h|hh|hpp|hxx|c|cc|cpp|cxx|m|mm)")
             list(FILTER _tmp_files EXCLUDE REGEX "(qasc|moc)_.+")
 
             # Need to convert to absolute path
