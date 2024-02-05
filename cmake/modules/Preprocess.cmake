@@ -395,16 +395,24 @@ function(qm_generate_build_info _file)
 
     set(_definitions)
 
+    set(_has_time off)
+
     # year
     if(FUNC_YEAR)
         string(TIMESTAMP _build_year "%Y")
         list(APPEND _definitions ${_prefix}_BUILD_YEAR=\"${_build_year}\")
+        set(_has_time on)
     endif()
 
     # time
     if(FUNC_TIME)
         string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
         list(APPEND _definitions ${_prefix}_BUILD_TIME=\"${_build_time}\")
+        set(_has_time on)
+    endif()
+
+    if(_has_time)
+        list(APPEND _definitions "%")
     endif()
 
     # system
