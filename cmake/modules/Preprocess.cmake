@@ -299,6 +299,8 @@ endfunction()
         [ROOT_DIRECTORY <dir>]
         [PREFIX <prefix>]
         
+        [YEAR] [TIME]
+
         [PROJECT_NAME <name>]
         [WARNING_FILE <file>]
         [NO_WARNING]
@@ -313,7 +315,7 @@ endfunction()
     REQUIRED: Abort if there's any error with git
 ]] #
 function(qm_generate_build_info _file)
-    set(options NO_WARNING NO_HASH REQUIRED)
+    set(options NO_WARNING NO_HASH YEAR TIME REQUIRED)
     set(oneValueArgs ROOT_DIRECTORY PREFIX PROJECT_NAME WARNING_FILE)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -391,9 +393,19 @@ function(qm_generate_build_info _file)
     qm_set_value(_compiler_arch CMAKE_CXX_COMPILER_ARCHITECTURE_ID unknown)
     qm_set_value(_compiler_abi CMAKE_CXX_COMPILER_ABI unknown)
 
-    # string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
-    # string(TIMESTAMP _build_year "%Y")
     set(_definitions)
+
+    # year
+    if(FUNC_YEAR)
+        string(TIMESTAMP _build_year "%Y")
+        list(APPEND _definitions ${_prefix}_BUILD_YEAR=\"${_build_year}\")
+    endif()
+
+    # time
+    if(FUNC_TIME)
+        string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
+        list(APPEND _definitions ${_prefix}_BUILD_TIME=\"${_build_time}\")
+    endif()
 
     # system
     list(APPEND _definitions ${_prefix}_SYSTEM_NAME=\"${_system_name}\")
