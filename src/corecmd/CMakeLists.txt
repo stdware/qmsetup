@@ -2,7 +2,7 @@ project(corecmd VERSION ${QMSETUP_VERSION})
 
 string(TIMESTAMP _year "%Y")
 set(RC_COPYRIGHT "Copyright 2023-${_year} Stdware Collections")
-set(RC_DESCRIPTION "Buildsystem Core Utility Command")
+set(RC_DESCRIPTION "QMSetup Core Utility Command")
 
 set(_src
     main.cpp
@@ -37,6 +37,11 @@ endif()
 if(WIN32)
     qm_add_win_rc(${PROJECT_NAME}
         COPYRIGHT ${RC_COPYRIGHT}
+        DESCRIPTION ${RC_DESCRIPTION}
+    )
+
+    # Force Windows to execute at current permission level
+    qm_add_win_manifest(${PROJECT_NAME}
         DESCRIPTION ${RC_DESCRIPTION}
     )
 endif()

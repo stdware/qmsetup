@@ -365,6 +365,7 @@ endfunction()
 
     qm_add_win_manifest(<target>
         [UTF8]
+        [ADMIN]
         [NAME           name]
         [VERSION        version]
         [DESCRIPTION    desc]
@@ -397,6 +398,12 @@ function(qm_add_win_manifest _target)
 
     if(FUNC_UTF8)
         set(MANIFEST_UTF8 "<activeCodePage xmlns=\"http://schemas.microsoft.com/SMI/2019/WindowsSettings\">UTF-8</activeCodePage>")
+    endif()
+
+    if(FUNC_ADMIN)
+        set(MANIFEST_PRIVILEGES "<requestedExecutionLevel level=\"requireAdministrator\" uiAccess=\"false\" />")
+    else()
+        set(MANIFEST_PRIVILEGES "<requestedExecutionLevel level=\"asInvoker\" uiAccess=\"false\" />")
     endif()
 
     qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_manifest.manifest")
