@@ -10,8 +10,7 @@ cmake_minimum_required(VERSION 3.19)
 
     Therefore, never wrap `find_package(Qt)` in a function, use macro instead, any macros that wraps it also
     shouldn't be wrapped in any function.
-]]#
-
+]] #
 set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 if(WIN32)
@@ -154,6 +153,9 @@ endmacro()
         [CCFLAGS          <flags>]
         [CCFLAGS_PRIVATE  <flags>]
 
+        [FEATURES          <features>]
+        [FEATURES_PRIVATE  <features>]
+
         [QT_LINKS            <modules>]
         [QT_LINKS_PRIVATE    <modules>]
         [QT_INCLUDE_PRIVATE  <modules>]
@@ -165,11 +167,13 @@ macro(qm_configure_target _target)
     set(options)
     set(oneValueArgs)
     set(multiValueArgs
-        SOURCES LINKS LINKS_PRIVATE
-        QT_LINKS QT_LINKS_PRIVATE QT_INCLUDE_PRIVATE
+        SOURCES
+        LINKS LINKS_PRIVATE
         INCLUDE_PRIVATE
         DEFINES DEFINES_PRIVATE
         CCFLAGS CCFLAGS_PUBLIC
+        FEATURES FEATURES_PRIVATE
+        QT_LINKS QT_LINKS_PRIVATE QT_INCLUDE_PRIVATE
         SKIP_AUTOMOC
     )
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -181,6 +185,8 @@ macro(qm_configure_target _target)
     target_compile_definitions(${_target} PRIVATE ${FUNC_DEFINES_PRIVATE})
     target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
     target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
+    target_compile_features(${_target} PUBLIC ${FUNC_FEATURES})
+    target_compile_features(${_target} PRIVATE ${FUNC_FEATURES_PRIVATE})
     qm_link_qt(${_target} PUBLIC ${FUNC_QT_LINKS})
     qm_link_qt(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
     target_include_directories(${_target} PRIVATE ${FUNC_INCLUDE_PRIVATE})

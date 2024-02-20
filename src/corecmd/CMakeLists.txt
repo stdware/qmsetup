@@ -1,8 +1,8 @@
 project(corecmd VERSION ${QMSETUP_VERSION})
 
 string(TIMESTAMP _year "%Y")
-set(RC_COPYRIGHT "Copyright ${_year} Stdware")
-set(RC_DESCRIPTION "QMSetup Core Utility Command")
+set(RC_COPYRIGHT "Copyright 2023-${_year} Stdware Collections")
+set(RC_DESCRIPTION "Buildsystem Core Utility Command")
 
 set(_src
     main.cpp
