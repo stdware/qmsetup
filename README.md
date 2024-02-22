@@ -8,7 +8,7 @@
 
 + Helpful CMake utilities
 + Generate configuration header files
-+ Re-organize header files
++ Reorganize header files
 + Deploy project dependencies and fix rpaths
 + Support calling **Doxygen** via CMake conveniently
 + Support calling **Qt Linguist Tools** via CMake conveniently
@@ -115,6 +115,15 @@ qm_add_definition(BAR 114514)
 qm_add_definition(BAZ "ABC" STRING_LITERAL)
 
 qm_generate_config(${CMAKE_BINARY_DIR}/conf.h)
+```
+
+#### Reorganize Include Directory
+```cmake
+qm_import(Preprocess)
+
+qm_sync_include(src/core ${CMAKE_BINARY_DIR}/include/MyCore
+    INSTALL_DIR ${CMAKE_CURRENT_INCLUDEDIR}/MyCore
+)
 ```
 
 #### Sync Resource Files After Build
