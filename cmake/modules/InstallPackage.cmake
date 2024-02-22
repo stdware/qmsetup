@@ -47,7 +47,8 @@ function(qm_install_package _name)
     if(FUNC_CMAKE_PACKAGE_SUBDIR)
         set(_cmake_subdir ${FUNC_CMAKE_PACKAGE_SUBDIR})
     else()
-        set(_cmake_subdir "lib/cmake/${_name}")
+        include(GNUInstallDirs)
+        set(_cmake_subdir "${CMAKE_INSTALL_LIBDIR}/cmake/${_name}")
     endif()
 
     # Build types
