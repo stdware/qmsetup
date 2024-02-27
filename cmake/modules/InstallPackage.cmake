@@ -74,10 +74,14 @@ function(qm_install_package _name)
 
     if(NOT IS_DIRECTORY ${_install_cmake_dir})
         # Determine generator
-        set(_generator)
+        set(_extra_args)
 
         if(CMAKE_GENERATOR)
-            set(_generator -G "${CMAKE_GENERATOR}")
+            set(_extra_args -G "${CMAKE_GENERATOR}")
+        endif()
+
+        if(CMAKE_GENERATOR_PLATFORM)
+            set(_extra_args -A "${CMAKE_GENERATOR_PLATFORM}")
         endif()
 
         # Remove old build directory
@@ -92,7 +96,7 @@ function(qm_install_package _name)
         set(_log_file ${_build_tree_dir}/${_name}_configure.log)
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S ${_src_dir} -B ${_build_dir}
-            ${_generator} ${_build_type}
+            ${_extra_args} ${_build_type}
             "-DCMAKE_INSTALL_PREFIX=${_install_dir}" ${FUNC_CONFIGURE_ARGS}
             OUTPUT_FILE ${_log_file}
             ERROR_FILE ${_log_file}

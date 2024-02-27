@@ -122,7 +122,7 @@ qm_generate_config(${CMAKE_BINARY_DIR}/conf.h)
 qm_import(Preprocess)
 
 qm_sync_include(src/core ${CMAKE_BINARY_DIR}/include/MyCore
-    INSTALL_DIR ${CMAKE_CURRENT_INCLUDEDIR}/MyCore
+    INSTALL_DIR ${CMAKE_INSTALL_INCLUDEDIR}/MyCore
 )
 ```
 
