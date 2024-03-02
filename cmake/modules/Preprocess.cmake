@@ -287,9 +287,11 @@ function(qm_generate_config _file)
     _qm_calc_property_scope_helper(_scope _prop)
     get_property(_definitions ${_scope} PROPERTY ${_prop})
 
-    if(_definitions)
-        _qm_generate_config_helper()
+    if(NOT _definitions)
+        set(_definitions) # May be _-NOTFOUND
     endif()
+
+    _qm_generate_config_helper()
 endfunction()
 
 #[[
