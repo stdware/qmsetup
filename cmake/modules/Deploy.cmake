@@ -5,6 +5,26 @@ if(NOT QMSETUP_CORECMD_EXECUTABLE)
     message(FATAL_ERROR "QMSETUP_CORECMD_EXECUTABLE not defined. Add find_package(qmsetup) to CMake first.")
 endif()
 
+if(NOT DEFINED QMSETUP_APPLOCAL_DEPS_PATHS)
+    set(QMSETUP_APPLOCAL_DEPS_PATHS)
+endif()
+
+if(NOT DEFINED QMSETUP_APPLOCAL_DEPS_PATHS_DEBUG)
+    set(QMSETUP_APPLOCAL_DEPS_PATHS_DEBUG ${QMSETUP_APPLOCAL_DEPS_PATHS})
+endif()
+
+if(NOT DEFINED QMSETUP_APPLOCAL_DEPS_PATHS_RELEASE)
+    set(QMSETUP_APPLOCAL_DEPS_PATHS_RELEASE ${QMSETUP_APPLOCAL_DEPS_PATHS_RELEASE})
+endif()
+
+if(NOT DEFINED QMSETUP_APPLOCAL_DEPS_PATHS_RELWITHDEBINFO)
+    set(QMSETUP_APPLOCAL_DEPS_PATHS_RELWITHDEBINFO ${QMSETUP_APPLOCAL_DEPS_PATHS})
+endif()
+
+if(NOT DEFINED QMSETUP_APPLOCAL_DEPS_PATHS_MINSIZEREL)
+    set(QMSETUP_APPLOCAL_DEPS_PATHS_MINSIZEREL ${QMSETUP_APPLOCAL_DEPS_PATHS_RELEASE})
+endif()
+
 include_guard(DIRECTORY)
 
 #[[
@@ -127,6 +147,18 @@ function(qm_win_applocal_deps _target)
         list(APPEND _args "-L${_item}")
     endforeach()
 
+    foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS)
+        list(APPEND _args "-L${_item}")
+    endforeach()
+
+    if(CMAKE_BUILD_TYPE)
+        string(TOUPPER ${CMAKE_BUILD_TYPE} _build_type_upper)
+
+        foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS_${_build_type_upper})
+            list(APPEND _args "-L${_item}")
+        endforeach()
+    endif()
+
     foreach(_item ${_dep_files})
         list(APPEND _args "-@${_item}")
     endforeach()
@@ -225,6 +257,18 @@ function(qm_deploy_directory _install_dir)
         foreach(_item ${FUNC_WIN_SEARCHING_PATHS})
             list(APPEND _args -L "${_item}")
         endforeach()
+
+        foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS)
+            list(APPEND _args -L "${_item}")
+        endforeach()
+
+        if(CMAKE_BUILD_TYPE)
+            string(TOUPPER ${CMAKE_BUILD_TYPE} _build_type_upper)
+
+            foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS_${_build_type_upper})
+                list(APPEND _args -L "${_item}")
+            endforeach()
+        endif()
 
         foreach(_item ${_dep_files})
             list(APPEND _args -@ "${_item}")

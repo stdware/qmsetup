@@ -145,16 +145,21 @@ endmacro()
         [SOURCES          <files>]
         [LINKS            <libs>]
         [LINKS_PRIVATE    <libs>]
+
         [INCLUDE_PRIVATE  <dirs>]
+        [LINKDIR_PRIVATE  <dirs>]
 
         [DEFINES          <defs>]
         [DEFINES_PRIVATE  <defs>]
 
-        [CCFLAGS          <flags>]
-        [CCFLAGS_PRIVATE  <flags>]
-
         [FEATURES          <features>]
         [FEATURES_PRIVATE  <features>]
+
+        [CCFLAGS          <flags>]
+        [CCFLAGS_PUBLIC   <flags>]
+
+        [LDFLAGS          <flags>]
+        [LDFLAGS_PUBLIC   <flags>]
 
         [QT_LINKS            <modules>]
         [QT_LINKS_PRIVATE    <modules>]
@@ -162,6 +167,8 @@ endmacro()
 
         [SKIP_AUTOMOC   <dir/file...>]
     )
+
+    INCLUDE_PRIVATE/LINKDIR_PRIVATE: `dir` or `dir/*` or `dir/**`
 ]] #
 macro(qm_configure_target _target)
     set(options)
@@ -169,48 +176,87 @@ macro(qm_configure_target _target)
     set(multiValueArgs
         SOURCES
         LINKS LINKS_PRIVATE
-        INCLUDE_PRIVATE
+        INCLUDE_PRIVATE LINKDIR_PRIVATE
         DEFINES DEFINES_PRIVATE
-        CCFLAGS CCFLAGS_PUBLIC
         FEATURES FEATURES_PRIVATE
+        CCFLAGS CCFLAGS_PUBLIC
+        LDFLAGS LDFLAGS_PUBLIC
         QT_LINKS QT_LINKS_PRIVATE QT_INCLUDE_PRIVATE
         SKIP_AUTOMOC
     )
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    macro(_link_directory_helper _dirs)
+    macro(_resolve_dir_helper _dirs _out)
+        set(${_out})
+
         foreach(_item IN LISTS ${_dirs})
-            if(_item MATCHES "(.+)/\\*\\*")
+            if(_item STREQUAL "*")
+                set(_cur_dir ".")
+                file(GLOB _subdirs LIST_DIRECTORIES true "*")
+            elseif(_item STREQUAL "**")
+                set(_cur_dir ".")
+                file(GLOB_RECURSE _subdirs LIST_DIRECTORIES true "*")
+            elseif(_item MATCHES "(.+)/\\*$")
                 set(_cur_dir ${CMAKE_MATCH_1})
-                target_include_directories(${_target} PRIVATE ${_cur_dir})
-
                 file(GLOB _subdirs LIST_DIRECTORIES true "${_cur_dir}/*")
-
-                foreach(_subdir IN LISTS _subdirs)
-                    if(IS_DIRECTORY ${_subdir})
-                        target_include_directories(${_target} PRIVATE ${_subdir})
-                    endif()
-                endforeach()
+            elseif(_item MATCHES "(.+)/\\*\\*$")
+                set(_cur_dir ${CMAKE_MATCH_1})
+                file(GLOB_RECURSE _subdirs LIST_DIRECTORIES true "${_cur_dir}/*")
             else()
-                target_include_directories(${_target} PRIVATE ${_item})
+                list(APPEND ${_out} ${_item})
+                continue()
             endif()
+
+            list(APPEND ${_out} ${_cur_dir})
+
+            foreach(_subdir IN LISTS _subdirs)
+                if(IS_DIRECTORY ${_subdir})
+                    get_filename_component(_subdir ${_subdir} ABSOLUTE)
+                    list(APPEND ${_out} ${_subdir})
+                endif()
+            endforeach()
         endforeach()
     endmacro()
 
     target_sources(${_target} PRIVATE ${FUNC_SOURCES})
+
     target_link_libraries(${_target} PUBLIC ${FUNC_LINKS})
     target_link_libraries(${_target} PRIVATE ${FUNC_LINKS_PRIVATE})
+
+    if(FUNC_INCLUDE_PRIVATE)
+        _resolve_dir_helper(FUNC_INCLUDE_PRIVATE _temp_dirs)
+        target_include_directories(${_target} PRIVATE ${_temp_dirs})
+        unset(_temp_dirs)
+    endif()
+
+    if(FUNC_LINKDIR_PRIVATE)
+        _resolve_dir_helper(FUNC_LINKDIR_PRIVATE _temp_dirs)
+        target_link_directories(${_target} PRIVATE ${_temp_dirs})
+        unset(_temp_dirs)
+    endif()
+
     target_compile_definitions(${_target} PUBLIC ${FUNC_DEFINES})
     target_compile_definitions(${_target} PRIVATE ${FUNC_DEFINES_PRIVATE})
-    target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
-    target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
+
     target_compile_features(${_target} PUBLIC ${FUNC_FEATURES})
     target_compile_features(${_target} PRIVATE ${FUNC_FEATURES_PRIVATE})
+
+    target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
+    target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
+
+    target_link_options(${_target} PUBLIC ${FUNC_LDFLAGS_PUBLIC})
+    target_link_options(${_target} PRIVATE ${FUNC_LDFLAGS})
+
     qm_link_qt(${_target} PUBLIC ${FUNC_QT_LINKS})
     qm_link_qt(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
-    _link_directory_helper(FUNC_INCLUDE_PRIVATE)
+
     qm_include_qt_private(${_target} PRIVATE ${FUNC_QT_INCLUDE_PRIVATE})
-    qm_skip_automoc(${FUNC_SKIP_AUTOMOC})
+
+    if(FUNC_SKIP_AUTOMOC)
+        _resolve_dir_helper(FUNC_SKIP_AUTOMOC _temp_files)
+        qm_skip_automoc(${_temp_files})
+        unset(_temp_files)
+    endif()
 endmacro()
 
 #[[
@@ -239,7 +285,11 @@ function(qm_export_defines _target)
 
     get_target_property(_type ${_target} TYPE)
 
-    if("${_type}" STREQUAL "STATIC_LIBRARY")
+    if(_type STREQUAL "INTERFACE_LIBRARY")
+        return()
+    endif()
+
+    if(_type STREQUAL "STATIC_LIBRARY")
         target_compile_definitions(${_target} PUBLIC ${_static_macro})
     endif()
 
