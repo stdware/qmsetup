@@ -147,7 +147,7 @@ function(qm_add_translation _target)
         )
 
         # Add update dependencies
-        add_dependencies(${_target} ${_target}_lupdate)
+        # add_dependencies(${_target} ${_target}_lupdate)
 
         foreach(_item ${FUNC_TS_DEPENDS})
             add_dependencies(${_item} ${_target}_lupdate)
