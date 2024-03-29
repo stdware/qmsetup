@@ -163,10 +163,6 @@ function(qm_add_translation _target)
             message(WARNING "qm_add_translation: no source files collected, TS_DIR ignored")
         endif()
 
-        if(FUNC_TS_TARGET)
-            message(WARNING "qm_add_translation: no source files collected, TS_TARGET ignored")
-        endif()
-
         if(FUNC_TS_DEPENDS)
             message(WARNING "qm_add_translation: no source files collected, TS_DEPENDS ignored")
         endif()

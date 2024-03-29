@@ -887,6 +887,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             }
         }
 
+        // Add dest
+        tmp.push_back(dest);
+
         // Remove duplications
         std::set<fs::path> visited;
         for (auto item : std::as_const(tmp)) {
