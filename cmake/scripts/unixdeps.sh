@@ -93,20 +93,20 @@ search_input_dir() {
         if [ -d "$item" ]; then
             # Check if the directory is mac .framework
             if [[ "OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
-                FILES="$FILES \"$file\""
+                FILES="$FILES \"$item\""
             else
                 search_input_dir "$item"
             fi
         elif [ -f "$item" ]; then
             if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
                 # On Windows, search for.exe and.dll files
-                FILES="$FILES \"$file\""
+                FILES="$FILES \"$item\""
             else
                 # On Unix, traverse all files, using the file command to
                 # check for executable binary files
-                file_type=$(file -b "$file")
-                if [[ ($file_type == "ELF"* || $file_type == "Mach-O"*) && -x "$file"  ]]; then
-                    FILES="$FILES \"$file\""
+                file_type=$(file -b "$item")
+                if [[ ($file_type == "ELF"* || $file_type == "Mach-O"*) && -x "$item"  ]]; then
+                    FILES="$FILES \"$item\""
                 fi
             fi
         fi
