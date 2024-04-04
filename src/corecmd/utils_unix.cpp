@@ -235,9 +235,15 @@ namespace Utils {
         return dependencies;
     }
 
-    std::vector<std::string> resolveUnixBinaryDependencies(const std::filesystem::path &path,
-                                                           std::vector<std::string> *unparsed) {
+    std::vector<std::string>
+        resolveUnixBinaryDependencies(const std::filesystem::path &path,
+                                      const std::vector<std::filesystem::path> &searchingPaths,
+                                      std::vector<std::string> *unparsed) {
         auto rpaths = readMacBinaryRPaths(path);
+        for (const auto &item : searchingPaths) {
+            rpaths.push_back(item);
+        }
+
         auto dependencies = readMacBinaryDependencies(path);
         const std::string &loaderPath = fs::canonical(path).parent_path();
 
@@ -354,8 +360,10 @@ namespace Utils {
         return dependencies;
     }
 
-    std::vector<std::string> resolveUnixBinaryDependencies(const std::filesystem::path &path,
-                                                           std::vector<std::string> *unparsed) {
+    std::vector<std::string>
+        resolveUnixBinaryDependencies(const std::filesystem::path &path,
+                                      const std::vector<std::filesystem::path> &searchingPaths,
+                                      std::vector<std::string> *unparsed) {
         return readLddOutput(path, unparsed);
     }
 

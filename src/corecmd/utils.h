@@ -140,6 +140,7 @@ namespace Utils {
 
     std::vector<std::string>
         resolveUnixBinaryDependencies(const std::filesystem::path &path,
+                                      const std::vector<std::filesystem::path> &searchingPaths,
                                       std::vector<std::string> *unparsed = nullptr);
 #endif
 

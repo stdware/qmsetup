@@ -842,7 +842,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         }
     }
 
-#ifdef _WIN32
+#if 1
     // Add searching paths
     std::vector<fs::path> searchingPaths;
     {
@@ -949,7 +949,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #ifdef _WIN32
                     Utils::resolveWinBinaryDependencies(path, searchingPaths, &unparsed)
 #else
-                    Utils::resolveUnixBinaryDependencies(fromFramework(path), &unparsed)
+                    Utils::resolveUnixBinaryDependencies(fromFramework(path), searchingPaths,
+                                                         &unparsed)
 #endif
                     ;
                 for (const auto &item : deps) {
@@ -1373,23 +1374,23 @@ int main(int argc, char *argv[]) {
                 .arg("dir")
                 .multi()
                 .prior(SCL::Option::IgnoreMissingArguments),
-            SCL::Option({"-o", "--out"},
-                        "Set output directory of dependencies, defult to current directory")
-                .arg("dir"),
-#ifdef _WIN32
-            SCL::Option({"-L", "--linkdir"}, "Add a library searching path")
-                .arg("dir")
-                .multi()
-                .short_match(SCL::Option::ShortMatchSingleChar),
-            SCL::Option({"-@", "--linkdirs"}, "Add library searching paths from a list file")
-                .arg("file")
-                .multi()
-                .short_match(SCL::Option::ShortMatchSingleChar),
+                SCL::Option({"-o", "--out"},
+                            "Set output directory of dependencies, defult to current directory")
+                    .arg("dir"),
+#if 1
+                SCL::Option({"-L", "--linkdir"}, "Add a library searching path")
+                    .arg("dir")
+                    .multi()
+                    .short_match(SCL::Option::ShortMatchSingleChar),
+                SCL::Option({"-@", "--linkdirs"}, "Add library searching paths from a list file")
+                    .arg("file")
+                    .multi()
+                    .short_match(SCL::Option::ShortMatchSingleChar),
 #endif
-            SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-            SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
-            SCL::Option({"-d", "--dryrun"}, "Print dependencies only"),
-            SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
+                SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+                SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
+                SCL::Option({"-d", "--dryrun"}, "Print dependencies only"),
+                SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
         command.addOption({SCL::Option::Verbose});
         command.setHandler(cmd_deploy);

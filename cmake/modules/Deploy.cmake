@@ -143,10 +143,12 @@ function(qm_win_applocal_deps _target)
         list(APPEND _args -V)
     endif()
 
+    # Add extra searching paths
     foreach(_item ${FUNC_EXTRA_SEARCHING_PATHS})
         list(APPEND _args "-L${_item}")
     endforeach()
 
+    # Add global extra searching paths
     if(CMAKE_BUILD_TYPE)
         string(TOUPPER ${CMAKE_BUILD_TYPE} _build_type_upper)
 
@@ -192,6 +194,7 @@ endfunction()
         [FORCE] [STANDARD] [VERBOSE]
         [LIBRARY_DIR <dir>]
         [EXTRA_PLUGIN_PATHS <path>...]
+        [EXTRA_SEARCHING_PATHS <path>...]
 
         [PLUGINS <plugin>...]
         [PLUGIN_DIR <dir>]
@@ -200,7 +203,6 @@ endfunction()
         [QML_DIR <dir>]
 
         [WIN_TARGETS <target>...]
-        [WIN_SEARCHING_PATHS <path>...]
 
         [COMMENT <comment]
     )
@@ -208,7 +210,7 @@ endfunction()
 function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
-    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS WIN_SEARCHING_PATHS)
+    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS EXTRA_SEARCHING_PATHS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get qmake
@@ -256,36 +258,38 @@ function(qm_deploy_directory _install_dir)
         list(APPEND _args --extra "${_item}")
     endforeach()
 
+    # Add extra searching paths
+    foreach(_item ${FUNC_EXTRA_SEARCHING_PATHS})
+        list(APPEND _args -L "${_item}")
+    endforeach()
+
+    # Add global extra searching paths
+    if(CMAKE_BUILD_TYPE)
+        string(TOUPPER ${CMAKE_BUILD_TYPE} _build_type_upper)
+
+        if(QMSETUP_APPLOCAL_DEPS_PATHS_${_build_type_upper})
+            foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS_${_build_type_upper})
+                get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
+                list(APPEND _args -L "${_item}")
+            endforeach()
+        elseif(QMSETUP_APPLOCAL_DEPS_PATHS)
+            foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS)
+                get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
+                list(APPEND _args -L "${_item}")
+            endforeach()
+        endif()
+    else()
+        foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS)
+            get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
+            list(APPEND _args -L "${_item}")
+        endforeach()
+    endif()
+
     if(WIN32)
         set(_dep_files)
 
         if(FUNC_WIN_TARGETS)
             _qm_win_get_all_dep_files(_dep_files ${FUNC_WIN_TARGETS})
-        endif()
-
-        foreach(_item ${FUNC_WIN_SEARCHING_PATHS})
-            list(APPEND _args -L "${_item}")
-        endforeach()
-
-        if(CMAKE_BUILD_TYPE)
-            string(TOUPPER ${CMAKE_BUILD_TYPE} _build_type_upper)
-
-            if(QMSETUP_APPLOCAL_DEPS_PATHS_${_build_type_upper})
-                foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS_${_build_type_upper})
-                    get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
-                    list(APPEND _args -L "${_item}")
-                endforeach()
-            elseif(QMSETUP_APPLOCAL_DEPS_PATHS)
-                foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS)
-                    get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
-                    list(APPEND _args -L "${_item}")
-                endforeach()
-            endif()
-        else()
-            foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS)
-                get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
-                list(APPEND _args -L "${_item}")
-            endforeach()
         endif()
 
         foreach(_item ${_dep_files})
