@@ -64,3 +64,20 @@ install(TARGETS ${PROJECT_NAME}
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" OPTIONAL
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" OPTIONAL
 )
+
+# Check patchelf
+if (NOT WIN32 AND NOT APPLE)
+    execute_process(
+        COMMAND patchelf --version
+        OUTPUT_VARIABLE _patchelf_version_output
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    if(NOT "${_patchelf_version_output}" MATCHES "patchelf")
+        message(WARNING "Patchelf not found, the deploy feature won't work.")
+    else()
+        string(REGEX REPLACE "patchelf (.+)" "\\1" _patchelf_version ${_patchelf_version_output})
+        message(STATUS "Found patchelf, version ${_patchelf_version}")
+    endif()
+endif()
