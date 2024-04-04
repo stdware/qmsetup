@@ -331,8 +331,10 @@ namespace Utils {
     // Linux
     // Use `ldd` and `patchelf`
 
-    static std::vector<std::string> readLddOutput(const std::string &fileName,
-                                                  std::vector<std::string> *unparsed) {
+    static std::vector<std::string>
+        readLddOutput(const std::string &fileName,
+                      const std::vector<std::filesystem::path> &searchingPaths,
+                      std::vector<std::string> *unparsed) {
         std::string output;
 
         try {
@@ -345,15 +347,29 @@ namespace Utils {
         std::string line;
 
         static const std::regex regexp("^\\s*.+ => (.+) \\(.*");
-        static const std::regex regexp2("^\\s*(.+) \\(.*");
+        static const std::regex regexp2("^\\s*(.+) => not found");
 
         std::vector<std::string> dependencies;
         while (std::getline(iss, line)) {
             std::smatch match;
             if (std::regex_match(line, match, regexp) && match.size() >= 2) {
                 dependencies.push_back(cleanPath(match[1].str()));
-            } else if (std::regex_match(line, match, regexp2) && match.size() >= 2 && unparsed) {
-                unparsed->push_back(cleanPath(match[1].str()));
+            } else if (std::regex_match(line, match, regexp2) && match.size() >= 2) {
+                // Search in search paths
+                fs::path target;
+                for (const auto &item : searchingPaths) {
+                    auto fullPath = item / match[1].str();
+                    if (fs::exists(fullPath)) {
+                        target = fullPath;
+                        break;
+                    }
+                }
+
+                if (!target.empty()) {
+                    dependencies.push_back(target);
+                } else {
+                    unparsed->push_back(cleanPath(match[1].str()));
+                }
             }
         }
 
@@ -364,7 +380,7 @@ namespace Utils {
         resolveUnixBinaryDependencies(const std::filesystem::path &path,
                                       const std::vector<std::filesystem::path> &searchingPaths,
                                       std::vector<std::string> *unparsed) {
-        return readLddOutput(path, unparsed);
+        return readLddOutput(path, searchingPaths, unparsed);
     }
 
     void setFileRPaths(const std::string &file, const std::vector<std::string> &paths) {
