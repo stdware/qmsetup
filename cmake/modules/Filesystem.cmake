@@ -77,7 +77,7 @@ function(qm_add_copy_command _target)
     set(_dest_base)
     get_target_property(_type ${_target} TYPE)
 
-    if("${_type}" STREQUAL "UTILITY")
+    if(_type STREQUAL "UTILITY")
         qm_set_value(_dest_base QMSETUP_BUILD_DIR ${CMAKE_CURRENT_SOURCE_DIR})
     else()
         set(_dest_base "$<TARGET_FILE_DIR:${_target}>")

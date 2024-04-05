@@ -46,7 +46,7 @@ include_guard(DIRECTORY)
 ]] #
 macro(qm_import)
     foreach(_module ${ARGN})
-        if(NOT _module MATCHES ".+\\.cmake")
+        if(NOT _module MATCHES "(.+)\\.cmake")
             set(_module "${_module}.cmake")
         endif()
 
@@ -85,7 +85,13 @@ function(qm_skip_automoc)
         get_filename_component(_item ${_item} ABSOLUTE)
 
         if(IS_DIRECTORY ${_item})
-            file(GLOB _src ${_item}/*.h ${_item}/*.hh ${_item}/*.hpp ${_item}/*.hxx ${_item}/*.c ${_item}/*.cc ${_item}/*.cpp ${_item}/*.cxx ${_item}/*.m ${_item}/*.mm)
+            file(GLOB _src
+                ${_item}/*.h ${_item}/*.hpp
+                ${_item}/*.hh ${_item}/*.hxx
+                ${_item}/*.cpp ${_item}/*.cxx
+                ${_item}/*.c ${_item}/*.cc
+                ${_item}/*.m ${_item}/*.mm
+            )
             set_source_files_properties(
                 ${_src} PROPERTIES SKIP_AUTOMOC ON
             )
@@ -139,7 +145,7 @@ macro(qm_include_qt_private _target _scope)
 endmacro()
 
 #[[
-    Helper to link libraries and include directories of a target. Don't wrap it in any functions.
+    Helper to set or append all kinds of attributes to a target. Don't wrap it in any functions.
 
     qm_configure_target(<target>
         [SOURCES          <files>]
@@ -168,7 +174,8 @@ endmacro()
         [SKIP_AUTOMOC   <dir/file...>]
     )
 
-    INCLUDE_PRIVATE/LINKDIR_PRIVATE: `dir` or `dir/*` or `dir/**`
+    INCLUDE_PRIVATE/LINKDIR_PRIVATE: `dir/*` will be expanded to all subdirectories, `dir/**` will be
+                                     expanded to all descendent directories recursively
 ]] #
 macro(qm_configure_target _target)
     set(options)
@@ -402,7 +409,7 @@ function(qm_add_win_rc_enhanced _target)
 
     set(_file_type)
 
-    if("${_type}" STREQUAL "EXECUTABLE")
+    if(_type STREQUAL "EXECUTABLE")
         set(_file_type "VFT_APP")
     else()
         set(_file_type "VFT_DLL")
@@ -635,7 +642,7 @@ endfunction()
 function(qm_has_genex _out _str)
     string(GENEX_STRIP "${_str}" _no_genex)
 
-    if("${_str}" STREQUAL "${_no_genex}")
+    if(_str STREQUAL _no_genex)
         set(_res off)
     else()
         set(_res on)
@@ -658,7 +665,7 @@ function(qm_paths_equal _out _path1 _path2)
     get_filename_component(_path2 ${_path2} ABSOLUTE)
     get_filename_component(_path2 ${_path2} REALPATH)
 
-    if(_path2 STREQUAL _path2)
+    if(_path1 STREQUAL _path2)
         set(${_out} on PARENT_SCOPE)
     else()
         set(${_out} off PARENT_SCOPE)
@@ -688,13 +695,13 @@ endfunction()
     Collect targets of given types recursively in a directory.
 
     qm_collect_targets(<list> [DIRECTORY directory]
-                              [EXECUTABLE] [SHARED] [STATIC] [UTILITY])
+                              [EXECUTABLE] [SHARED] [STATIC] [INTERFACE] [UTILITY])
 
     If one or more types are specified, return targets matching the types.
     If no type is specified, return all targets.
 ]] #
 function(qm_collect_targets _var)
-    set(options EXECUTABLE SHARED STATIC UTILITY)
+    set(options EXECUTABLE SHARED STATIC INTERFACE UTILITY)
     set(oneValueArgs DIR)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -707,11 +714,11 @@ function(qm_collect_targets _var)
 
     set(_tmp_targets)
 
-    macro(get_targets_recursive _targets _dir)
+    macro(_get_targets_recursive _targets _dir)
         get_property(_subdirs DIRECTORY ${_dir} PROPERTY SUBDIRECTORIES)
 
         foreach(_subdir ${_subdirs})
-            get_targets_recursive(${_targets} ${_subdir})
+        _get_targets_recursive(${_targets} ${_subdir})
         endforeach()
 
         get_property(_current_targets DIRECTORY ${_dir} PROPERTY BUILDSYSTEM_TARGETS)
@@ -719,29 +726,33 @@ function(qm_collect_targets _var)
     endmacro()
 
     # Get targets
-    get_targets_recursive(_tmp_targets ${_dir})
+    _get_targets_recursive(_tmp_targets ${_dir})
     set(_targets)
 
-    if(NOT FUNC_EXECUTABLE AND NOT FUNC_SHARED AND NOT FUNC_STATIC AND NOT FUNC_UTILITY)
+    if(NOT FUNC_EXECUTABLE AND NOT FUNC_SHARED AND NOT FUNC_STATIC AND NOT FUNC_INTERFACE AND NOT FUNC_UTILITY)
         set(_targets ${_tmp_targets})
     else()
         # Filter targets
         foreach(_item ${_tmp_targets})
             get_target_property(_type ${_item} TYPE)
 
-            if("${_type}" STREQUAL "EXECUTABLE")
+            if(_type STREQUAL "EXECUTABLE")
                 if(FUNC_EXECUTABLE)
                     list(APPEND _targets ${_item})
                 endif()
-            elseif("${_type}" STREQUAL "SHARED_LIBRARY")
+            elseif(_type STREQUAL "SHARED_LIBRARY")
                 if(FUNC_SHARED)
                     list(APPEND _targets ${_item})
                 endif()
-            elseif("${_type}" STREQUAL "STATIC_LIBRARY")
+            elseif(_type STREQUAL "STATIC_LIBRARY")
                 if(FUNC_STATIC)
                     list(APPEND _targets ${_item})
                 endif()
-            elseif("${_type}" STREQUAL "UTILITY")
+            elseif(_type STREQUAL "INTERFACE_LIBRARY")
+                if(FUNC_INTERFACE)
+                    list(APPEND _targets ${_item})
+                endif()
+            elseif(_type STREQUAL "UTILITY")
                 if(FUNC_UTILITY)
                     list(APPEND _targets ${_item})
                 endif()

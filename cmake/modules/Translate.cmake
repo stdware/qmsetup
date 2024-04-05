@@ -53,7 +53,13 @@ function(qm_add_translation _target)
     # Collect source directories
     if(FUNC_DIRECTORIES)
         foreach(_item ${FUNC_DIRECTORIES})
-            file(GLOB _tmp ${_item}/*.h ${_item}/*.hh ${_item}/*.hpp ${_item}/*.hxx ${_item}/*.c ${_item}/*.cc ${_item}/*.cpp ${_item}/*.cxx ${_item}/*.m ${_item}/*.mm)
+            file(GLOB _tmp
+                ${_item}/*.h ${_item}/*.hpp
+                ${_item}/*.hh ${_item}/*.hxx
+                ${_item}/*.cpp ${_item}/*.cxx
+                ${_item}/*.c ${_item}/*.cc
+                ${_item}/*.m ${_item}/*.mm
+            )
             list(APPEND _src_files ${_tmp})
         endforeach()
     endif()
@@ -63,7 +69,7 @@ function(qm_add_translation _target)
         foreach(_item ${FUNC_TARGETS})
             get_target_property(_type ${_item} TYPE)
 
-            if("${_type}" STREQUAL "UTILITY")
+            if((_type STREQUAL "UTILITY") OR (_type STREQUAL "INTERFACE_LIBRARY"))
                 continue()
             endif()
 
@@ -148,7 +154,6 @@ function(qm_add_translation _target)
 
         # Add update dependencies
         # add_dependencies(${_target} ${_target}_lupdate)
-
         foreach(_item ${FUNC_TS_DEPENDS})
             add_dependencies(${_item} ${_target}_lupdate)
         endforeach()

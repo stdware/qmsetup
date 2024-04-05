@@ -57,7 +57,8 @@ git clone --recursive git@github.com:stdware/qmsetup.git
 
 #### Build & Install
 ```sh
-cmake -B build -DCMAKE_INSTALL_PREFIX=/path/to
+cmake -B build -DCMAKE_BUILD_TYPE=Release \
+               -DCMAKE_INSTALL_PREFIX=/path/to
 cmake -B build --target all
 cmake -B build --target install
 ```
@@ -191,11 +192,16 @@ qm_setup_doxygen(${PROJECT_NAME}_RunDoxygen
 )
 ```
 
+### Find Modules
+
++ YY-Thunks: https://github.com/Chuyu-Team/YY-Thunks
++ VC-LTL5: https://github.com/Chuyu-Team/VC-LTL5
+
 ### Detailed Documents
 
 + [Core Command](docs/core-command.md)
 
-The CMake Modules documentations is provided in the form of comment.
+The CMake Modules documentations is provided in the comments.
 
 See `examples` to get detailed use cases.
 
