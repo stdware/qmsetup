@@ -115,7 +115,7 @@ static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
 
 static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path &symlinkContent,
                      bool force, bool verbose) {
-    auto target = dest / fs::path(file).filename();
+    auto target = dest / file.filename();
     if (fs::exists(target)) {
         if (Utils::cleanPath(target) == Utils::cleanPath(file))
             return false; // Same file
@@ -192,6 +192,10 @@ static std::string standardError(int code = errno) {
 }
 
 #ifdef __APPLE__
+static inline bool isFramework(const fs::path &path) {
+    return path.extension() == ".framework";
+}
+
 static fs::path lib2framework(fs::path path, const fs::path &fallback = {}) {
     // Ensure the path has at least three ancestors (including root)
     for (int i = 0; i < 3; ++i) {
@@ -200,7 +204,7 @@ static fs::path lib2framework(fs::path path, const fs::path &fallback = {}) {
         path = path.parent_path();
     }
     // Check if the ancestor's extension is ".framework"
-    if (path.extension() == ".framework")
+    if (isFramework(path))
         return path;
     return fallback;
 }
@@ -1154,9 +1158,63 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         targetDependencies.insert(targetPath);
     }
 
+    // Extra step: normalize dependencies
+    {
+        // Build name indexes
+        std::set<std::string> targetFileNames;
+        for (const auto &file : std::as_const(targetOrgFiles)) {
+            if (isFramework(file)) {
+                targetFileNames.insert(file.stem());
+            } else {
+                targetFileNames.insert(file.filename());
+            }
+        }
+
+        for (const auto &file : std::as_const(targetDependencies)) {
+            if (isFramework(file)) {
+                targetFileNames.insert(file.stem());
+            } else {
+                targetFileNames.insert(file.filename());
+            }
+        }
+
+        static const auto &normalize = [verbose, &targetFileNames](const fs::path &file) {
+            std::vector<std::pair<std::string, std::string>> normalized;
+            for (const auto &dep : Utils::getMacAbsoluteDependencies(
+                     isFramework(file) ? framework2lib(file) : file)) {
+                fs::path depPath = dep;
+
+                // Only collected dependencies will be normalized
+                if (fs::exists(depPath) &&
+                    Utils::contains(targetFileNames, fs::canonical(depPath).filename())) {
+                    normalized.emplace_back(dep, "@rpath/" + depPath.filename().string());
+                }
+            }
+
+            if (normalized.empty())
+                return;
+
+            if (verbose) {
+                u8printf("Normalize dependencies: \"%s\"\n", file.string().data());
+                for (const auto &item : std::as_const(normalized)) {
+                    u8printf("    %s\n", item.first.data());
+                }
+            }
+
+            Utils::replaceMacFileDependencies(file, normalized);
+        };
+
+        for (const auto &file : std::as_const(targetOrgFiles)) {
+            normalize(file);
+        }
+        for (const auto &file : std::as_const(targetDependencies)) {
+            normalize(file);
+        }
+    }
+
     // Fix rpath for original files (maybe executable)
     for (const auto &file : std::as_const(targetOrgFiles)) {
-        if (file.extension() == ".framework") {
+        if (isFramework(file)) {
             fs::path lib = framework2lib(file);
             if (!lib.empty()) {
                 fixFrameworkRPaths(lib);
@@ -1178,7 +1236,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
     // Fix rpath for dependencies
     for (const auto &file : std::as_const(targetDependencies)) {
-        if (file.extension() == ".framework") {
+        if (isFramework(file)) {
             fs::path lib = framework2lib(file);
             if (!lib.empty()) {
                 fixFrameworkRPaths(lib);

@@ -120,7 +120,7 @@ function(qm_sync_include _src_dir _dest_dir)
                 )
                 string(REPLACE \"\\n\" \";\" _lines \"\${_output_contents}\")
 
-                foreach(_line \${_lines})
+                foreach(_line IN LISTS _lines)
                     string(REGEX MATCH \"from \\\"([^\\\"]*)\\\" to \\\"([^\\\"]*)\\\"\" _ \${_line})
                     get_filename_component(_target_path \${CMAKE_MATCH_2} DIRECTORY)
                     file(INSTALL \${CMAKE_MATCH_1} DESTINATION \${_target_path})

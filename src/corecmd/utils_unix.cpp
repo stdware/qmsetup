@@ -185,7 +185,6 @@ namespace Utils {
             throw std::runtime_error("Failed to get RPATHs: " + std::string(e.what()));
         }
 
-
         static const std::regex rpathRegex(R"(\s*path\s+(.*)\s+\(offset.*)");
         std::istringstream iss(output);
         std::string line;
@@ -272,7 +271,7 @@ namespace Utils {
 
             target = cleanPath(target);
             if (fs::exists(target)) {
-                if (target == path)
+                if (fs::canonical(target).filename() == fs::canonical(path).filename())
                     continue;
                 res.push_back(target);
             } else if (unparsed) {
@@ -324,6 +323,47 @@ namespace Utils {
             } catch (const std::exception &e) {
                 throw std::runtime_error("Failed to add rpaths: " + std::string(e.what()));
             }
+        }
+    }
+
+    std::vector<std::string> getMacAbsoluteDependencies(const std::string &file) {
+        auto deps = readMacBinaryDependencies(file);
+        std::vector<std::string> res;
+        for (const auto &dep : std::as_const(deps)) {
+            if (fs::path(dep).is_absolute()) {
+                res.push_back(dep);
+            }
+        }
+        return res;
+    }
+
+    void replaceMacFileDependencies(
+        const std::string &file, const std::vector<std::pair<std::string, std::string>> &depPairs) {
+        std::string output;
+        std::vector<std::string> args;
+        args.reserve(depPairs.size() * 3 + 1);
+
+        std::string id;
+        for (const auto &pair : depPairs) {
+            if (fs::exists(pair.first) &&
+                fs::canonical(pair.first).filename() == fs::canonical(file).filename()) {
+                id = pair.second;
+                continue;
+            }
+            args.push_back("-change");
+            args.push_back(pair.first);
+            args.push_back(pair.second);
+        }
+        if (!id.empty()) {
+            args.push_back("-id");
+            args.push_back(id);
+        }
+        args.push_back(file);
+
+        try {
+            output = executeCommand("install_name_tool", args);
+        } catch (const std::exception &e) {
+            throw std::runtime_error("Failed to replace dependency: " + std::string(e.what()));
         }
     }
 
