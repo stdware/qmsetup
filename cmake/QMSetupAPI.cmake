@@ -149,10 +149,14 @@ endmacro()
 
     qm_configure_target(<target>
         [SOURCES          <files>]
+
         [LINKS            <libs>]
         [LINKS_PRIVATE    <libs>]
 
+        [INCLUDE          <dirs>]
         [INCLUDE_PRIVATE  <dirs>]
+
+        [LINKDIR          <dirs>]
         [LINKDIR_PRIVATE  <dirs>]
 
         [DEFINES          <defs>]
@@ -183,7 +187,8 @@ macro(qm_configure_target _target)
     set(multiValueArgs
         SOURCES
         LINKS LINKS_PRIVATE
-        INCLUDE_PRIVATE LINKDIR_PRIVATE
+        INCLUDE INCLUDE_PRIVATE
+        LINKDIR LINKDIR_PRIVATE
         DEFINES DEFINES_PRIVATE
         FEATURES FEATURES_PRIVATE
         CCFLAGS CCFLAGS_PUBLIC
@@ -230,9 +235,21 @@ macro(qm_configure_target _target)
     target_link_libraries(${_target} PUBLIC ${FUNC_LINKS})
     target_link_libraries(${_target} PRIVATE ${FUNC_LINKS_PRIVATE})
 
+    if(FUNC_INCLUDE)
+        _resolve_dir_helper(FUNC_INCLUDE _temp_dirs)
+        target_include_directories(${_target} PUBLIC ${_temp_dirs})
+        unset(_temp_dirs)
+    endif()
+
     if(FUNC_INCLUDE_PRIVATE)
         _resolve_dir_helper(FUNC_INCLUDE_PRIVATE _temp_dirs)
         target_include_directories(${_target} PRIVATE ${_temp_dirs})
+        unset(_temp_dirs)
+    endif()
+
+    if(FUNC_LINKDIR)
+        _resolve_dir_helper(FUNC_LINKDIR _temp_dirs)
+        target_link_directories(${_target} PUBLIC ${_temp_dirs})
         unset(_temp_dirs)
     endif()
 
@@ -718,7 +735,7 @@ function(qm_collect_targets _var)
         get_property(_subdirs DIRECTORY ${_dir} PROPERTY SUBDIRECTORIES)
 
         foreach(_subdir IN LISTS _subdirs)
-        _get_targets_recursive(${_targets} ${_subdir})
+            _get_targets_recursive(${_targets} ${_subdir})
         endforeach()
 
         get_property(_current_targets DIRECTORY ${_dir} PROPERTY BUILDSYSTEM_TARGETS)
