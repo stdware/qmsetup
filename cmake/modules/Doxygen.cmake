@@ -92,7 +92,7 @@ function(qm_setup_doxygen _target)
     if(FUNC_NO_EXPAND_MACROS)
         set(_temp_list)
 
-        foreach(_item ${FUNC_NO_EXPAND_MACROS})
+        foreach(_item IN LISTS FUNC_NO_EXPAND_MACROS)
             list(APPEND _temp_list "${_item}=")
         endforeach()
 
@@ -104,7 +104,7 @@ function(qm_setup_doxygen _target)
     set(_extra_arguments)
 
     if(FUNC_TARGETS)
-        foreach(item ${FUNC_TARGETS})
+        foreach(item IN LISTS FUNC_TARGETS)
             set(_extra_arguments
                 "${_extra_arguments}INCLUDE_PATH += $<JOIN:$<TARGET_PROPERTY:${item},INCLUDE_DIRECTORIES>,${_sep}>\n\n")
             set(_extra_arguments
@@ -127,7 +127,7 @@ function(qm_setup_doxygen _target)
 
     set(_env)
 
-    foreach(_export ${FUNC_ENVIRONMENT_EXPORTS})
+    foreach(_export IN LISTS FUNC_ENVIRONMENT_EXPORTS)
         if(NOT DEFINED "${_export}")
             message(FATAL_ERROR "qm_setup_doxygen: ${_export} is not known when trying to export it.")
         endif()
@@ -194,7 +194,7 @@ function(qm_setup_doxygen _target)
 
         set(_install_command_quoted)
 
-        foreach(_item ${_install_command})
+        foreach(_item IN LISTS _install_command)
             set(_install_command_quoted "${_install_command_quoted}\"${_item}\" ")
         endforeach()
 

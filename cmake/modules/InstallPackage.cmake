@@ -109,7 +109,7 @@ function(qm_install_package _name)
         endif()
 
         # Build
-        foreach(_item ${_build_types})
+        foreach(_item IN LISTS _build_types)
             message(STATUS "Building ${_name} (${_item})...")
             set(_log_file ${_build_tree_dir}/${_name}_build-${_item}.log)
             execute_process(
@@ -126,7 +126,7 @@ function(qm_install_package _name)
         endforeach()
 
         # Install
-        foreach(_item ${_build_types})
+        foreach(_item IN LISTS _build_types)
             message(STATUS "Installing ${_name} (${_item})...")
             set(_log_file ${_build_tree_dir}/${_name}_install-${_item}.log)
             execute_process(

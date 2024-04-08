@@ -52,7 +52,7 @@ function(qm_add_translation _target)
 
     # Collect source directories
     if(FUNC_DIRECTORIES)
-        foreach(_item ${FUNC_DIRECTORIES})
+        foreach(_item IN LISTS FUNC_DIRECTORIES)
             file(GLOB _tmp
                 ${_item}/*.h ${_item}/*.hpp
                 ${_item}/*.hh ${_item}/*.hxx
@@ -66,7 +66,7 @@ function(qm_add_translation _target)
 
     # Collect source files
     if(FUNC_TARGETS)
-        foreach(_item ${FUNC_TARGETS})
+        foreach(_item IN LISTS FUNC_TARGETS)
             get_target_property(_type ${_item} TYPE)
 
             if((_type STREQUAL "UTILITY") OR (_type STREQUAL "INTERFACE_LIBRARY"))
@@ -81,7 +81,7 @@ function(qm_add_translation _target)
             # Need to convert to absolute path
             get_target_property(_target_dir ${_item} SOURCE_DIR)
 
-            foreach(_file ${_tmp_files})
+            foreach(_file IN LISTS _tmp_files)
                 get_filename_component(_abs_file ${_file} ABSOLUTE BASE_DIR ${_target_dir})
                 list(APPEND _src_files ${_abs_file})
             endforeach()
@@ -128,14 +128,14 @@ function(qm_add_translation _target)
 
         set(_ts_files)
 
-        foreach(_loc ${FUNC_LOCALES})
+        foreach(_loc IN LISTS FUNC_LOCALES)
             list(APPEND _ts_files ${_ts_dir}/${_prefix}_${_loc}.ts)
         endforeach()
 
         # Include options
         set(_include_options)
 
-        foreach(_inc ${_include_dirs})
+        foreach(_inc IN LISTS _include_dirs)
             list(APPEND _include_options "-I${_inc}")
         endforeach()
 
@@ -154,7 +154,7 @@ function(qm_add_translation _target)
 
         # Add update dependencies
         # add_dependencies(${_target} ${_target}_lupdate)
-        foreach(_item ${FUNC_TS_DEPENDS})
+        foreach(_item IN LISTS FUNC_TS_DEPENDS)
             add_dependencies(${_item} ${_target}_lupdate)
         endforeach()
 
@@ -196,12 +196,12 @@ function(qm_add_translation _target)
 
     # Add release dependencies
     if(FUNC_TARGETS)
-        foreach(_item ${FUNC_TARGETS})
+        foreach(_item IN LISTS FUNC_TARGETS)
             add_dependencies(${_item} ${_target}_lrelease)
         endforeach()
     endif()
 
-    foreach(_item ${FUNC_QM_DEPENDS})
+    foreach(_item IN LISTS FUNC_QM_DEPENDS)
         add_dependencies(${_item} ${_target}_lrelease)
     endforeach()
 endfunction()
@@ -225,20 +225,20 @@ function(_qm_add_lupdate_target _target)
     add_custom_target(${_target} DEPENDS ${_lupdate_deps})
     get_target_property(_lupdate_exe Qt${QT_VERSION_MAJOR}::lupdate IMPORTED_LOCATION)
 
-    foreach(_ts_file ${_my_tsfiles})
+    foreach(_ts_file IN LISTS _my_tsfiles)
         # make a list file to call lupdate on, so we don't make our commands too
         # long for some systems
         get_filename_component(_ts_name ${_ts_file} NAME)
         set(_ts_lst_file "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/${_ts_name}_lst_file")
         set(_lst_file_srcs)
 
-        foreach(_lst_file_src ${_my_sources})
+        foreach(_lst_file_src IN LISTS _my_sources)
             set(_lst_file_srcs "${_lst_file_src}\n${_lst_file_srcs}")
         endforeach()
 
         get_directory_property(_inc_DIRS INCLUDE_DIRECTORIES)
 
-        foreach(_pro_include ${_inc_DIRS})
+        foreach(_pro_include IN LISTS _inc_DIRS)
             get_filename_component(_abs_include "${_pro_include}" ABSOLUTE)
             set(_lst_file_srcs "-I${_pro_include}\n${_lst_file_srcs}")
         endforeach()
@@ -250,7 +250,7 @@ function(_qm_add_lupdate_target _target)
         if(_LUPDATE_CREATE_ONCE AND NOT EXISTS ${_ts_abs})
             set(_options_filtered)
 
-            foreach(_opt ${_LUPDATE_OPTIONS})
+            foreach(_opt IN LISTS _LUPDATE_OPTIONS)
                 qm_has_genex(${_opt} _has_genex)
 
                 if(_has_genex)
@@ -299,7 +299,7 @@ function(_qm_add_lrelease_target _target)
 
     set(_qm_files)
 
-    foreach(_file ${_lrelease_files})
+    foreach(_file IN LISTS _lrelease_files)
         get_filename_component(_abs_FILE ${_file} ABSOLUTE)
         get_filename_component(_qm_file ${_file} NAME)
 

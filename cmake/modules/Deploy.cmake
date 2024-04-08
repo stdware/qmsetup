@@ -41,7 +41,7 @@ function(qm_win_record_deps _target)
     set(_paths)
     get_target_property(_link_libraries ${_target} LINK_LIBRARIES)
 
-    foreach(_item ${_link_libraries})
+    foreach(_item IN LISTS _link_libraries)
         if(NOT TARGET ${_item})
             continue()
         endif()
@@ -128,7 +128,7 @@ function(qm_win_applocal_deps _target)
     set(_dep_files)
     _qm_win_get_all_dep_files(_dep_files ${_target})
 
-    foreach(_item ${FUNC_EXTRA_TARGETS})
+    foreach(_item IN LISTS FUNC_EXTRA_TARGETS)
         _qm_win_get_all_dep_files(_dep_files ${_item})
     endforeach()
 
@@ -144,7 +144,7 @@ function(qm_win_applocal_deps _target)
     endif()
 
     # Add extra searching paths
-    foreach(_item ${FUNC_EXTRA_SEARCHING_PATHS})
+    foreach(_item IN LISTS FUNC_EXTRA_SEARCHING_PATHS)
         list(APPEND _args "-L${_item}")
     endforeach()
 
@@ -170,11 +170,11 @@ function(qm_win_applocal_deps _target)
         endforeach()
     endif()
 
-    foreach(_item ${_dep_files})
+    foreach(_item IN LISTS _dep_files)
         list(APPEND _args "-@${_item}")
     endforeach()
 
-    foreach(_item ${FUNC_EXCLUDE})
+    foreach(_item IN LISTS FUNC_EXCLUDE)
         list(APPEND _args -e ${_item})
     endforeach()
 
@@ -188,7 +188,7 @@ function(qm_win_applocal_deps _target)
 endfunction()
 
 #[[
-    Add deploy command when install project.
+    Add deploy command when install project, not available in debug mode.
 
     qm_deploy_directory(<install_dir>
         [FORCE] [STANDARD] [VERBOSE]
@@ -204,8 +204,16 @@ endfunction()
 
         [WIN_TARGETS <target>...]
 
-        [COMMENT <comment]
+        [COMMENT <comment>]
     )
+
+    PLUGINS: Qt plugins, in format of `<category>/<name>`
+    PLUGIN_DIR: Qt plugins destination
+    EXTRA_PLUGIN_PATHS: Extra Qt plugins searching paths
+    QML: Qt qml directories
+    QML_DIR: Qt qml destination
+    LIBRARY_DIR: Extra library destination
+    EXTRA_SEARCHING_PATHS: Extra library searching paths
 ]] #
 function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
@@ -259,7 +267,7 @@ function(qm_deploy_directory _install_dir)
     endforeach()
 
     # Add extra searching paths
-    foreach(_item ${FUNC_EXTRA_SEARCHING_PATHS})
+    foreach(_item IN LISTS FUNC_EXTRA_SEARCHING_PATHS)
         list(APPEND _args -L "${_item}")
     endforeach()
 
@@ -292,7 +300,7 @@ function(qm_deploy_directory _install_dir)
             _qm_win_get_all_dep_files(_dep_files ${FUNC_WIN_TARGETS})
         endif()
 
-        foreach(_item ${_dep_files})
+        foreach(_item IN LISTS _dep_files)
             list(APPEND _args -@ "${_item}")
         endforeach()
 
@@ -316,7 +324,7 @@ function(qm_deploy_directory _install_dir)
 
     set(_args_quoted)
 
-    foreach(_item ${_args})
+    foreach(_item IN LISTS _args)
         set(_args_quoted "${_args_quoted}\"${_item}\" ")
     endforeach()
 
@@ -346,7 +354,7 @@ function(_qm_win_get_all_dep_files _out)
         get_target_property(_deps ${_current_target} LINK_LIBRARIES)
 
         if(_deps)
-            foreach(_dep ${_deps})
+            foreach(_dep IN LISTS _deps)
                 if(NOT TARGET ${_dep})
                     continue()
                 endif()
@@ -368,7 +376,7 @@ function(_qm_win_get_all_dep_files _out)
         set(_all_deps)
         get_recursive_dynamic_dependencies(${_target} _all_deps)
 
-        foreach(_cur_dep ${_all_deps})
+        foreach(_cur_dep IN LISTS _all_deps)
             if(${_cur_dep} IN_LIST _visited_targets)
                 continue()
             endif()
@@ -379,7 +387,7 @@ function(_qm_win_get_all_dep_files _out)
 
     set(_dep_files)
 
-    foreach(_target ${_visited_targets})
+    foreach(_target IN LISTS _visited_targets)
         # Add file
         get_target_property(_file ${_target} QMSETUP_DEPENDENCIES_FILE)
 

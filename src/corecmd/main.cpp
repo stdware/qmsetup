@@ -737,7 +737,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
         if (entry.is_regular_file()) {
             const auto &path = entry.path();
             const auto &ext = Utils::toLower(TString(path.extension()));
-            if (!(ext == _TSTR(".h") || ext == _TSTR(".hpp"))) {
+            if (!(ext == _TSTR(".h") || ext == _TSTR(".hh") || ext == _TSTR(".hpp") || ext == _TSTR(".hxx"))) {
                 continue;
             }
 

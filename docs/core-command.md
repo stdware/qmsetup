@@ -52,3 +52,5 @@ Resolves and deploys a binary's shared library dependencies.
 It analyzes dependencies of specified files and copies these dependencies to a designated output directory. Moreover, it handles details like fixing RPATH or dealing with Windows-specific library search paths.
 
 The `-s` option is provided to ignore standard C/C++ runtime and system libraries, reducing unnecessary dependency copying.
+
+All shared libraries that are deployed must have different file names.

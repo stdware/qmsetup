@@ -29,7 +29,7 @@ include_guard(DIRECTORY)
 
     qm_sync_include(<src> <dest>
         [STANDARD] [NO_STANDARD] [NO_ALL]
-        [INCLUDE <pair...>]
+        [INCLUDE <expr> <sub> ...]
         [EXCLUDE <expr...>]
         [INSTALL_DIR <dir>]
         [FORCE] [VERBOSE]
@@ -74,11 +74,19 @@ function(qm_sync_include _src_dir _dest_dir)
             list(APPEND _args -n)
         endif()
 
-        foreach(_item ${FUNC_INCLUDE})
-            list(APPEND _args -i ${_item})
+        set(_even off)
+
+        foreach(_item IN LISTS FUNC_INCLUDE)
+            if(_even)
+                set(_even off)
+                list(APPEND _args ${_item})
+            else()
+                set(_even on)
+                list(APPEND _args -i ${_item})
+            endif()
         endforeach()
 
-        foreach(_item ${FUNC_EXCLUDE})
+        foreach(_item IN LISTS FUNC_EXCLUDE)
             list(APPEND _args -e ${_item})
         endforeach()
 
@@ -102,7 +110,7 @@ function(qm_sync_include _src_dir _dest_dir)
             set(_install_dir ${FUNC_INSTALL_DIR})
             set(_args_quoted)
 
-            foreach(_item ${_args})
+            foreach(_item IN LISTS _args)
                 set(_args_quoted "${_args_quoted}\"${_item}\" ")
             endforeach()
 
@@ -479,7 +487,7 @@ endfunction()
 function(_qm_generate_config_helper)
     set(_args)
 
-    foreach(_item ${_definitions})
+    foreach(_item IN LISTS _definitions)
         list(APPEND _args "-D${_item}")
     endforeach()
 

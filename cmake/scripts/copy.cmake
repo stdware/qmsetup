@@ -32,7 +32,7 @@ endif()
 get_filename_component(_dest ${dest} ABSOLUTE BASE_DIR ${_dest_base})
 
 # Copy
-foreach(_file ${src})
+foreach(_file IN LISTS src)
     # Avoid using `get_filename_component` to keep the trailing slash
     set(_path ${_file})
 
