@@ -76,6 +76,102 @@ macro(qm_import_all)
 endmacro()
 
 #[[
+    Parse version and create seq vars with specified prefix.
+
+    qm_parse_version(<prefix> <version>)
+]] #
+function(qm_parse_version _prefix _version)
+    string(REPLACE "." ";" _version_list ${_version})
+    list(LENGTH _version_list _version_count)
+    list(PREPEND _version_list 0) # Add placeholder
+
+    foreach(_i RANGE 1 4)
+        if(_i LESS_EQUAL _version_count)
+            list(GET _version_list ${_i} _item)
+        else()
+            set(_item 0)
+        endif()
+
+        set(${_prefix}_${_i} ${_item} PARENT_SCOPE)
+    endforeach()
+endfunction()
+
+#[[
+    Get shorter version number.
+
+    qm_crop_version(<VAR> <version> <count>)
+]] #
+function(qm_crop_version _var _version _count)
+    qm_parse_version(FUNC ${_version})
+
+    set(_list)
+
+    foreach(_i RANGE 1 ${_count})
+        list(APPEND _list ${FUNC_${_i}})
+    endforeach()
+
+    string(JOIN "." _short_version ${_list})
+    set(${_var} ${_short_version} PARENT_SCOPE)
+endfunction()
+
+#[[
+    Tell if there are any generator expressions in the string.
+
+    qm_has_genex(<VAR> <string>)
+]] #
+function(qm_has_genex _out _str)
+    string(GENEX_STRIP "${_str}" _no_genex)
+
+    if(_str STREQUAL _no_genex)
+        set(_res off)
+    else()
+        set(_res on)
+    endif()
+
+    set(${_out} ${_res} PARENT_SCOPE)
+endfunction()
+
+#[[
+    Tell if the given paths are same in canonical form.
+
+    qm_paths_equal(<VAR> <path1> <path2>)
+]] #
+function(qm_paths_equal _out _path1 _path2)
+    # cmake_path(NORMAL_PATH) is introduced in CMake 3.20, we don't use it
+    # We call `get_filename_component` twice to normalize the paths
+    get_filename_component(_path1 ${_path1} ABSOLUTE)
+    get_filename_component(_path1 ${_path1} REALPATH)
+
+    get_filename_component(_path2 ${_path2} ABSOLUTE)
+    get_filename_component(_path2 ${_path2} REALPATH)
+
+    if(_path1 STREQUAL _path2)
+        set(${_out} on PARENT_SCOPE)
+    else()
+        set(${_out} off PARENT_SCOPE)
+    endif()
+endfunction()
+
+#[[
+    Set value if valid, otherwise use default.
+
+    qm_set_value(<key> <maybe_value...> <default>)
+]] #
+function(qm_set_value _key)
+    set(_args "${ARGN}")
+    list(POP_BACK _args _default)
+
+    foreach(_item IN LISTS _args)
+        if(${_item})
+            set(${_key} ${${_item}} PARENT_SCOPE)
+            return()
+        endif()
+    endforeach()
+
+    set(${_key} ${_default} PARENT_SCOPE)
+endfunction()
+
+#[[
     Skip CMAKE_AUTOMOC for sources files or ones in directories.
 
     qm_skip_automoc(<file/dir...>)
@@ -457,12 +553,12 @@ endfunction()
     Attach windows manifest file to a target.
 
     qm_add_win_manifest(<target>
-        [UTF8]
-        [ADMIN]
         [NAME           name]
         [VERSION        version]
         [DESCRIPTION    desc]
         [OUTPUT         output]
+        [UTF8]
+        [ADMIN]
     )
 ]] #
 function(qm_add_win_manifest _target)
@@ -472,7 +568,7 @@ function(qm_add_win_manifest _target)
 
     _qm_check_target_type_helper(${_target} _ "EXECUTABLE")
 
-    set(options UTF8)
+    set(options UTF8 ADMIN)
     set(oneValueArgs NAME VERSION DESCRIPTION OUTPUT)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -610,102 +706,6 @@ function(qm_create_win_shortcut _target _dir)
         BYPRODUCTS ${_lnk_path}
         VERBATIM
     )
-endfunction()
-
-#[[
-    Parse version and create seq vars with specified prefix.
-
-    qm_parse_version(<prefix> <version>)
-]] #
-function(qm_parse_version _prefix _version)
-    string(REPLACE "." ";" _version_list ${_version})
-    list(LENGTH _version_list _version_count)
-    list(PREPEND _version_list 0) # Add placeholder
-
-    foreach(_i RANGE 1 4)
-        if(_i LESS_EQUAL _version_count)
-            list(GET _version_list ${_i} _item)
-        else()
-            set(_item 0)
-        endif()
-
-        set(${_prefix}_${_i} ${_item} PARENT_SCOPE)
-    endforeach()
-endfunction()
-
-#[[
-    Get shorter version number.
-
-    qm_crop_version(<VAR> <version> <count>)
-]] #
-function(qm_crop_version _var _version _count)
-    qm_parse_version(FUNC ${_version})
-
-    set(_list)
-
-    foreach(_i RANGE 1 ${_count})
-        list(APPEND _list ${FUNC_${_i}})
-    endforeach()
-
-    string(JOIN "." _short_version ${_list})
-    set(${_var} ${_short_version} PARENT_SCOPE)
-endfunction()
-
-#[[
-    Tell if there are any generator expressions in the string.
-
-    qm_has_genex(<VAR> <string>)
-]] #
-function(qm_has_genex _out _str)
-    string(GENEX_STRIP "${_str}" _no_genex)
-
-    if(_str STREQUAL _no_genex)
-        set(_res off)
-    else()
-        set(_res on)
-    endif()
-
-    set(${_out} ${_res} PARENT_SCOPE)
-endfunction()
-
-#[[
-    Tell if the given paths are same in canonical form.
-
-    qm_paths_equal(<VAR> <path1> <path2>)
-]] #
-function(qm_paths_equal _out _path1 _path2)
-    # cmake_path(NORMAL_PATH) is introduced in CMake 3.20, we don't use it
-    # We call `get_filename_component` twice to normalize the paths
-    get_filename_component(_path1 ${_path1} ABSOLUTE)
-    get_filename_component(_path1 ${_path1} REALPATH)
-
-    get_filename_component(_path2 ${_path2} ABSOLUTE)
-    get_filename_component(_path2 ${_path2} REALPATH)
-
-    if(_path1 STREQUAL _path2)
-        set(${_out} on PARENT_SCOPE)
-    else()
-        set(${_out} off PARENT_SCOPE)
-    endif()
-endfunction()
-
-#[[
-    Set value if valid, otherwise use default.
-
-    qm_set_value(<key> <maybe_value...> <default>)
-]] #
-function(qm_set_value _key)
-    set(_args "${ARGN}")
-    list(POP_BACK _args _default)
-
-    foreach(_item IN LISTS _args)
-        if(${_item})
-            set(${_key} ${${_item}} PARENT_SCOPE)
-            return()
-        endif()
-    endforeach()
-
-    set(${_key} ${_default} PARENT_SCOPE)
 endfunction()
 
 #[[
