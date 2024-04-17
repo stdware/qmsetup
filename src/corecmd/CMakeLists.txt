@@ -40,7 +40,7 @@ if(WIN32)
         DESCRIPTION ${RC_DESCRIPTION}
     )
 
-    # Force Windows to execute at current permission level
+    # Make sure Windows UAC does not believe it is an installer
     qm_add_win_manifest(${PROJECT_NAME}
         DESCRIPTION ${RC_DESCRIPTION}
     )

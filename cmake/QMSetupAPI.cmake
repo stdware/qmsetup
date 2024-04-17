@@ -274,8 +274,8 @@ endmacro()
         [SKIP_AUTOMOC   <dir/file...>]
     )
 
-    INCLUDE_PRIVATE/LINKDIR_PRIVATE: `dir/*` will be expanded to all subdirectories, `dir/**` will be
-                                     expanded to all descendent directories recursively
+    INCLUDE/LINKDIR: `dir/*` will be expanded to all subdirectories
+                     `dir/**` will be expanded to all descendent directories recursively
 ]] #
 macro(qm_configure_target _target)
     set(options)
