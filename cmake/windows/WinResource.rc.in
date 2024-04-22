@@ -4,10 +4,7 @@
 #define VS_VERSION_INFO 1
 #endif
 
-#define _STRINGIFY(x) #x
-#define STRINGIFY(x) _STRINGIFY(x)
-
-@RC_ICON_COMMENT@ IDI_ICON1               ICON    DISCARDABLE     STRINGIFY(@RC_ICON_PATH@)
+@RC_ICON_COMMENT@ IDI_ICON1               ICON    DISCARDABLE     "@RC_ICON_PATH@"
 
 VS_VERSION_INFO VERSIONINFO
     FILEVERSION    @RC_VERSION@
@@ -18,11 +15,11 @@ VS_VERSION_INFO VERSIONINFO
        // U.S. English - Windows, Multilingual
        BLOCK "040904E4"
        {
-          VALUE "FileDescription", STRINGIFY(@RC_DESCRIPTION@)
-          VALUE "FileVersion", STRINGIFY(@RC_VERSION_STRING@)
-          VALUE "ProductName", STRINGIFY(@RC_APPLICATION_NAME@)
-          VALUE "ProductVersion", STRINGIFY(@RC_VERSION_STRING@)
-          VALUE "LegalCopyright", STRINGIFY(@RC_COPYRIGHT@)
+          VALUE "FileDescription", "@RC_DESCRIPTION@"
+          VALUE "FileVersion", "@RC_VERSION_STRING@"
+          VALUE "ProductName", "@RC_APPLICATION_NAME@"
+          VALUE "ProductVersion", "@RC_VERSION_STRING@"
+          VALUE "LegalCopyright", "@RC_COPYRIGHT@"
         }
     }
     BLOCK "VarFileInfo"
