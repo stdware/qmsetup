@@ -75,8 +75,8 @@ function(qm_add_translation _target)
 
             set(_tmp_files)
             get_target_property(_tmp_files ${_item} SOURCES)
-            list(FILTER _tmp_files INCLUDE REGEX ".+\\.(h|hh|hpp|hxx|c|cc|cpp|cxx|m|mm)")
-            list(FILTER _tmp_files EXCLUDE REGEX "(qasc|moc)_.+")
+            list(FILTER _tmp_files INCLUDE REGEX ".+\\.(h|hh|hpp|hxx|c|cc|cpp|cxx|m|mm)$")
+            list(FILTER _tmp_files EXCLUDE REGEX "^(qasc|moc)_.+")
 
             # Need to convert to absolute path
             get_target_property(_target_dir ${_item} SOURCE_DIR)
