@@ -1,4 +1,4 @@
-project(corecmd VERSION ${QMSETUP_VERSION})
+project(qmcorecmd VERSION ${QMSETUP_VERSION})
 
 string(TIMESTAMP _year "%Y")
 set(RC_COPYRIGHT "Copyright 2023-${_year} Stdware Collections")
@@ -49,7 +49,7 @@ endif()
 target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_DESC="${RC_DESCRIPTION}, Version ${QMSETUP_VERSION}")
 target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_VERSION="${QMSETUP_VERSION}")
 
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME qmcorecmd)
+set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME corecmd)
 
 # Vcpkg requires the binary to be installed in "tools/${PORT}" directory
 if(QMSETUP_VCPKG_TOOLS_HINT)

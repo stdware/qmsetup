@@ -597,7 +597,10 @@ function(qm_add_win_manifest _target)
 
     qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_manifest.manifest")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
-    target_sources(${_target} PRIVATE ${_out_path})
+
+    set(_manifest_rc ${_out_path}.rc)
+    file(WRITE ${_manifest_rc} "#include <windows.h>\n\n1 RT_MANIFEST \"${_out_path}\"")
+    target_sources(${_target} PRIVATE ${_manifest_rc})
 endfunction()
 
 #[[
