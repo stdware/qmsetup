@@ -29,10 +29,12 @@ include_guard(DIRECTORY)
 
         TS_DEPENDS: add lupdate task as a dependency to the given targets
         QM_DEPENDS: add lrelease task as a dependency to the given targets
+
+        CREATE_ONCE: create translations at configure phase if not exist
     
 ]] #
 function(qm_add_translation _target)
-    set(options)
+    set(options CREATE_ONCE)
     set(oneValueArgs PREFIX TS_DIR QM_DIR)
     set(multiValueArgs LOCALES SOURCES DIRECTORIES TARGETS TS_FILES TS_OPTIONS QM_OPTIONS TS_DEPENDS QM_DEPENDS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -69,7 +71,7 @@ function(qm_add_translation _target)
         foreach(_item IN LISTS FUNC_TARGETS)
             get_target_property(_type ${_item} TYPE)
 
-            if((_type STREQUAL "UTILITY") OR (_type STREQUAL "INTERFACE_LIBRARY"))
+            if((_type STREQUAL "UTILITY") OR(_type STREQUAL "INTERFACE_LIBRARY"))
                 continue()
             endif()
 
@@ -145,11 +147,25 @@ function(qm_add_translation _target)
             list(PREPEND _ts_options OPTIONS)
         endif()
 
+        set(_create_once)
+
+        if(FUNC_CREATE_ONCE)
+            set(_create_once CREATE_ONCE)
+
+            # Check if all src files are available
+            foreach(_file IN LISTS _src_files)
+                if(NOT EXISTS ${_file})
+                    message(WARNING "qm_add_translation: source file \"${_file}\" is not available, skip generating ts file now")
+                    set(_create_once)
+                endif()
+            endforeach()
+        endif()
+
         _qm_add_lupdate_target(${_target}_lupdate
             INPUT ${_src_files}
             OUTPUT ${_ts_files}
             ${_ts_options}
-            CREATE_ONCE
+            ${_create_once}
         )
 
         # Add update dependencies
