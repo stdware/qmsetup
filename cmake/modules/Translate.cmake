@@ -52,20 +52,6 @@ function(qm_add_translation _target)
         list(APPEND _src_files ${FUNC_SOURCES})
     endif()
 
-    # Collect source directories
-    if(FUNC_DIRECTORIES)
-        foreach(_item IN LISTS FUNC_DIRECTORIES)
-            file(GLOB _tmp
-                ${_item}/*.h ${_item}/*.hpp
-                ${_item}/*.hh ${_item}/*.hxx
-                ${_item}/*.cpp ${_item}/*.cxx
-                ${_item}/*.c ${_item}/*.cc
-                ${_item}/*.m ${_item}/*.mm
-            )
-            list(APPEND _src_files ${_tmp})
-        endforeach()
-    endif()
-
     # Collect source files
     if(FUNC_TARGETS)
         foreach(_item IN LISTS FUNC_TARGETS)
@@ -92,6 +78,34 @@ function(qm_add_translation _target)
 
             get_target_property(_tmp_dirs ${_item} INCLUDE_DIRECTORIES)
             list(APPEND _include_dirs ${_tmp_dirs})
+        endforeach()
+    endif()
+
+    set(_create_once)
+
+    if(FUNC_CREATE_ONCE)
+        set(_create_once CREATE_ONCE)
+
+        # Check if all src files are available
+        foreach(_file IN LISTS _src_files)
+            if(NOT EXISTS ${_file})
+                message(WARNING "qm_add_translation: source file \"${_file}\" is not available, skip generating ts file now")
+                set(_create_once)
+            endif()
+        endforeach()
+    endif()
+
+    # Collect source directories
+    if(FUNC_DIRECTORIES)
+        foreach(_item IN LISTS FUNC_DIRECTORIES)
+            file(GLOB _tmp
+                ${_item}/*.h ${_item}/*.hpp
+                ${_item}/*.hh ${_item}/*.hxx
+                ${_item}/*.cpp ${_item}/*.cxx
+                ${_item}/*.c ${_item}/*.cc
+                ${_item}/*.m ${_item}/*.mm
+            )
+            list(APPEND _src_files ${_tmp})
         endforeach()
     endif()
 
@@ -147,15 +161,13 @@ function(qm_add_translation _target)
             list(PREPEND _ts_options OPTIONS)
         endif()
 
-        set(_create_once)
+        # Check if options contain generator expressions
+        if(_create_once)
+            foreach(_opt IN LISTS _ts_options)
+                qm_has_genex(${_opt} _has_genex)
 
-        if(FUNC_CREATE_ONCE)
-            set(_create_once CREATE_ONCE)
-
-            # Check if all src files are available
-            foreach(_file IN LISTS _src_files)
-                if(NOT EXISTS ${_file})
-                    message(WARNING "qm_add_translation: source file \"${_file}\" is not available, skip generating ts file now")
+                if(_has_genex)
+                    message(WARNING "qm_add_translation: lupdate options contain generator expressions, skip generating ts file now")
                     set(_create_once)
                 endif()
             endforeach()
@@ -264,18 +276,6 @@ function(_qm_add_lupdate_target _target)
         get_filename_component(_ts_abs ${_ts_file} ABSOLUTE)
 
         if(_LUPDATE_CREATE_ONCE AND NOT EXISTS ${_ts_abs})
-            set(_options_filtered)
-
-            foreach(_opt IN LISTS _LUPDATE_OPTIONS)
-                qm_has_genex(${_opt} _has_genex)
-
-                if(_has_genex)
-                    continue()
-                endif()
-
-                list(APPEND _options_filtered ${_opt})
-            endforeach()
-
             message(STATUS "Linguist update: Generate ${_ts_name}")
             get_filename_component(_abs_file ${_ts_file} ABSOLUTE)
             get_filename_component(_dir ${_abs_file} DIRECTORY)
