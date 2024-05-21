@@ -31,6 +31,8 @@ include_guard(DIRECTORY)
     Record searching paths for Windows Executables, must be called before calling `qm_win_applocal_deps`
     or `qm_deploy_directory` if your project supports Windows.
 
+    WARNING: This function is deprecated.
+
     qm_win_record_deps(<target>)
 ]] #
 function(qm_win_record_deps _target)

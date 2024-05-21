@@ -1,3 +1,7 @@
+#[[
+    Warning: This module is private, may be modified or removed in the future, please use with caution.
+]] #
+
 if(NOT DEFINED QMSETUP_PACKAGE_BUILD_TYPE)
     set(QMSETUP_PACKAGE_BUILD_TYPE "Release")
 endif()

@@ -66,13 +66,34 @@ endmacro()
     qm_import_all()
 ]] #
 macro(qm_import_all)
-    file(GLOB _tmp_modules "${QMSETUP_MODULES_DIR}/modules/*")
+    file(GLOB _tmp_modules "${QMSETUP_MODULES_DIR}/modules/*.cmake")
 
     foreach(_module IN LISTS _tmp_modules)
         include("${_module}")
     endforeach()
 
     unset(_tmp_modules)
+endmacro()
+
+#[[
+    Include private modules of this library, use it with caution.
+
+    qm_import_private(<module...>)
+]] #
+macro(qm_import_private)
+    foreach(_module ${ARGN})
+        if(NOT _module MATCHES "(.+)\\.cmake")
+            set(_module "${_module}.cmake")
+        endif()
+
+        set(_module_path "${QMSETUP_MODULES_DIR}/modules/private/${_module}")
+
+        if(NOT EXISTS "${_module_path}")
+            message(FATAL_ERROR "qm_import_private: module \"${_module}\" not found.")
+        endif()
+
+        include("${_module_path}")
+    endforeach()
 endmacro()
 
 #[[
@@ -422,9 +443,7 @@ endfunction()
     qm_add_file_dependencies(<file> <deps...>)
 ]] #
 function(qm_add_file_dependencies _file)
-    set(_deps ${ARGN})
-
-    if(NOT _deps)
+    if(NOT ARGN)
         return()
     endif()
 
@@ -879,49 +898,6 @@ function(qm_get_subdirs _var)
     endforeach()
 
     set(${_var} ${_res} PARENT_SCOPE)
-endfunction()
-
-#[[
-    Create the names of output files preserving relative dirs. (Ported from MOC command)
-
-    qm_make_output_file(<infile> <prefix> <ext> <OUT>)
-#]]
-function(qm_make_output_file _infile _prefix _ext _out)
-    string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} _binlength)
-    string(LENGTH ${_infile} _infileLength)
-    set(_checkinfile ${CMAKE_CURRENT_SOURCE_DIR})
-
-    if(_infileLength GREATER _binlength)
-        string(SUBSTRING "${_infile}" 0 ${_binlength} _checkinfile)
-
-        if(_checkinfile STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
-            file(RELATIVE_PATH _rel ${CMAKE_CURRENT_BINARY_DIR} ${_infile})
-        else()
-            file(RELATIVE_PATH _rel ${CMAKE_CURRENT_SOURCE_DIR} ${_infile})
-        endif()
-    else()
-        file(RELATIVE_PATH _rel ${CMAKE_CURRENT_SOURCE_DIR} ${_infile})
-    endif()
-
-    if(CMAKE_HOST_WIN32 AND _rel MATCHES "^([a-zA-Z]):(.*)$") # absolute path
-        set(_rel "${CMAKE_MATCH_1}_${CMAKE_MATCH_2}")
-    endif()
-
-    set(_outfile "${CMAKE_CURRENT_BINARY_DIR}/${_rel}")
-    string(REPLACE ".." "__" _outfile ${_outfile})
-    get_filename_component(_outpath ${_outfile} PATH)
-
-    if(CMAKE_VERSION VERSION_LESS "3.14")
-        get_filename_component(_outfile_ext ${_outfile} EXT)
-        get_filename_component(_outfile_ext ${_outfile_ext} NAME_WE)
-        get_filename_component(_outfile ${_outfile} NAME_WE)
-        string(APPEND _outfile ${_outfile_ext})
-    else()
-        get_filename_component(_outfile ${_outfile} NAME_WLE)
-    endif()
-
-    file(MAKE_DIRECTORY ${_outpath})
-    set(${_out} ${_outpath}/${_prefix}${_outfile}.${_ext} PARENT_SCOPE)
 endfunction()
 
 # ----------------------------------
