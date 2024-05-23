@@ -1,7 +1,7 @@
 include_guard(DIRECTORY)
 
 #[[
-    Create the names of output files preserving relative dirs. (Ported from MOC command)
+    Add rules for creating Google Protobuf source files.
 
     qm_create_protobuf(<OUT>
         INPUT <files...>
@@ -69,42 +69,32 @@ function(qm_create_protobuf _out)
         get_filename_component(_item ${_item} ABSOLUTE)
         get_filename_component(_abs_path ${_item} DIRECTORY)
         list(APPEND _include_options -I${_abs_path})
+    endforeach()
 
+    list(REMOVE_DUPLICATES _include_options)
+
+    foreach(_item IN LISTS FUNC_INPUT)
         get_filename_component(_name ${_item} NAME_WLE)
         list(APPEND _out_files ${_out_dir}/${_name}.pb.h ${_out_dir}/${_name}.pb.cc)
 
         get_filename_component(_full_name ${_item} NAME)
         list(APPEND _input_names ${_full_name})
-    endforeach()
 
-    list(REMOVE_DUPLICATES _include_options)
-
-    if(FUNC_CREATE_ONCE)
-        set(_need_create off)
-
-        foreach(_item IN LISTS _out_files)
-            if(NOT EXISTS ${_item})
-                set(_need_create on)
-                break()
-            endif()
-        endforeach()
-
-        if(_need_create)
-            string(JOIN ", " _input_to_print ${_input_names})
-            message(STATUS "Protoc: Generate sources for ${_input_to_print}")
+        if(FUNC_CREATE_ONCE AND(NOT EXISTS ${_out_dir}/${_name}.pb.h OR NOT EXISTS ${_out_dir}/${_name}.pb.cc))
+            message(STATUS "Protoc: Generate ${_name}.pb.h, ${_name}.pb.cc")
             execute_process(COMMAND
-                ${PROTOC_EXECUTABLE} --cpp_out=${_out_dir} ${_include_options} ${FUNC_OPTIONS} ${_input_names}
+                ${PROTOC_EXECUTABLE} --cpp_out=${_out_dir} ${_include_options} ${FUNC_OPTIONS} ${_full_name}
             )
         endif()
-    endif()
 
-    add_custom_command(
-        OUTPUT ${_out_files}
-        COMMAND ${PROTOC_EXECUTABLE} --cpp_out=${_out_dir} ${_include_options} ${FUNC_OPTIONS} ${_input_names}
-        DEPENDS ${FUNC_INPUT} ${FUNC_DEPENDS}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        VERBATIM
-    )
+        add_custom_command(
+            OUTPUT ${_out_dir}/${_name}.pb.h ${_out_dir}/${_name}.pb.cc
+            COMMAND ${PROTOC_EXECUTABLE} --cpp_out=${_out_dir} ${_include_options} ${FUNC_OPTIONS} ${_full_name}
+            DEPENDS ${_item} ${FUNC_DEPENDS}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            VERBATIM
+        )
+    endforeach()
 
     set(${_out} ${_out_files} PARENT_SCOPE)
 endfunction()
