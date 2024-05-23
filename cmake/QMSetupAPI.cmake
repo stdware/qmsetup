@@ -883,6 +883,94 @@ function(qm_get_subdirs _var)
     set(${_var} ${_res} PARENT_SCOPE)
 endfunction()
 
+#[[
+    Basic template to install a CMake project.
+
+    qm_basic_install(
+        [NAME <name>]
+        [VERSION <version>]
+        [COMPATIBILITY <compatibility>]
+        [INSTALL_DIR <dir>]
+        [CONFIG_TEMPLATE <file>]
+        [NAMESPACE <namespace>]
+        [EXPORT <sets...>]
+
+        [WRITE_VERSION_OPTIONS <options...>]
+        [WRITE_CONFIG_OPTIONS <options...>]
+    )
+
+    Include `GNUInstallDirs`, `CMakePackageConfigHelpers` before calling this function.
+]] #
+function(qm_basic_install)
+    set(options)
+    set(oneValueArgs NAME VERSION COMPATIBILITY INSTALL_DIR CONFIG_TEMPLATE NAMESPACE)
+    set(multiValueArgs WRITE_VERSION_OPTIONS WRITE_CONFIG_OPTIONS EXPORT)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    qm_set_value(_lib_dir CMAKE_INSTALL_LIBDIR lib)
+
+    qm_set_value(_name FUNC_NAME PROJECT_NAME "unknown")
+    qm_set_value(_version FUNC_VERSION PROJECT_VERSION "0.0.0.0")
+    qm_set_value(_compatibility FUNC_COMPATIBILITY AnyNewerVersion)
+    qm_set_value(_install_dir FUNC_INSTALL_DIR "${_lib_dir}/cmake/${_name}")
+    qm_set_value(_config_template FUNC_CONFIG_TEMPLATE "${CMAKE_CURRENT_LIST_DIR}/${_name}Config.cmake.in")
+
+    set(_namespace)
+
+    if(FUNC_NAMESPACE)
+        set(_namespace NAMESPACE ${FUNC_NAMESPACE})
+    endif()
+
+    set(_export_files)
+
+    # Install cmake targets files
+    foreach(_item IN LISTS FUNC_EXPORT)
+        install(EXPORT ${_item}
+            FILE "${_item}.cmake"
+            DESTINATION ${_install_dir}
+            ${_namespace}
+        )
+        list(APPEND _export_files "${_item}.cmake")
+    endforeach()
+
+    # Prepare config template file
+    get_filename_component(_config_template ${_config_template} ABSOLUTE)
+
+    if(NOT EXISTS ${_config_template})
+        set(_config_content "@PACKAGE_INIT@\n\n")
+
+        foreach(_item IN LISTS _export_files)
+            string(APPEND _config_content "include(\"\${CMAKE_CURRENT_LIST_DIR}/${_item}\")\n")
+        endforeach()
+
+        set(_config_template "${CMAKE_CURRENT_BINARY_DIR}/${_name}Config.cmake.in")
+        file(WRITE ${_config_template} ${_config_content})
+    endif()
+
+    # Add version file
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/${_name}ConfigVersion.cmake"
+        VERSION ${_version}
+        COMPATIBILITY ${_compatibility}
+        ${FUNC_WRITE_VERSION_OPTIONS}
+    )
+
+    # Add configuration file
+    configure_package_config_file(
+        ${_config_template}
+        "${CMAKE_CURRENT_BINARY_DIR}/${_name}Config.cmake"
+        INSTALL_DESTINATION ${_install_dir}
+        ${FUNC_WRITE_CONFIG_OPTIONS}
+    )
+
+    # Install cmake files
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/${_name}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${_name}ConfigVersion.cmake"
+        DESTINATION ${_install_dir}
+    )
+endfunction()
+
 # ----------------------------------
 # Private functions
 # ----------------------------------
