@@ -82,20 +82,6 @@ function(qm_add_translation _target)
         endforeach()
     endif()
 
-    set(_create_once)
-
-    if(FUNC_CREATE_ONCE)
-        set(_create_once CREATE_ONCE)
-
-        # Check if all src files are available
-        foreach(_file IN LISTS _src_files)
-            if(NOT EXISTS ${_file})
-                message(WARNING "qm_add_translation: source file \"${_file}\" is not available, skip generating ts file now")
-                set(_create_once)
-            endif()
-        endforeach()
-    endif()
-
     # Collect source directories
     if(FUNC_DIRECTORIES)
         foreach(_item IN LISTS FUNC_DIRECTORIES)
@@ -162,16 +148,10 @@ function(qm_add_translation _target)
             list(PREPEND _ts_options OPTIONS)
         endif()
 
-        # Check if options contain generator expressions
-        if(_create_once)
-            foreach(_opt IN LISTS _ts_options)
-                qm_has_genex(${_opt} _has_genex)
+        set(_create_once)
 
-                if(_has_genex)
-                    message(WARNING "qm_add_translation: lupdate options contain generator expressions, skip generating ts file now")
-                    set(_create_once)
-                endif()
-            endforeach()
+        if(FUNC_CREATE_ONCE)
+            set(_create_once CREATE_ONCE)
         endif()
 
         _qm_add_lupdate_target(${_target}_lupdate
@@ -254,6 +234,35 @@ function(_qm_add_lupdate_target _target)
     add_custom_target(${_target} DEPENDS ${_lupdate_deps})
     get_target_property(_lupdate_exe Qt${QT_VERSION_MAJOR}::lupdate IMPORTED_LOCATION)
 
+    set(_create_once_warning)
+    set(_create_once_warning_printed off)
+
+    # Prepare for create once
+    if(_LUPDATE_CREATE_ONCE)
+        # Check if all src files are available
+        foreach(_file IN LISTS _my_sources)
+            get_filename_component(_abs_file ${_file} ABSOLUTE)
+
+            if(NOT EXISTS ${_abs_file})
+                get_filename_component(_file ${_file} NAME)
+                set(_create_once_warning "source file \"${_file}\" is not available, skip generating ts file now")
+                break()
+            endif()
+        endforeach()
+
+        # Check if options contain generator expressions
+        if(NOT _create_once_warning)
+            foreach(_opt IN LISTS _LUPDATE_OPTIONS)
+                string(GENEX_STRIP "${_opt}" _no_genex)
+
+                if(NOT _no_genex STREQUAL _opt)
+                    set(_create_once_warning "lupdate options contain generator expressions, skip generating ts file now")
+                    break()
+                endif()
+            endforeach()
+        endif()
+    endif()
+
     foreach(_ts_file IN LISTS _my_tsfiles)
         # make a list file to call lupdate on, so we don't make our commands too
         # long for some systems
@@ -277,16 +286,23 @@ function(_qm_add_lupdate_target _target)
         get_filename_component(_ts_abs ${_ts_file} ABSOLUTE)
 
         if(_LUPDATE_CREATE_ONCE AND NOT EXISTS ${_ts_abs})
-            message(STATUS "Lupdate: Generate ${_ts_name}")
-            get_filename_component(_abs_file ${_ts_file} ABSOLUTE)
-            get_filename_component(_dir ${_abs_file} DIRECTORY)
-            make_directory(${_dir})
-            execute_process(
-                COMMAND ${_lupdate_exe} ${_options_filtered} "@${_ts_lst_file}" -ts ${_ts_file}
-                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-                OUTPUT_QUIET
-                COMMAND_ERROR_IS_FATAL ANY
-            )
+            if(_create_once_warning)
+                if(NOT _create_once_warning_printed)
+                    message(WARNING "qm_add_translation: ${_create_once_warning}")
+                    set(_create_once_warning_printed on)
+                endif()
+            else()
+                message(STATUS "Lupdate: Generating ${_ts_name}")
+                get_filename_component(_abs_file ${_ts_file} ABSOLUTE)
+                get_filename_component(_dir ${_abs_file} DIRECTORY)
+                file(MAKE_DIRECTORY ${_dir})
+                execute_process(
+                    COMMAND ${_lupdate_exe} ${_LUPDATE_OPTIONS} "@${_ts_lst_file}" -ts ${_ts_file}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                    OUTPUT_QUIET
+                    COMMAND_ERROR_IS_FATAL ANY
+                )
+            endif()
         endif()
 
         add_custom_command(

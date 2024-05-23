@@ -136,23 +136,6 @@ function(qm_crop_version _var _version _count)
 endfunction()
 
 #[[
-    Tell if there are any generator expressions in the string.
-
-    qm_has_genex(<VAR> <string>)
-]] #
-function(qm_has_genex _out _str)
-    string(GENEX_STRIP "${_str}" _no_genex)
-
-    if(_str STREQUAL _no_genex)
-        set(_res off)
-    else()
-        set(_res on)
-    endif()
-
-    set(${_out} ${_res} PARENT_SCOPE)
-endfunction()
-
-#[[
     Tell if the given paths are same in canonical form.
 
     qm_paths_equal(<VAR> <path1> <path2>)

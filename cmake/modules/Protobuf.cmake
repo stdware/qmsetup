@@ -6,6 +6,7 @@ include_guard(DIRECTORY)
     qm_create_protobuf(<OUT>
         INPUT <files...>
         [OUTPUT_DIR <dir>]
+        [TARGET <target>]
         [INCLUDE_DIRECTORIES <dirs...>]
         [OPTIONS <options...>]
         [DEPENDS <deps...>]
@@ -14,6 +15,8 @@ include_guard(DIRECTORY)
 
     INPUT: source files
     OUTPUT_DIR: output directory
+
+    TARGET: add a custom target to run the generating command
 
     INCLUDE_DIRECTORIES: extra include directories
     OPTIONS: extra options passed to protobuf compiler
@@ -25,7 +28,7 @@ include_guard(DIRECTORY)
 #]]
 function(qm_create_protobuf _out)
     set(options CREATE_ONCE)
-    set(oneValueArgs OUTPUT_DIR)
+    set(oneValueArgs OUTPUT_DIR TARGET)
     set(multiValueArgs INPUT INCLUDE_DIRECTORIES OPTIONS DEPENDS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -50,7 +53,8 @@ function(qm_create_protobuf _out)
     endif()
 
     if(FUNC_OUTPUT_DIR)
-        set(_out_dir ${FUNC_OUTPUT_DIR})
+        get_filename_component(_out_dir ${FUNC_OUTPUT_DIR} ABSOLUTE)
+        file(MAKE_DIRECTORY ${_out_dir})
     else()
         set(_out_dir ${CMAKE_CURRENT_BINARY_DIR})
     endif()
@@ -73,28 +77,65 @@ function(qm_create_protobuf _out)
 
     list(REMOVE_DUPLICATES _include_options)
 
+    set(_create_once_warning)
+    set(_create_once_warning_printed off)
+
+    # Prepare for create once
+    if(FUNC_CREATE_ONCE)
+        # Check if options contain generator expressions
+        foreach(_opt IN LISTS _include_options LISTS FUNC_OPTIONS)
+            string(GENEX_STRIP "${_opt}" _no_genex)
+
+            if(NOT _no_genex STREQUAL _opt)
+                set(_create_once_warning "options contain generator expressions, skip generating source file now")
+                break()
+            endif()
+        endforeach()
+    endif()
+
     foreach(_item IN LISTS FUNC_INPUT)
-        get_filename_component(_name ${_item} NAME_WLE)
-        list(APPEND _out_files ${_out_dir}/${_name}.pb.h ${_out_dir}/${_name}.pb.cc)
+        get_filename_component(_basename ${_item} NAME_WLE)
+        list(APPEND _out_files ${_out_dir}/${_basename}.pb.h ${_out_dir}/${_basename}.pb.cc)
 
-        get_filename_component(_full_name ${_item} NAME)
-        list(APPEND _input_names ${_full_name})
+        get_filename_component(_name ${_item} NAME)
+        list(APPEND _input_names ${_name})
 
-        if(FUNC_CREATE_ONCE AND(NOT EXISTS ${_out_dir}/${_name}.pb.h OR NOT EXISTS ${_out_dir}/${_name}.pb.cc))
-            message(STATUS "Protoc: Generate ${_name}.pb.h, ${_name}.pb.cc")
-            execute_process(COMMAND
-                ${PROTOC_EXECUTABLE} --cpp_out=${_out_dir} ${_include_options} ${FUNC_OPTIONS} ${_full_name}
-            )
+        if(FUNC_CREATE_ONCE AND(NOT EXISTS ${_out_dir}/${_basename}.pb.h OR NOT EXISTS ${_out_dir}/${_basename}.pb.cc))
+            if(_create_once_warning)
+                if(NOT _create_once_warning_printed)
+                    message(WARNING "qm_create_protobuf: ${_create_once_warning}")
+                    set(_create_once_warning_printed on)
+                endif()
+            else()
+                get_filename_component(_abs_file ${_item} ABSOLUTE)
+
+                if(NOT EXISTS ${_abs_file})
+                    message(WARNING "qm_create_protobuf: input file \"${_name}\" is not available, skip generating source file now")
+                else()
+                    message(STATUS "Protoc: Generating ${_basename}.pb.h, ${_basename}.pb.cc")
+                    execute_process(COMMAND
+                        ${PROTOC_EXECUTABLE} --cpp_out=${_out_dir} ${_include_options} ${FUNC_OPTIONS} ${_name}
+                    )
+                endif()
+            endif()
         endif()
 
         add_custom_command(
-            OUTPUT ${_out_dir}/${_name}.pb.h ${_out_dir}/${_name}.pb.cc
-            COMMAND ${PROTOC_EXECUTABLE} --cpp_out=${_out_dir} ${_include_options} ${FUNC_OPTIONS} ${_full_name}
+            OUTPUT ${_out_dir}/${_basename}.pb.h ${_out_dir}/${_basename}.pb.cc
+            COMMAND ${PROTOC_EXECUTABLE} --cpp_out=${_out_dir} ${_include_options} ${FUNC_OPTIONS} ${_name}
             DEPENDS ${_item} ${FUNC_DEPENDS}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             VERBATIM
         )
     endforeach()
+
+    if(FUNC_TARGET)
+        if(NOT FUNC_TARGET)
+            add_custom_target(${FUNC_TARGET})
+        endif()
+
+        add_dependencies(${FUNC_TARGET} ${_out_files})
+    endif()
 
     set(${_out} ${_out_files} PARENT_SCOPE)
 endfunction()
