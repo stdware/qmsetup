@@ -6,12 +6,28 @@
 
 ## Features
 
-+ Helpful CMake utilities
+### Helpful Functions
+
++ Path, Version functions
++ Target configuration functions
++ Qt related functions
+
+### Filesystem Utilities
+
++ Generate Windows RC files, manifest files
++ Generate MacOS Bundle info files
 + Generate configuration header files
 + Reorganize header files
+
+### Install Utilities
+
 + Deploy project dependencies and fix rpaths
-+ Support calling **Doxygen** via CMake conveniently
-+ Support calling **Qt Linguist Tools** via CMake conveniently
+
+### Extended Build Rules
+
++ Create translations with **Qt Linguist** tools
++ Create source files with **Protobuf** compiler
++ Create documentations with **Doxygen**
 
 ## Support Platforms
 
@@ -167,7 +183,19 @@ qm_add_translation(${PROJECT_NAME}_translations
 )
 ```
 
-#### Generate Doxygen Document
+#### Generate Protubuf Source Files
+```cmake
+qm_import(Protobuf)
+
+find_package(Protobuf REQUIRED)
+qm_create_protobuf(_proto_src
+    INPUT a.proto b.proto
+    INCLUDE_DIRECTORIES src/proto
+)
+target_sources(${PROJECT_NAME} PUBLIC ${_proto_src})
+```
+
+#### Generate Doxygen HTML Documentations
 ```cmake
 qm_import(Doxygen)
 
@@ -194,10 +222,12 @@ qm_setup_doxygen(${PROJECT_NAME}_RunDoxygen
 
 ### Find Modules
 
+Use `qm_find_package` to find supported third-party packages.
+
 + YY-Thunks: https://github.com/Chuyu-Team/YY-Thunks
 + VC-LTL5: https://github.com/Chuyu-Team/VC-LTL5
 
-### Detailed Documents
+### Detailed Documentations
 
 + [Core Command](docs/core-command.md)
 
