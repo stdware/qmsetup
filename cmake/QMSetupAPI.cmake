@@ -76,27 +76,6 @@ macro(qm_import_all)
 endmacro()
 
 #[[
-    Include private modules of this library, use it with caution.
-
-    qm_import_private(<module...>)
-]] #
-macro(qm_import_private)
-    foreach(_module ${ARGN})
-        if(NOT _module MATCHES "(.+)\\.cmake")
-            set(_module "${_module}.cmake")
-        endif()
-
-        set(_module_path "${QMSETUP_MODULES_DIR}/modules/private/${_module}")
-
-        if(NOT EXISTS "${_module_path}")
-            message(FATAL_ERROR "qm_import_private: module \"${_module}\" not found.")
-        endif()
-
-        include("${_module_path}")
-    endforeach()
-endmacro()
-
-#[[
     Find 3rdparty packages by including scripts in `find-modules`.
 
     qm_find_package(<module...>)

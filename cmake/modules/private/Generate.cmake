@@ -8,6 +8,8 @@ include_guard(DIRECTORY)
     Create the names of output files preserving relative dirs. (Ported from MOC command)
 
     qm_make_output_file(<infile> <prefix> <ext> <OUT>)
+
+    OUT: output source file paths
 #]]
 function(qm_make_output_file _infile _prefix _ext _out)
     string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} _binlength)
@@ -33,15 +35,7 @@ function(qm_make_output_file _infile _prefix _ext _out)
     set(_outfile "${CMAKE_CURRENT_BINARY_DIR}/${_rel}")
     string(REPLACE ".." "__" _outfile ${_outfile})
     get_filename_component(_outpath ${_outfile} PATH)
-
-    if(CMAKE_VERSION VERSION_LESS "3.14")
-        get_filename_component(_outfile_ext ${_outfile} EXT)
-        get_filename_component(_outfile_ext ${_outfile_ext} NAME_WE)
-        get_filename_component(_outfile ${_outfile} NAME_WE)
-        string(APPEND _outfile ${_outfile_ext})
-    else()
-        get_filename_component(_outfile ${_outfile} NAME_WLE)
-    endif()
+    get_filename_component(_outfile ${_outfile} NAME_WLE)
 
     file(MAKE_DIRECTORY ${_outpath})
     set(${_out} ${_outpath}/${_prefix}${_outfile}.${_ext} PARENT_SCOPE)

@@ -13,6 +13,7 @@ include_guard(DIRECTORY)
         [QM_OPTIONS options...]
         [TS_DEPENDS targets...]
         [QM_DEPENDS targets...]
+        [CREATE_ONCE]
     )
 
     Arguments:
@@ -276,7 +277,7 @@ function(_qm_add_lupdate_target _target)
         get_filename_component(_ts_abs ${_ts_file} ABSOLUTE)
 
         if(_LUPDATE_CREATE_ONCE AND NOT EXISTS ${_ts_abs})
-            message(STATUS "Linguist update: Generate ${_ts_name}")
+            message(STATUS "Lupdate: Generate ${_ts_name}")
             get_filename_component(_abs_file ${_ts_file} ABSOLUTE)
             get_filename_component(_dir ${_abs_file} DIRECTORY)
             make_directory(${_dir})
