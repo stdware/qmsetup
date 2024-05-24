@@ -1,7 +1,3 @@
-if(NOT DEFINED QMSETUP_MODULES_DIR)
-    include("${CMAKE_CURRENT_LIST_DIR}/../QMSetupAPI.cmake")
-endif()
-
 include_guard(DIRECTORY)
 
 #[[
@@ -70,15 +66,21 @@ function(qm_add_copy_command _target)
     endif()
 
     # Determine destination
-    set(_dest)
-    qm_set_value(_dest FUNC_DESTINATION .)
+    set(_dest .)
+
+    if(FUNC_DESTINATION)
+        set(_dest ${FUNC_DESTINATION})
+    endif()
 
     # Determine destination base directory
-    set(_dest_base)
     get_target_property(_type ${_target} TYPE)
 
     if(_type STREQUAL "UTILITY")
-        qm_set_value(_dest_base QMSETUP_BUILD_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+        if(QMSETUP_BUILD_DIR)
+            set(_dest_base ${QMSETUP_BUILD_DIR})
+        else()
+            set(_dest_base ${CMAKE_CURRENT_SOURCE_DIR})
+        endif()
     else()
         set(_dest_base "$<TARGET_FILE_DIR:${_target}>")
     endif()

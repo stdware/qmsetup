@@ -44,11 +44,6 @@ function(qm_sync_include _src_dir _dest_dir)
     set(multiValueArgs INCLUDE EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Check tool
-    if(NOT QMSETUP_CORECMD_EXECUTABLE)
-        message(FATAL_ERROR "qm_sync_include: corecmd tool not found.")
-    endif()
-
     if(NOT IS_ABSOLUTE ${_src_dir})
         get_filename_component(_src_dir ${_src_dir} ABSOLUTE)
     else()
@@ -185,14 +180,14 @@ function(qm_add_definition _first)
         set(_cond off)
     endif()
 
-    if(${_len} EQUAL 1)
+    if(_len EQUAL 1)
         set(_result ${_list})
         set(_defined on)
 
         if(NOT _cond)
             set(_defined off)
         endif()
-    elseif(${_len} EQUAL 2)
+    elseif(_len EQUAL 2)
         # Get key
         list(POP_FRONT _list _key)
         list(POP_FRONT _list _val)
@@ -311,7 +306,6 @@ endfunction()
         
         [YEAR] [TIME]
 
-        [PROJECT_NAME <name>]
         [WARNING_FILE <file>]
         [NO_WARNING]
         [NO_HASH]
@@ -321,12 +315,12 @@ endfunction()
     file: Output file
 
     ROOT_DIRECTORY: Repository root directory (CMake will try to run `git` at this directory)
-    PREFIX: Macros prefix, default to `PROJECT_NAME`
+    PREFIX: Macros prefix, default to the upper case of  `PROJECT_NAME`
     REQUIRED: Abort if there's any error with git
 ]] #
 function(qm_generate_build_info _file)
     set(options NO_WARNING NO_HASH YEAR TIME REQUIRED)
-    set(oneValueArgs ROOT_DIRECTORY PREFIX PROJECT_NAME WARNING_FILE)
+    set(oneValueArgs ROOT_DIRECTORY PREFIX WARNING_FILE)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -345,9 +339,18 @@ function(qm_generate_build_info _file)
     set(_git_commit_author "unknown")
     set(_git_commit_email "unknown")
 
-    find_package(Git QUIET)
+    # Check `git` command
+    if(NOT GIT_EXECUTABLE)
+        find_package(Git)
 
-    if(Git_FOUND)
+        if(NOT Git_FOUND)
+            if(FUNC_REQUIRED)
+                message(FATAL_ERROR "Git not found")
+            endif()
+        endif()
+    endif()
+
+    if(GIT_EXECUTABLE)
         # Branch
         execute_process(
             COMMAND ${GIT_EXECUTABLE} symbolic-ref --short -q HEAD
@@ -360,10 +363,10 @@ function(qm_generate_build_info _file)
             RESULT_VARIABLE _code
         )
 
-        if(${_code} EQUAL 0)
+        if(_code EQUAL 0)
             set(_git_branch ${_temp})
         elseif(FUNC_REQUIRED)
-            message(FATAL_ERROR "${_err}")
+            message(FATAL_ERROR "Error running git symbolic-ref: ${_err}")
         endif()
 
         # Hash
@@ -378,16 +381,14 @@ function(qm_generate_build_info _file)
             RESULT_VARIABLE _code
         )
 
-        if(${_code} EQUAL 0)
+        if(_code EQUAL 0)
             list(GET _temp 0 _git_hash)
             list(GET _temp 1 _git_commit_time)
             list(GET _temp 2 _git_commit_author)
             list(GET _temp 3 _git_commit_email)
         elseif(FUNC_REQUIRED)
-            message(FATAL_ERROR "${_err}")
+            message(FATAL_ERROR "Error running git log: ${_err}")
         endif()
-    elseif(FUNC_REQUIRED)
-        message(FATAL_ERROR "Git not found")
     endif()
 
     qm_set_value(_system_name CMAKE_SYSTEM_NAME unknown)
