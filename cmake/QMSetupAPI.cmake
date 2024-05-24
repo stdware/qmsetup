@@ -76,7 +76,7 @@ macro(qm_import_all)
 endmacro()
 
 #[[
-    Find 3rdparty packages by including scripts in `find-modules`.
+    Find third-party packages by including scripts in `find-modules`.
 
     qm_find_package(<module...>)
 ]] #
@@ -88,8 +88,13 @@ macro(qm_find_package)
 
         set(_module_path "${QMSETUP_MODULES_DIR}/find-modules/${_module}")
 
+        # Prepend "Find" to the file name
         if(NOT EXISTS "${_module_path}")
-            message(FATAL_ERROR "qm_find_package: module \"${_module}\" not found.")
+            set(_module_path "${QMSETUP_MODULES_DIR}/find-modules/Find${_module}")
+        endif()
+
+        if(NOT EXISTS "${_module_path}")
+            message(FATAL_ERROR "qm_find_package: find script \"${_module}\" not found.")
         endif()
 
         include("${_module_path}")
@@ -463,7 +468,7 @@ function(qm_add_win_rc _target)
 
     qm_set_value(_name FUNC_NAME ${_target})
     qm_set_value(_version FUNC_VERSION PROJECT_VERSION "0.0.0.0")
-    qm_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qm_set_value(_desc FUNC_DESCRIPTION PROJECT_DESCRIPTION ${_name})
     qm_set_value(_copyright FUNC_COPYRIGHT ${_name})
 
     qm_parse_version(_ver ${_version})
@@ -523,7 +528,7 @@ function(qm_add_win_rc_enhanced _target)
 
     qm_set_value(_name FUNC_NAME ${_target})
     qm_set_value(_version FUNC_VERSION PROJECT_VERSION "0.0.0.0")
-    qm_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qm_set_value(_desc FUNC_DESCRIPTION PROJECT_DESCRIPTION ${_name})
     qm_set_value(_copyright FUNC_COPYRIGHT ${_name})
     qm_set_value(_comments FUNC_COMMENTS "")
     qm_set_value(_company FUNC_COMPANY "")
@@ -602,7 +607,7 @@ function(qm_add_win_manifest _target)
 
     qm_set_value(_name FUNC_NAME ${_target})
     qm_set_value(_version FUNC_VERSION PROJECT_VERSION "0.0.0.0")
-    qm_set_value(_desc FUNC_DESCRIPTION ${_name})
+    qm_set_value(_desc FUNC_DESCRIPTION PROJECT_DESCRIPTION ${_name})
 
     qm_crop_version(_version ${_version} 4)
 
@@ -655,7 +660,7 @@ function(qm_add_mac_bundle _target)
 
     qm_set_value(_app_name FUNC_NAME ${_target})
     qm_set_value(_app_version FUNC_VERSION PROJECT_VERSION "0.0.0.0")
-    qm_set_value(_app_desc FUNC_DESCRIPTION ${_app_name})
+    qm_set_value(_app_desc FUNC_DESCRIPTION PROJECT_DESCRIPTION ${_app_name})
     qm_set_value(_app_copyright FUNC_COPYRIGHT ${_app_name})
 
     qm_parse_version(_app_version ${_app_version})

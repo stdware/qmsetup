@@ -222,7 +222,7 @@ function(qm_setup_doxygen _target)
         endforeach()
 
         install(CODE "
-            message(STATUS \"Install HTML documentation\")
+            message(STATUS \"Installing HTML documentation\")
             get_filename_component(_install_dir \"${_install_dir}\" ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
             file(MAKE_DIRECTORY \${_install_dir})
             execute_process(
