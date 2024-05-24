@@ -1,7 +1,3 @@
-if(NOT DEFINED QMSETUP_MODULES_DIR)
-    include("${CMAKE_CURRENT_LIST_DIR}/../QMSetupAPI.cmake")
-endif()
-
 include_guard(DIRECTORY)
 
 #[[
@@ -42,15 +38,42 @@ function(qm_setup_doxygen _target)
 
     set(DOXYGEN_FILE_DIR ${QMSETUP_MODULES_DIR}/doxygen)
 
-    qm_set_value(_name FUNC_NAME "${PROJECT_NAME}")
-    qm_set_value(_version FUNC_VERSION "${PROJECT_VERSION}")
-    qm_set_value(_desc FUNC_DESCRIPTION "${PROJECT_DESCRIPTION}")
-    qm_set_value(_logo FUNC_LOGO "")
-    qm_set_value(_mdfile FUNC_MDFILE "")
-    qm_set_value(_tagfile FUNC_GENERATE_TAGFILE "")
+    if(FUNC_NAME)
+        set(_name ${FUNC_NAME})
+    else()
+        set(_name ${PROJECT_NAME})
+    endif()
 
-    if(_desc STREQUAL "")
-        set(${_desc} "${_name}")
+    if(FUNC_VERSION)
+        set(_version ${FUNC_VERSION})
+    else()
+        set(_version ${PROJECT_VERSION})
+    endif()
+
+    if(FUNC_DESCRIPTION)
+        set(_desc ${FUNC_DESCRIPTION})
+    elseif(PROJECT_DESCRIPTION)
+        set(_desc ${PROJECT_DESCRIPTION})
+    else()
+        set(_desc ${_name})
+    endif()
+
+    if(FUNC_LOGO)
+        set(_logo ${FUNC_LOGO})
+    else()
+        set(_logo)
+    endif()
+
+    if(FUNC_MDFILE)
+        set(_mdfile ${FUNC_MDFILE})
+    else()
+        set(_mdfile)
+    endif()
+
+    if(FUNC_GENERATE_TAGFILE)
+        set(_tagfile ${FUNC_GENERATE_TAGFILE})
+    else()
+        set(_tagfile)
     endif()
 
     set(_sep " \\\n    ")

@@ -2,29 +2,29 @@
 
 **QMSetup** is a set of CMake Modules and Basic Libraries for C/C++ projects.
 
-**This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it's not suggested to be included as a subproject.
+**This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it's strongly not suggested to be included as a subproject.
 
 ## Features
 
 ### Helpful Functions
-
 + Path, Version functions
 + Target configuration functions
 + Qt related functions
 
-### Filesystem Utilities
-
+### Generators
 + Generate Windows RC files, manifest files
 + Generate MacOS Bundle info files
 + Generate configuration header files
++ Generate Git information header files
+
+### Filesystem Utilities
 + Reorganize header files
++ Copy files and directories after build
 
 ### Install Utilities
-
 + Deploy project dependencies and fix rpaths
 
 ### Extended Build Rules
-
 + Create translations with **Qt Linguist** tools
 + Create source files with **Protobuf** compiler
 + Create documentations with **Doxygen**
@@ -39,7 +39,11 @@
 
 ### Required Packages
 
+#### Windows
+
 Windows deploy command acquires the shared library paths by reading the PE files and searching the specified paths so that it doesn't depend on `dumpbin` tool.
+
+#### Unix
 
 Unix deploy command acquires the shared library paths by running `ldd`/`otool` command and fixes the *rpath*s by runing the `patchelf`/`install_name_tool` command, make sure you have installed them.
 
@@ -121,7 +125,7 @@ endif()
 
 ### Examples
 
-Here are some common use cases of CMake project, you can simplify many operations when using this library.
+You can use the functions in this library to greatly simplify several kinds of common build rules.
 
 #### Generate Configuration Header
 ```cmake
@@ -191,6 +195,7 @@ find_package(Protobuf REQUIRED)
 qm_create_protobuf(_proto_src
     INPUT a.proto b.proto
     INCLUDE_DIRECTORIES src/proto
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/proto
 )
 target_sources(${PROJECT_NAME} PUBLIC ${_proto_src})
 ```

@@ -35,13 +35,13 @@ function(qm_create_protobuf _out)
     # Find `protoc`
     if(NOT PROTOC_EXECUTABLE)
         if(NOT TARGET protobuf::protoc)
-            message(FATAL_ERROR "qm_create_protobuf: target `protobuf::protoc` not found. Add find_package(Protobuf) to CMake to enable.")
+            message(FATAL_ERROR "qm_create_protobuf: protobuf compiler not found. Add find_package(Protobuf) to CMake to enable.")
         endif()
 
         get_target_property(PROTOC_EXECUTABLE protobuf::protoc LOCATION)
 
         if(NOT PROTOC_EXECUTABLE)
-            message(FATAL_ERROR "qm_create_protobuf: failed to get the location of`protoc`.")
+            message(FATAL_ERROR "qm_create_protobuf: failed to get the location of `protoc`.")
         endif()
 
         # Cache value
@@ -130,7 +130,7 @@ function(qm_create_protobuf _out)
     endforeach()
 
     if(FUNC_TARGET)
-        if(NOT FUNC_TARGET)
+        if(NOT TARGET ${FUNC_TARGET})
             add_custom_target(${FUNC_TARGET})
         endif()
 
