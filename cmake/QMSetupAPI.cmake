@@ -486,7 +486,8 @@ function(qm_add_win_rc _target)
         get_filename_component(RC_ICON_PATH ${FUNC_ICON} ABSOLUTE)
     endif()
 
-    qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
+    qm_set_value(_out_name PROJECT_NAME ${_target})
+    qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_out_name}_res.rc")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 
@@ -573,7 +574,8 @@ function(qm_add_win_rc_enhanced _target)
 
     set(RC_ICONS ${_icons})
 
-    qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_res.rc")
+    qm_set_value(_out_name PROJECT_NAME ${_target})
+    qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_out_name}_res.rc")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 
