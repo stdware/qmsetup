@@ -2,7 +2,7 @@
 # Copyright (c) 2023 SineStriker
 
 # Description:
-# Copy file or directory to destinationn if different.
+# Copy file or directory to destination if different.
 # Mainly use `file(INSTALL)` to implement.
 
 # Usage:

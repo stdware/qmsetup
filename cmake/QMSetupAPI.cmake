@@ -426,23 +426,6 @@ function(qm_export_defines _target)
 endfunction()
 
 #[[
-    Attach file level dependencies to a source file.
-
-    qm_add_file_dependencies(<file> <deps...>)
-]] #
-function(qm_add_file_dependencies _file)
-    if(NOT ARGN)
-        return()
-    endif()
-
-    # Update the file if any of the dependencies has been updated
-    add_custom_command(OUTPUT ${_file}
-        DEPENDS ${ARGN}
-        COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${_file}
-    )
-endfunction()
-
-#[[
     Attach windows RC file to a target.
 
     qm_add_win_rc(<target>
@@ -490,9 +473,6 @@ function(qm_add_win_rc _target)
     qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_out_name}_res.rc")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
-
-    # The rc file won't be recompiled if the icon has been updated
-    qm_add_file_dependencies(${_out_path} ${FUNC_ICON})
 endfunction()
 
 #[[
@@ -578,9 +558,6 @@ function(qm_add_win_rc_enhanced _target)
     qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_out_name}_res.rc")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
-
-    # The rc file won't be recompiled if the icon has been updated
-    qm_add_file_dependencies(${_out_path} ${FUNC_ICONS})
 endfunction()
 
 #[[

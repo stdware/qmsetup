@@ -1,5 +1,9 @@
 include_guard(DIRECTORY)
 
+if(NOT QMSETUP_MODULES_DIR)
+    get_filename_component(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR} DIRECTORY)
+endif()
+
 #[[
     Initialize the build output directories of targets and resources.
 
@@ -164,4 +168,43 @@ function(qm_add_copy_command _target)
             endforeach()
         ")
     endif()
+endfunction()
+
+#[[
+    Add a custom command to run `configure_file`.
+
+    qm_future_configure_file(<_input> <output>
+        [FORCE]
+        [EXTRA_ARGS <args...>]
+        [DEPENDS <deps...>]
+        [VARIABLES <var...>]
+    )
+]] #
+function(qm_future_configure_file _input _output)
+    set(options FORCE)
+    set(oneValueArgs)
+    set(multiValueArgs VARIABLES EXTRA_ARGS DEPENDS)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set(_options)
+
+    foreach(_item IN LISTS FUNC_VARIABLES)
+        list(APPEND _options -D "${_item}=${${_item}}")
+    endforeach()
+
+    if(FUNC_FORCE)
+        list(APPLE _options -D "force=TRUE")
+    endif()
+
+    add_custom_command(OUTPUT ${_output}
+        COMMAND ${CMAKE_COMMAND}
+        -D "input=${_input}"
+        -D "output=${_output}"
+        -D "args=${FUNC_EXTRA_ARGS}"
+        ${_options}
+        -P "${QMSETUP_MODULES_DIR}/scripts/configure_file.cmake"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS ${FUNC_DEPENDS}
+        VERBATIM
+    )
 endfunction()
