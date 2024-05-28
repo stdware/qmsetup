@@ -41,14 +41,24 @@ foreach(_file IN LISTS src)
     endif()
 
     if(IS_DIRECTORY ${_path})
-        set(_type DIRECTORY)
+        file(INSTALL DESTINATION ${_dest}
+            TYPE DIRECTORY
+            FILES ${_path}
+            ${args}
+        )
     else()
-        set(_type FILE)
-    endif()
+        set(_paths)
 
-    file(INSTALL DESTINATION ${_dest}
-        TYPE ${_type}
-        FILES ${_path}
-        ${args}
-    )
+        if(${_path} MATCHES "\\*\\*")
+            file(GLOB_RECURSE _paths ${_path})
+        else()
+            file(GLOB _paths ${_path})
+        endif()
+
+        file(INSTALL DESTINATION ${_dest}
+            TYPE FILE
+            FILES ${_paths}
+            ${args}
+        )
+    endif()
 endforeach()
