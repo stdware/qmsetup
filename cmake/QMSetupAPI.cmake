@@ -434,7 +434,7 @@ endfunction()
         [DESCRIPTION    desc]
         [COPYRIGHT      copyright]
         [ICON           ico]
-        [OUTPUT         output]
+        [OUTPUT_DIR     dir]
     )
 ]] #
 function(qm_add_win_rc _target)
@@ -445,7 +445,7 @@ function(qm_add_win_rc _target)
     _qm_check_target_type_helper(${_target} _ "EXECUTABLE" "SHARED_LIBRARY")
 
     set(options)
-    set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON OUTPUT)
+    set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON OUTPUT_DIR)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -469,10 +469,16 @@ function(qm_add_win_rc _target)
         get_filename_component(RC_ICON_PATH ${FUNC_ICON} ABSOLUTE)
     endif()
 
-    qm_set_value(_out_name PROJECT_NAME ${_target})
-    qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_out_name}_res.rc")
+    qm_set_value(_out_dir OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(_out_path "${_out_dir}/${_target}_res.rc")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
+
+    if(FUNC_ICON)
+        if(${FUNC_ICON} IS_NEWER_THAN ${_out_path})
+            file(TOUCH_NOCREATE ${_out_path})
+        endif()
+    endif()
 endfunction()
 
 #[[
@@ -489,7 +495,7 @@ endfunction()
         [TRADEMARK         trademark]
         [ORIGINAL_FILENAME original filename]
         [ICONS             icon file paths]
-        [OUTPUT            output]
+        [OUTPUT_DIR        dir]
     )
 ]] #
 function(qm_add_win_rc_enhanced _target)
@@ -502,7 +508,7 @@ function(qm_add_win_rc_enhanced _target)
     set(options)
     set(oneValueArgs
         NAME VERSION DESCRIPTION COPYRIGHT COMMENTS COMPANY
-        INTERNAL_NAME TRADEMARK ORIGINAL_FILENAME OUTPUT
+        INTERNAL_NAME TRADEMARK ORIGINAL_FILENAME OUTPUT_DIR
     )
     set(multiValueArgs ICONS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -554,10 +560,17 @@ function(qm_add_win_rc_enhanced _target)
 
     set(RC_ICONS ${_icons})
 
-    qm_set_value(_out_name PROJECT_NAME ${_target})
-    qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_out_name}_res.rc")
+    qm_set_value(_out_dir OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(_out_path "${_out_dir}/${_target}_res.rc")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
+
+    foreach(_icon IN LISTS FUNC_ICONS)
+        if(${_icon} IS_NEWER_THAN ${_out_path})
+            file(TOUCH_NOCREATE ${_out_path})
+            break()
+        endif()
+    endforeach()
 endfunction()
 
 #[[
@@ -567,7 +580,7 @@ endfunction()
         [NAME           name]
         [VERSION        version]
         [DESCRIPTION    desc]
-        [OUTPUT         output]
+        [OUTPUT_DIR     dir]
         [UTF8]
         [ADMIN]
     )
@@ -580,7 +593,7 @@ function(qm_add_win_manifest _target)
     _qm_check_target_type_helper(${_target} _ "EXECUTABLE")
 
     set(options UTF8 ADMIN)
-    set(oneValueArgs NAME VERSION DESCRIPTION OUTPUT)
+    set(oneValueArgs NAME VERSION DESCRIPTION OUTPUT_DIR)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -606,7 +619,8 @@ function(qm_add_win_manifest _target)
         set(MANIFEST_PRIVILEGES "<requestedExecutionLevel level=\"asInvoker\" uiAccess=\"false\" />")
     endif()
 
-    qm_set_value(_out_path FUNC_OUTOUT "${CMAKE_CURRENT_BINARY_DIR}/${_name}_manifest.manifest")
+    qm_set_value(_out_dir OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(_out_path "${_out_dir}/${_target}_manifest.manifest")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
 
     set(_manifest_rc ${_out_path}.rc)
