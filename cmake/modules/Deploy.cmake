@@ -237,9 +237,6 @@ function(qm_deploy_directory _install_dir)
     qm_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
     qm_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
 
-    get_filename_component(_lib_dir ${_lib_dir} ABSOLUTE BASE_DIR ${_install_dir})
-    get_filename_component(_plugin_dir ${_plugin_dir} ABSOLUTE BASE_DIR ${_install_dir})
-
     # Prepare commands
     set(_args
         -i "${_install_dir}"
