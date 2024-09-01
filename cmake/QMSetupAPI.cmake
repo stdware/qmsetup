@@ -623,9 +623,24 @@ function(qm_add_win_manifest _target)
     set(_out_path "${_out_dir}/${_target}_manifest.manifest")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
 
-    set(_manifest_rc ${_out_path}.rc)
-    file(WRITE ${_manifest_rc} "#include <windows.h>\n\n1 RT_MANIFEST \"${_out_path}\"")
-    target_sources(${_target} PRIVATE ${_manifest_rc})
+    # https://cmake.org/cmake/help/latest/release/3.4.html#other
+    # CMake learned to honor *.manifest source files with MSVC tools. Manifest files named as sources
+    # of .exe and .dll targets will be merged with linker-generated manifests and embedded in the binary.
+    # NOTE: CMake will automatically generate a default manifest file and embed it into the binary file
+    # when we are using MSVC toolchain, so it will conflict with the one we embed in the RC file. So in
+    # this case, we just follow the CMake documentation, add the manifest file into the sources and let
+    # CMake handle it. What's more, CMake can automatically merge all manifest files so we can actually
+    # add multiple manifest files, eg. each manifest file contains a separate section.
+    if(MSVC)
+        target_sources(${_target} PRIVATE ${_out_path})
+    else()
+        # For non-MSVC toolchains we can only embed the manifest file into the RC file, sadly we have
+        # to merge all manifest files into one by ourself if we have multiple of them, but luckily
+        # CMake won't embed a default one so we don't need to worry about resource conflicts.
+        set(_manifest_rc ${_out_path}.rc)
+        file(WRITE ${_manifest_rc} "#include <windows.h>\n\n1 RT_MANIFEST \"${_out_path}\"")
+        target_sources(${_target} PRIVATE ${_manifest_rc})
+    endif()
 endfunction()
 
 #[[
