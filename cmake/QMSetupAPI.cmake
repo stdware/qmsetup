@@ -620,7 +620,7 @@ function(qm_add_win_manifest _target)
     endif()
 
     qm_set_value(_out_dir OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
-    set(_out_path "${_out_dir}/${_target}_manifest.manifest")
+    set(_out_path "${_out_dir}/${_target}_manifest.exe.manifest")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
 
     # https://cmake.org/cmake/help/latest/release/3.4.html#other
