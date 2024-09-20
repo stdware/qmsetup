@@ -633,6 +633,10 @@ function(qm_add_win_manifest _target)
     # add multiple manifest files, eg. each manifest file contains a separate section.
     if(MSVC)
         target_sources(${_target} PRIVATE ${_out_path})
+        
+        # The manifest file contains a UAC field, we should prevent MSVC from embedding the
+        # automatically generated UAC field
+        target_link_options(${_target} PRIVATE "/manifestuac:no")
     else()
         # For non-MSVC toolchains we can only embed the manifest file into the RC file, sadly we have
         # to merge all manifest files into one by ourself if we have multiple of them, but luckily
