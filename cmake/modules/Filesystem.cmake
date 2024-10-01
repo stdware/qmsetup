@@ -147,25 +147,14 @@ function(qm_add_copy_command _target)
             # Calculate real install directory
             get_filename_component(_dest \"${FUNC_INSTALL_DIR}/\${_rel_path}\" ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
     
-            foreach(_file \${_src})
-                # Avoid using `get_filename_component` to keep the trailing slash
-                set(_path \${_file})
-                if (NOT IS_ABSOLUTE \${_path})
-                    set(_path \"${CMAKE_CURRENT_SOURCE_DIR}/\${_path}\")
-                endif()
-    
-                if(IS_DIRECTORY \${_path})
-                    set(_type DIRECTORY)
-                else()
-                    set(_type FILE)
-                endif()
-    
-                file(INSTALL DESTINATION \"\${_dest}\"
-                    TYPE \${_type}
-                    FILES \${_path}
-                    \${_extra_args}
-                )
-            endforeach()
+            execute_process(
+                COMMAND \${CMAKE_COMMAND}
+                -D \"src=\${_src}\"
+                -D \"dest=\${_dest}\"
+                \${_extra_args}
+                -P \"${QMSETUP_MODULES_DIR}/scripts/copy.cmake\"
+                WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
+            )
         ")
     endif()
 endfunction()
