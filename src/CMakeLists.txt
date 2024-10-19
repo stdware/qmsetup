@@ -15,6 +15,7 @@ find_package(syscmdline QUIET)
 
 if(NOT TARGET syscmdline::syscmdline)
     set(SYSCMDLINE_INSTALL off)
+    set(SYSCMDLINE_BUILD_EXAMPLES on)
     add_subdirectory(syscmdline)
 endif()
 

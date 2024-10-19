@@ -127,8 +127,6 @@ namespace Utils {
 #ifdef _WIN32
     std::wstring executeCommand(const std::wstring &command, const std::vector<std::wstring> &args);
 
-    std::string local8bit_to_utf8(const std::string &s);
-
     std::vector<std::wstring>
         resolveWinBinaryDependencies(const std::filesystem::path &path,
                                      const std::vector<std::filesystem::path> &searchingPaths,

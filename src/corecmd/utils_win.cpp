@@ -158,7 +158,7 @@ namespace Utils {
         static constexpr const long long WIN_EPOCH =
             116444736000000000LL; // in hundreds of nanoseconds
         long long duration = (static_cast<long long>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
-        duration -= WIN_EPOCH;    // convert to Unix epoch
+        duration -= WIN_EPOCH; // convert to Unix epoch
         return std::chrono::system_clock::from_time_t(duration / 10000000LL);
     }
 
@@ -178,13 +178,14 @@ namespace Utils {
         HANDLE hFile = ::CreateFileW(path.wstring().data(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path) + "\"");
+            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path.wstring()) + "\"");
         }
 
         FILETIME creationTime, lastAccessTime, lastWriteTime;
         if (!::GetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
             ::CloseHandle(hFile);
-            throw std::runtime_error("failed to get file time: \"" + SCL::wideToUtf8(path) + "\"");
+            throw std::runtime_error("failed to get file time: \"" +
+                                     SCL::wideToUtf8(path.wstring()) + "\"");
         }
         ::CloseHandle(hFile);
 
@@ -201,7 +202,7 @@ namespace Utils {
         HANDLE hFile = ::CreateFileW(path.wstring().data(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE,
                                      nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path) + "\"");
+            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path.wstring()) + "\"");
         }
 
         FILETIME creationTime, lastAccessTime, lastWriteTime;
@@ -211,7 +212,8 @@ namespace Utils {
 
         if (!::SetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
             ::CloseHandle(hFile);
-            throw std::runtime_error("failed to set file time: \"" + SCL::wideToUtf8(path) + "\"");
+            throw std::runtime_error("failed to set file time: \"" +
+                                     SCL::wideToUtf8(path.wstring()) + "\"");
         }
         ::CloseHandle(hFile);
     }
@@ -243,7 +245,7 @@ namespace Utils {
     // Modified from windeployqt 5.15.2(Copyright Qt company)
     // ================================================================================
     namespace WindowsDeployQt {
-        
+
         static inline std::string stringFromRvaPtr(const void *rvaPtr) {
             return static_cast<const char *>(rvaPtr);
         }
@@ -495,25 +497,4 @@ namespace Utils {
         }
         return result;
     }
-
-    std::string local8bit_to_utf8(const std::string &s) {
-        if (s.empty()) {
-            return {};
-        }
-        const auto utf8Length = static_cast<int>(s.size());
-        if (utf8Length >= (std::numeric_limits<int>::max)()) {
-            return {};
-        }
-        const int utf16Length =
-            ::MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, s.data(), utf8Length, nullptr, 0);
-        if (utf16Length <= 0) {
-            return {};
-        }
-        std::wstring utf16Str;
-        utf16Str.resize(utf16Length);
-        ::MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, s.data(), utf8Length, utf16Str.data(),
-                              utf16Length);
-        return SCL::wideToUtf8(utf16Str);
-    }
-
 }

@@ -18,7 +18,7 @@ namespace SCL = SysCmdLine;
 
 namespace fs = std::filesystem;
 
-using SCL::u8printf;
+using SCL::u8info;
 
 // ---------------------------------------- Definitions ----------------------------------------
 
@@ -104,7 +104,7 @@ static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
     // Remove self if empty
     if (isEmpty) {
         if (verbose) {
-            u8printf("Remove: \"%s\"\n", tstr2str(path).data());
+            u8info("Remove: \"%s\"\n", tstr2str(path).data());
         }
         fs::remove(path);
     }
@@ -128,8 +128,8 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path 
 
     if (!symlinkContent.empty()) {
         if (verbose) {
-            u8printf("Link: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
-                     tstr2str(symlinkContent).data());
+            u8info("Link: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
+                   tstr2str(symlinkContent).data());
         }
 
         if (fs::exists(target))
@@ -137,8 +137,7 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path 
         fs::create_symlink(symlinkContent, target);
     } else {
         if (verbose) {
-            u8printf("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
-                     tstr2str(target).data());
+            u8info("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(), tstr2str(target).data());
         }
         fs::copy(file, dest, fs::copy_options::overwrite_existing);
         Utils::syncFileTime(target, file); // Sync time for each file
@@ -433,9 +432,9 @@ static int cmd_touch(const SCL::ParseResult &result) {
 
     // Set time
     if (verbose) {
-        u8printf("Set A-Time: %s\n", time2str(t.accessTime).data());
-        u8printf("Set M-Time: %s\n", time2str(t.modifyTime).data());
-        u8printf("Set C-Time: %s\n", time2str(t.statusChangeTime).data());
+        u8info("Set A-Time: %s\n", time2str(t.accessTime).data());
+        u8info("Set M-Time: %s\n", time2str(t.modifyTime).data());
+        u8info("Set C-Time: %s\n", time2str(t.statusChangeTime).data());
     }
     Utils::setFileTime(file, t);
     return 0;
@@ -604,7 +603,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
     }
 
     if (dryrun) {
-        u8printf("%s", content.data());
+        u8info("%s", content.data());
         return 0;
     }
 
@@ -678,7 +677,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
 
         if (verbose) {
             if (!hash.empty()) {
-                u8printf("SHA256: %s\n", hash.data());
+                u8info("SHA256: %s\n", hash.data());
             }
         }
     }
@@ -737,7 +736,8 @@ static int cmd_incsync(const SCL::ParseResult &result) {
         if (entry.is_regular_file()) {
             const auto &path = entry.path();
             const auto &ext = Utils::toLower(TString(path.extension()));
-            if (!(ext == _TSTR(".h") || ext == _TSTR(".hh") || ext == _TSTR(".hpp") || ext == _TSTR(".hxx"))) {
+            if (!(ext == _TSTR(".h") || ext == _TSTR(".hh") || ext == _TSTR(".hpp") ||
+                  ext == _TSTR(".hxx"))) {
                 continue;
             }
 
@@ -765,8 +765,8 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 
             auto targetPath = targetDir / path.filename();
             if (verbose) {
-                u8printf("Sync: from \"%s\" to \"%s\"\n", tstr2str(path).data(),
-                         tstr2str(targetPath).data());
+                u8info("Sync: from \"%s\" to \"%s\"\n", tstr2str(path).data(),
+                       tstr2str(targetPath).data());
             }
 
             if (dryrun)
@@ -945,7 +945,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             std::set<TString> result;
             for (const auto &path : std::as_const(paths)) {
                 if (verbose) {
-                    u8printf("Resolve: \"%s\"\n", tstr2str(path).data());
+                    u8info("Resolve: \"%s\"\n", tstr2str(path).data());
                 }
 
                 std::vector<std::string> unparsed;
@@ -959,7 +959,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                     ;
                 for (const auto &item : deps) {
                     if (verbose) {
-                        u8printf("    %s\n", tstr2str(item).data());
+                        u8info("    %s\n", tstr2str(item).data());
                     }
                     result.insert(item);
                 }
@@ -970,8 +970,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                         maxSize = std::max(maxSize, item.size());
                     }
                     for (const auto &item : std::as_const(unparsed)) {
-                        u8printf("    %s%s[Not Found]\n", item.data(),
-                                 std::string(maxSize + 4 - item.size(), ' ').data());
+                        u8info("    %s%s[Not Found]\n", item.data(),
+                               std::string(maxSize + 4 - item.size(), ' ').data());
                     }
                 }
             }
@@ -1083,9 +1083,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     const auto &fixRPaths = [verbose](const std::string &file,
                                       const std::vector<std::string> &paths) {
         if (verbose) {
-            u8printf("Fix rpath: \"%s\"\n", file.data());
+            u8info("Fix rpath: \"%s\"\n", file.data());
             for (const auto &path : paths) {
-                u8printf("    %s\n", path.data());
+                u8info("    %s\n", path.data());
             }
         }
         Utils::setFileRPaths(file, paths);
@@ -1195,9 +1195,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 return;
 
             if (verbose) {
-                u8printf("Normalize dependencies: \"%s\"\n", file.string().data());
+                u8info("Normalize dependencies: \"%s\"\n", file.string().data());
                 for (const auto &item : std::as_const(normalized)) {
-                    u8printf("    %s\n", item.first.data());
+                    u8info("    %s\n", item.first.data());
                 }
             }
 
@@ -1257,8 +1257,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #  else
     // const auto &setInterpreter = [verbose](const std::string &file, const std::string &interp) {
     //     if (verbose) {
-    //         u8printf("Set interpreter: \"%s\"\n", file.data());
-    //         u8printf("    %s\n", interp.data());
+    //         u8info("Set interpreter: \"%s\"\n", file.data());
+    //         u8info("    %s\n", interp.data());
     //     }
     //     Utils::setFileInterpreter(file, interp);
     // };
@@ -1321,7 +1321,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     //     interpreter = dest / interpreterName;
 
     //     if (verbose) {
-    //         u8printf("Interpreter: \"%s\"\n", interpreter.string().data());
+    //         u8info("Interpreter: \"%s\"\n", interpreter.string().data());
     //     }
 
     //     // Set interpreter for original files
@@ -1432,23 +1432,23 @@ int main(int argc, char *argv[]) {
                 .arg("dir")
                 .multi()
                 .prior(SCL::Option::IgnoreMissingArguments),
-                SCL::Option({"-o", "--out"},
-                            "Set output directory of dependencies, defult to current directory")
-                    .arg("dir"),
+            SCL::Option({"-o", "--out"},
+                        "Set output directory of dependencies, defult to current directory")
+                .arg("dir"),
 #if 1
-                SCL::Option({"-L", "--linkdir"}, "Add a library searching path")
-                    .arg("dir")
-                    .multi()
-                    .short_match(SCL::Option::ShortMatchSingleChar),
-                SCL::Option({"-@", "--linkdirs"}, "Add library searching paths from a list file")
-                    .arg("file")
-                    .multi()
-                    .short_match(SCL::Option::ShortMatchSingleChar),
+            SCL::Option({"-L", "--linkdir"}, "Add a library searching path")
+                .arg("dir")
+                .multi()
+                .short_match(SCL::Option::ShortMatchSingleChar),
+            SCL::Option({"-@", "--linkdirs"}, "Add library searching paths from a list file")
+                .arg("file")
+                .multi()
+                .short_match(SCL::Option::ShortMatchSingleChar),
 #endif
-                SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-                SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
-                SCL::Option({"-d", "--dryrun"}, "Print dependencies only"),
-                SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
+            SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+            SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
+            SCL::Option({"-d", "--dryrun"}, "Print dependencies only"),
+            SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
         command.addOption({SCL::Option::Verbose});
         command.setHandler(cmd_deploy);
@@ -1497,7 +1497,7 @@ int main(int argc, char *argv[]) {
         if (typeid(e) == typeid(fs::filesystem_error)) {
             auto err = static_cast<const fs::filesystem_error &>(e);
             // msg = "\"" + tstr2str(err.path1()) + "\": " + standardError();
-            msg = Utils::local8bit_to_utf8(err.what());
+            msg = SCL::ansiToUtf8(err.what());
         }
 #endif
 
