@@ -1477,8 +1477,30 @@ int main(int argc, char *argv[]) {
     cc.addCommands("Buildsystem Commands", {"configure", "incsync", "deploy"});
     rootCommand.setCatalogue(cc);
 
+    SCL::HelpLayout hl = []() {
+        SCL::HelpLayout res;
+        res.addHelpTextItem(SCL::HelpLayout::HT_Prologue);
+        res.addMessageItem(SCL::HelpLayout::MI_Information);
+        res.addMessageItem(SCL::HelpLayout::MI_Warning);
+        res.addMessageItem(SCL::HelpLayout::MI_Critical);
+        res.addHelpTextItem(SCL::HelpLayout::HT_Description);
+        res.addHelpTextItem(SCL::HelpLayout::HT_Usage);
+        res.addHelpListItem(SCL::HelpLayout::HL_Arguments);
+        res.addHelpListItem(SCL::HelpLayout::HL_Options);
+        res.addHelpListItem(SCL::HelpLayout::HL_Commands);
+        res.addHelpTextItem(SCL::HelpLayout::HT_Epilogue, [](const SCL::HelpLayout::Context &ctx) {
+            SCL::u8debug(SCL::MT_Warning, true, "%s\n", ctx.text->lines.c_str());
+            if (ctx.hasNext) {
+                SCL::u8info("\n");
+            }
+        });
+        return res;
+    }();
+    rootCommand.setHelpLayout(hl);
+
     SCL::Parser parser(rootCommand);
     parser.setPrologue(TOOL_DESC);
+    parser.setEpilogue(TOOL_COPYRIGHT);
     parser.setDisplayOptions(SCL::Parser::AlignAllCatalogues);
 
     int ret;

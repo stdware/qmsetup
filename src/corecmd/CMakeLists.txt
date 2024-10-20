@@ -47,6 +47,7 @@ if(WIN32)
 endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_DESC="${RC_DESCRIPTION}, Version ${QMSETUP_VERSION}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_COPYRIGHT="${RC_COPYRIGHT}, checkout https://github.com/stdware/qmsetup")
 target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_VERSION="${QMSETUP_VERSION}")
 
 set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME corecmd)
