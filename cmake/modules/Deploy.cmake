@@ -195,6 +195,7 @@ endfunction()
     qm_deploy_directory(<install_dir>
         [FORCE] [STANDARD] [VERBOSE]
         [LIBRARY_DIR <dir>]
+        [EXTRA_LIBRARIES <path>...]
         [EXTRA_PLUGIN_PATHS <path>...]
         [EXTRA_SEARCHING_PATHS <path>...]
 
@@ -214,13 +215,14 @@ endfunction()
     EXTRA_PLUGIN_PATHS: Extra Qt plugins searching paths
     QML: Qt qml directories
     QML_DIR: Qt qml destination
-    LIBRARY_DIR: Extra library destination
+    LIBRARY_DIR: Library destination
+    EXTRA_LIBRARIES： Extra library names list to deploy
     EXTRA_SEARCHING_PATHS: Extra library searching paths
 ]] #
 function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
-    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS EXTRA_SEARCHING_PATHS)
+    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML WIN_TARGETS EXTRA_SEARCHING_PATHS EXTRA_LIBRARIES)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get qmake
@@ -245,6 +247,7 @@ function(qm_deploy_directory _install_dir)
         --libdir "${_lib_dir}"
         --qmldir "${_qml_dir}"
     )
+    set(_searching_paths)
 
     if(QT_QMAKE_EXECUTABLE)
         list(APPEND _args --qmake "${QT_QMAKE_EXECUTABLE}")
@@ -267,7 +270,8 @@ function(qm_deploy_directory _install_dir)
 
     # Add extra searching paths
     foreach(_item IN LISTS FUNC_EXTRA_SEARCHING_PATHS)
-        list(APPEND _args -L "${_item}")
+        get_filename_component(_item ${_item} ABSOLUTE)
+        list(APPEND _searching_paths ${_item})
     endforeach()
 
     # Add global extra searching paths
@@ -277,20 +281,24 @@ function(qm_deploy_directory _install_dir)
         if(QMSETUP_APPLOCAL_DEPS_PATHS_${_build_type_upper})
             foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS_${_build_type_upper})
                 get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
-                list(APPEND _args -L "${_item}")
+                list(APPEND _searching_paths ${_item})
             endforeach()
         elseif(QMSETUP_APPLOCAL_DEPS_PATHS)
             foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS)
                 get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
-                list(APPEND _args -L "${_item}")
+                list(APPEND _searching_paths ${_item})
             endforeach()
         endif()
     else()
         foreach(_item IN LISTS QMSETUP_APPLOCAL_DEPS_PATHS)
             get_filename_component(_item ${_item} ABSOLUTE BASE_DIR ${CMAKE_SOURCE_DIR})
-            list(APPEND _args -L "${_item}")
+            list(APPEND _searching_paths ${_item})
         endforeach()
     endif()
+
+    foreach(_item IN LISTS _searching_paths)
+        list(APPEND _args -L "${_item}")
+    endforeach()
 
     if(WIN32)
         set(_dep_files)
@@ -307,6 +315,17 @@ function(qm_deploy_directory _install_dir)
     else()
         set(_script_quoted "bash \"${QMSETUP_MODULES_DIR}/scripts/unixdeps.sh\"")
     endif()
+
+    # Add extra libraries
+    foreach(_item IN LISTS _searching_paths)
+        foreach(_lib IN LISTS FUNC_EXTRA_LIBRARIES)
+            set(_path "${_item}/${_lib}")
+
+            if((EXISTS ${_path}) AND(NOT IS_DIRECTORY ${_path}))
+                list(APPEND _args --copy ${_path} ${_lib_dir})
+            endif()
+        endforeach()
+    endforeach()
 
     # Add options
     if(FUNC_FORCE)

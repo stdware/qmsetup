@@ -192,7 +192,7 @@ static std::string standardError(int code = errno) {
 
 #ifdef __APPLE__
 static inline bool isFramework(const fs::path &path) {
-    return path.extension() == ".framework";
+    return Utils::toLower(path.extension().string()) == ".framework";
 }
 
 static fs::path lib2framework(fs::path path, const fs::path &fallback = {}) {

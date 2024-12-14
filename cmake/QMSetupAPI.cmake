@@ -253,31 +253,40 @@ endmacro()
     Helper to set or append all kinds of attributes to a target. Don't wrap it in any functions.
 
     qm_configure_target(<target>
-        [SOURCES          <files>]
+        [SOURCES           <files>]
 
-        [LINKS            <libs>]
-        [LINKS_PRIVATE    <libs>]
+        [LINKS             <libs>]
+        [LINKS_INTERFACE   <libs>]
+        [LINKS_PRIVATE     <libs>]
 
-        [INCLUDE          <dirs>]
-        [INCLUDE_PRIVATE  <dirs>]
+        [INCLUDE           <dirs>]
+        [INCLUDE_INTERFACE <dirs>]
+        [INCLUDE_PRIVATE   <dirs>]
 
-        [LINKDIR          <dirs>]
-        [LINKDIR_PRIVATE  <dirs>]
+        [LINKDIR           <dirs>]
+        [LINKDIR_INTERFACE <dirs>]
+        [LINKDIR_PRIVATE   <dirs>]
 
-        [DEFINES          <defs>]
-        [DEFINES_PRIVATE  <defs>]
+        [DEFINES           <defs>]
+        [DEFINES_INTERFACE <defs>]
+        [DEFINES_PRIVATE   <defs>]
 
-        [FEATURES          <features>]
-        [FEATURES_PRIVATE  <features>]
+        [FEATURES           <features>]
+        [FEATURES_INTERFACE <features>]
+        [FEATURES_PRIVATE   <features>]
 
-        [CCFLAGS          <flags>]
-        [CCFLAGS_PUBLIC   <flags>]
+        [CCFLAGS           <flags>]
+        [CCFLAGS_INTERFACE <flags>]
+        [CCFLAGS_PUBLIC    <flags>]
 
-        [LDFLAGS          <flags>]
-        [LDFLAGS_PUBLIC   <flags>]
+        [LDFLAGS           <flags>]
+        [LDFLAGS_INTERFACE <flags>]
+        [LDFLAGS_PUBLIC    <flags>]
 
         [QT_LINKS            <modules>]
+        [QT_LINKS_INTERFACE  <modules>]
         [QT_LINKS_PRIVATE    <modules>]
+
         [QT_INCLUDE_PRIVATE  <modules>]
 
         [SKIP_AUTOMOC   <dir/file...>]
@@ -346,6 +355,12 @@ macro(qm_configure_target _target)
         unset(_temp_dirs)
     endif()
 
+    if(FUNC_INCLUDE_INTERFACE)
+        _resolve_dir_helper(FUNC_INCLUDE_PRIVATE _temp_dirs)
+        target_include_directories(${_target} INTERFACE ${_temp_dirs})
+        unset(_temp_dirs)
+    endif()
+
     if(FUNC_INCLUDE_PRIVATE)
         _resolve_dir_helper(FUNC_INCLUDE_PRIVATE _temp_dirs)
         target_include_directories(${_target} PRIVATE ${_temp_dirs})
@@ -358,6 +373,12 @@ macro(qm_configure_target _target)
         unset(_temp_dirs)
     endif()
 
+    if(FUNC_LINKDIR_INTERFACE)
+        _resolve_dir_helper(FUNC_LINKDIR _temp_dirs)
+        target_link_directories(${_target} INTERFACE ${_temp_dirs})
+        unset(_temp_dirs)
+    endif()
+
     if(FUNC_LINKDIR_PRIVATE)
         _resolve_dir_helper(FUNC_LINKDIR_PRIVATE _temp_dirs)
         target_link_directories(${_target} PRIVATE ${_temp_dirs})
@@ -365,18 +386,35 @@ macro(qm_configure_target _target)
     endif()
 
     target_compile_definitions(${_target} PUBLIC ${FUNC_DEFINES})
+    target_compile_definitions(${_target} INTERFACE ${FUNC_DEFINES_INTERFACE})
     target_compile_definitions(${_target} PRIVATE ${FUNC_DEFINES_PRIVATE})
 
     target_compile_features(${_target} PUBLIC ${FUNC_FEATURES})
+    target_compile_features(${_target} INTERFACE ${FUNC_FEATURES_INTERFACE})
     target_compile_features(${_target} PRIVATE ${FUNC_FEATURES_PRIVATE})
 
+    # CMake won't add language standard flag if the compiler default mode supports the standard,
+    # however, if the -std argument is not explicitly specified, the clang language server will
+    # not work properly.
+    # https://discourse.cmake.org/t/cmake-does-not-set-the-compiler-option-std-to-gnu17-or-c-17-although-i-set-the-target-compile-features-to-cxx-std-17/3299/8
+    foreach(_item IN LISTS FUNC_FEATURES FUNC_FEATURES_PRIVATE)
+        if(_item MATCHES "cxx_std_(.+)")
+            set_property(TARGET APPEND PROPERTY CXX_STANDARD ${CMAKE_MATCH_1})
+        elseif(_item MATCHES "c_std_(.+)")
+            set_property(TARGET APPEND PROPERTY C_STANDARD ${CMAKE_MATCH_1})
+        endif()
+    endforeach()
+
     target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
+    target_compile_options(${_target} INTERFACE ${FUNC_CCFLAGS_INTERFACE})
     target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
 
     target_link_options(${_target} PUBLIC ${FUNC_LDFLAGS_PUBLIC})
+    target_link_options(${_target} INTERFACE ${FUNC_LDFLAGS_INTERFACE})
     target_link_options(${_target} PRIVATE ${FUNC_LDFLAGS})
 
     qm_link_qt(${_target} PUBLIC ${FUNC_QT_LINKS})
+    qm_link_qt(${_target} INTERFACE ${FUNC_QT_LINKS_INTERFACE})
     qm_link_qt(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
 
     qm_include_qt_private(${_target} PRIVATE ${FUNC_QT_INCLUDE_PRIVATE})
@@ -633,7 +671,7 @@ function(qm_add_win_manifest _target)
     # add multiple manifest files, eg. each manifest file contains a separate section.
     if(MSVC)
         target_sources(${_target} PRIVATE ${_out_path})
-        
+
         # The manifest file contains a UAC field, we should prevent MSVC from embedding the
         # automatically generated UAC field
         target_link_options(${_target} PRIVATE "/manifestuac:no")
