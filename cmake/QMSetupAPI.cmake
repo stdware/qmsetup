@@ -661,20 +661,27 @@ function(qm_add_win_manifest _target)
     set(_out_path "${_out_dir}/${_target}_manifest.exe.manifest")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
 
-    # https://cmake.org/cmake/help/latest/release/3.4.html#other
-    # CMake learned to honor *.manifest source files with MSVC tools. Manifest files named as sources
-    # of .exe and .dll targets will be merged with linker-generated manifests and embedded in the binary.
-    # NOTE: CMake will automatically generate a default manifest file and embed it into the binary file
-    # when we are using MSVC toolchain, so it will conflict with the one we embed in the RC file. So in
-    # this case, we just follow the CMake documentation, add the manifest file into the sources and let
-    # CMake handle it. What's more, CMake can automatically merge all manifest files so we can actually
-    # add multiple manifest files, eg. each manifest file contains a separate section.
     if(MSVC)
-        target_sources(${_target} PRIVATE ${_out_path})
+        if(CMAKE_GENERATOR MATCHES "Visual Studio")
+            # Visual Studio
+            target_link_options(${_target} PRIVATE "/manifest" "/manifestinput:${_out_path}")
 
-        # The manifest file contains a UAC field, we should prevent MSVC from embedding the
-        # automatically generated UAC field
-        target_link_options(${_target} PRIVATE "/manifestuac:no")
+            # The manifest file contains a UAC field, we should prevent Ninja from embedding the
+            # automatically generated UAC field
+            target_link_options(${_target} PRIVATE "/manifest" "/manifestuac:no")
+        else() # Ninja
+            # https://cmake.org/cmake/help/latest/release/3.4.html#other
+            # CMake learned to honor *.manifest source files with MSVC tools. Manifest files named as sources
+            # of .exe and .dll targets will be merged with linker-generated manifests and embedded in the binary.
+
+            # NOTE: CMake will automatically generate a default manifest file and embed it into the binary file
+            # when we are using MSVC toolchain, so it will conflict with the one we embed in the RC file. So in
+            # this case, we just follow the CMake documentation, add the manifest file into the sources and let
+            # CMake handle it. What's more, CMake can automatically merge all manifest files so we can actually
+            # add multiple manifest files, eg. each manifest file contains a separate section.
+            target_sources(${_target} PRIVATE ${_out_path})
+            target_link_options(${_target} PRIVATE "/manifestuac:no")
+        endif()
     else()
         # For non-MSVC toolchains we can only embed the manifest file into the RC file, sadly we have
         # to merge all manifest files into one by ourself if we have multiple of them, but luckily
