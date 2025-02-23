@@ -1034,10 +1034,12 @@ function(_qm_resolve_file_helper _dirs _out)
             set(_cur_dir ${CMAKE_MATCH_1})
             file(GLOB_RECURSE _files LIST_DIRECTORIES true "${_cur_dir}/*")
         else()
+            get_filename_component(_item ${_item} ABSOLUTE)
             list(APPEND _res ${_item})
             continue()
         endif()
 
+        get_filename_component(_cur_dir ${_cur_dir} ABSOLUTE)
         list(APPEND _res ${_cur_dir})
 
         foreach(_item IN LISTS _files)
