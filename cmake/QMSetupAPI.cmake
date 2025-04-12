@@ -214,15 +214,36 @@ endfunction()
     qm_find_qt(<modules...>)
 #]]
 macro(qm_find_qt)
+    set(options QUIET REQUIRED EXACT)
+    set(oneValueArgs)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set(_qm_find_qt_options)
+
+    if(FUNC_QUIET)
+        list(APPEND _qm_find_qt_options QUIET)
+    elseif(FUNC_REQUIRED)
+        list(APPEND _qm_find_qt_options REQUIRED)
+    elseif(FUNC_EXACT)
+        list(APPEND _qm_find_qt_options EXACT)
+    endif()
+
+    if(NOT _qm_find_qt_options)
+        set(_qm_find_qt_options REQUIRED)
+    endif()
+
     foreach(_module ${ARGN})
         if(NOT QT_VERSION_MAJOR)
-            find_package(QT NAMES ${QMSETUP_FIND_QT_ORDER} COMPONENTS ${_module} REQUIRED)
+            find_package(QT NAMES ${QMSETUP_FIND_QT_ORDER} COMPONENTS ${_module} ${_qm_find_qt_options})
         endif()
 
         if(NOT TARGET Qt${QT_VERSION_MAJOR}::${_module})
-            find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${_module} REQUIRED)
+            find_package(Qt${QT_VERSION_MAJOR} COMPONENTS ${_module} ${_qm_find_qt_options})
         endif()
     endforeach()
+
+    unset(_qm_find_qt_options)
 endmacro()
 
 #[[
@@ -244,8 +265,13 @@ endmacro()
 #]]
 macro(qm_include_qt_private _target _scope)
     foreach(_module ${ARGN})
-        qm_find_qt(${_module})
-        target_include_directories(${_target} ${_scope} ${Qt${QT_VERSION_MAJOR}${_module}_PRIVATE_INCLUDE_DIRS})
+        qm_find_qt(${_module}Private QUIET)
+        if (TARGET Qt${QT_VERSION_MAJOR}::${_module}Private)
+            target_link_libraries(${_target} ${_scope} Qt${QT_VERSION_MAJOR}::${_module}Private)
+        else()
+            qm_find_qt(${_module})
+            target_include_directories(${_target} ${_scope} ${Qt${QT_VERSION_MAJOR}${_module}_PRIVATE_INCLUDE_DIRS})
+        endif()
     endforeach()
 endmacro()
 
