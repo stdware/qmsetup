@@ -228,7 +228,7 @@ function(qm_deploy_directory _install_dir)
     # Get qmake
     if((FUNC_PLUGINS OR FUNC_QML) AND NOT DEFINED QT_QMAKE_EXECUTABLE)
         if(TARGET Qt${QT_VERSION_MAJOR}::qmake)
-            get_target_property(QT_QMAKE_EXECUTABLE Qt${QT_VERSION_MAJOR}::qmake IMPORTED_LOCATION)
+            _get_executable_location(Qt${QT_VERSION_MAJOR}::qmake QT_QMAKE_EXECUTABLE)
         elseif((FUNC_PLUGINS AND NOT FUNC_EXTRA_PLUGIN_PATHS) OR FUNC_QML)
             message(FATAL_ERROR "qm_deploy_directory: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
         endif()
@@ -417,4 +417,30 @@ function(_qm_win_get_all_dep_files _out)
     endforeach()
 
     set(${_out} ${_dep_files} PARENT_SCOPE)
+endfunction()
+
+function(_get_executable_location _target _var)
+    get_target_property(_path ${_target} IMPORTED_LOCATION)
+
+    if(NOT _path)
+        get_target_property(_path ${_target} IMPORTED_LOCATION_RELEASE)
+    endif()
+
+    if(NOT _path)
+        get_target_property(_path ${_target} IMPORTED_LOCATION_MINSIZEREL)
+    endif()
+
+    if(NOT _path)
+        get_target_property(_path ${_target} IMPORTED_LOCATION_RELWITHDEBINFO)
+    endif()
+
+    if(NOT _path)
+        get_target_property(_path ${_target} IMPORTED_LOCATION_DEBUG)
+    endif()
+
+    if(NOT _path)
+        message(FATAL_ERROR "Could not find imported location of target: ${_target}")
+    endif()
+
+    set(${_var} ${_path} PARENT_SCOPE)
 endfunction()

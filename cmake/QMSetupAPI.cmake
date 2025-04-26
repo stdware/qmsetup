@@ -211,7 +211,7 @@ endfunction()
 #[[
     Find Qt libraries. Don't wrap it in any functions.
 
-    qm_find_qt(<modules...>)
+    qm_find_qt(<modules...> [QUIET | REQUIRED | EXACT])
 #]]
 macro(qm_find_qt)
     set(options QUIET REQUIRED EXACT)
@@ -233,7 +233,7 @@ macro(qm_find_qt)
         set(_qm_find_qt_options REQUIRED)
     endif()
 
-    foreach(_module ${ARGN})
+    foreach(_module ${FUNC_UNPARSED_ARGUMENTS})
         if(NOT QT_VERSION_MAJOR)
             find_package(QT NAMES ${QMSETUP_FIND_QT_ORDER} COMPONENTS ${_module} ${_qm_find_qt_options})
         endif()
