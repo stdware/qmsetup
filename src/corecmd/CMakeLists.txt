@@ -29,6 +29,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_STANDARD_REQUIRED ON
 )
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(${PROJECT_NAME} PRIVATE stdc++fs)
+endif()
+
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} PRIVATE shlwapi)
     target_compile_definitions(${PROJECT_NAME} PRIVATE _CRT_SECURE_NO_WARNINGS)
