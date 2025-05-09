@@ -50,6 +50,10 @@ using TStringSet = std::set<TString>;
 #endif
 
 // ---------------------------------------- Functions ----------------------------------------
+static inline bool starts_with(const std::string &str, const std::string &prefix) {
+    return str.size() >= prefix.size() && 
+           str.compare(0, prefix.size(), prefix) == 0;
+}
 
 static inline std::string tstr2str(const TString &str) {
 #ifdef _WIN32
@@ -169,7 +173,7 @@ static void copyDirectory(const fs::path &srcRootDir, const fs::path &srcDir,
 
             // Copy if symlink points inside the source directory
             copyFile(entryPath, destDir,
-                     linkPath.string().starts_with(srcRootDir.string())
+                     starts_with(linkPath.string(), srcRootDir.string())
                          ? fs::relative(linkPath, fs::canonical(entryPath.parent_path())).string()
                          : std::string(),
                      force, verbose);
