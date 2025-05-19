@@ -169,7 +169,7 @@ static void copyDirectory(const fs::path &srcRootDir, const fs::path &srcDir,
 
             // Copy if symlink points inside the source directory
             copyFile(entryPath, destDir,
-                     linkPath.string().starts_with(srcRootDir.string())
+                     Utils::starts_with(linkPath.string(), srcRootDir.string())
                          ? fs::relative(linkPath, fs::canonical(entryPath.parent_path())).string()
                          : std::string(),
                      force, verbose);
