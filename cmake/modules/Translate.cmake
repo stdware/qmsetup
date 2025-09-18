@@ -64,7 +64,12 @@ function(qm_add_translation _target)
 
             set(_tmp_files)
             get_target_property(_tmp_files ${_item} SOURCES)
-            list(FILTER _tmp_files INCLUDE REGEX ".+\\.(h|hh|hpp|hxx|c|cc|cpp|cxx|m|mm)$")
+            set(_qml_files)
+            get_target_property(_qml_files ${_item} QT_QML_MODULE_QML_FILES)
+            if (NOT _qml_files STREQUAL ${_item}-NOTFOUND)
+                list(APPEND _tmp_files ${_qml_files})
+            endif()
+            list(FILTER _tmp_files INCLUDE REGEX ".+\\.(h|hh|hpp|hxx|c|cc|cpp|cxx|m|mm|qml|js|mjs)$")
             list(FILTER _tmp_files EXCLUDE REGEX "^(qasc|moc)_.+")
 
             # Need to convert to absolute path
