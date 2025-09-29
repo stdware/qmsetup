@@ -417,7 +417,7 @@ function(qm_generate_build_info _file)
 
     # time
     if(FUNC_TIME)
-        string(TIMESTAMP _build_time "%Y/%m/%d %H:%M:%S")
+        string(TIMESTAMP _build_time UTC)
         list(APPEND _definitions ${_prefix}_BUILD_TIME=\"${_build_time}\")
         set(_has_time on)
     endif()
