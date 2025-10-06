@@ -720,6 +720,7 @@ function(qm_add_mac_bundle _target)
     # configure mac plist
     set_target_properties(${_target} PROPERTIES
         MACOSX_BUNDLE TRUE
+        OUTPUT_NAME ${_app_name}
         MACOSX_BUNDLE_BUNDLE_NAME ${_app_name}
         MACOSX_BUNDLE_EXECUTABLE_NAME ${_app_name}
         MACOSX_BUNDLE_INFO_STRING ${_app_desc}

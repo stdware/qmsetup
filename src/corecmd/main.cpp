@@ -1158,6 +1158,106 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         targetDependencies.insert(targetPath);
     }
 
+    // Extra step: strip non-native architectures from universal binaries
+    {
+        // Get current architecture
+        std::string currentArch;
+        try {
+            currentArch = Utils::executeCommand("uname", {"-m"});
+            currentArch = Utils::trim(currentArch);
+        } catch (const std::exception &e) {
+            if (verbose) {
+                u8info("Warning: Failed to get current architecture: %s\n", e.what());
+            }
+            currentArch = "unknown";
+        }
+
+        if (currentArch != "unknown") {
+            const auto &stripUniversalBinary = [verbose, &currentArch](const fs::path &file) {
+                if (!fs::is_regular_file(file)) {
+                    return;
+                }
+
+                // Check if file is a universal binary using lipo
+                std::string lipoInfo;
+                try {
+                    lipoInfo = Utils::executeCommand("lipo", {"-info", file.string()});
+                } catch (const std::exception &) {
+                    // Not a binary file or lipo failed, skip
+                    return;
+                }
+
+                // Check if it's a universal binary (contains "Architectures")
+                if (lipoInfo.find("Architectures") == std::string::npos) {
+                    return; // Not a universal binary
+                }
+
+                // Check if current architecture is present
+                if (lipoInfo.find(currentArch) == std::string::npos) {
+                    if (verbose) {
+                        u8info("Warning: Universal binary \"%s\" does not contain %s architecture\n",
+                               file.string().data(), currentArch.data());
+                    }
+                    return;
+                }
+
+                // Extract current architecture
+                bool lipoPassed = false;
+                try {
+                    if (verbose) {
+                        u8info("Strip universal binary: \"%s\" (keep %s)\n",
+                               file.string().data(), currentArch.data());
+                    }
+                    std::ignore = Utils::executeCommand("lipo", {
+                        file.string(),
+                        "-thin", currentArch,
+                        "-output", file.string()
+                    });
+                    lipoPassed = true;
+                } catch (const std::exception &e) {
+                    if (verbose) {
+                        u8info("Warning: Failed to strip universal binary \"%s\": %s\n",
+                               file.string().data(), e.what());
+                    }
+                }
+            };
+
+            // Process original files
+            for (const auto &file : std::as_const(targetOrgFiles)) {
+                if (isFramework(file)) {
+                    fs::path lib = framework2lib(file);
+                    if (!lib.empty()) {
+                        stripUniversalBinary(lib);
+                    }
+
+                    fs::path libDebug = framework2lib_debug(file);
+                    if (!libDebug.empty()) {
+                        stripUniversalBinary(libDebug);
+                    }
+                } else {
+                    stripUniversalBinary(file);
+                }
+            }
+
+            // Process dependencies
+            for (const auto &file : std::as_const(targetDependencies)) {
+                if (isFramework(file)) {
+                    fs::path lib = framework2lib(file);
+                    if (!lib.empty()) {
+                        stripUniversalBinary(lib);
+                    }
+
+                    fs::path libDebug = framework2lib_debug(file);
+                    if (!libDebug.empty()) {
+                        stripUniversalBinary(libDebug);
+                    }
+                } else {
+                    stripUniversalBinary(file);
+                }
+            }
+        }
+    }
+
     // Extra step: normalize dependencies
     {
         // Build name indexes
