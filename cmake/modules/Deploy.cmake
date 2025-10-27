@@ -311,7 +311,7 @@ function(qm_deploy_directory _install_dir)
             list(APPEND _args -@ "${_item}")
         endforeach()
 
-        set(_script_quoted "powershell -ExecutionPolicy Bypass -NoProfile -File \"${QMSETUP_MODULES_DIR}/scripts/windeps.ps1\"")
+        set(_script_quoted "cmd /c \"${QMSETUP_MODULES_DIR}/scripts/windeps.bat\"")
     else()
         set(_script_quoted "bash \"${QMSETUP_MODULES_DIR}/scripts/unixdeps.sh\"")
     endif()
