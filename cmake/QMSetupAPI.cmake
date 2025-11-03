@@ -438,6 +438,7 @@ function(qm_export_defines _target)
 
     if(NOT FUNC_PREFIX)
         string(TOUPPER ${_target} _prefix)
+        string(MAKE_C_IDENTIFIER ${_prefix} _prefix)
     else()
         set(_prefix ${FUNC_PREFIX})
     endif()

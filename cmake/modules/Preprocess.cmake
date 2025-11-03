@@ -328,6 +328,7 @@ function(qm_generate_build_info _file)
         set(_prefix ${FUNC_PREFIX})
     else()
         string(TOUPPER "${PROJECT_NAME}" _prefix)
+        string(MAKE_C_IDENTIFIER ${_prefix} _prefix)
     endif()
 
     set(_dir)
