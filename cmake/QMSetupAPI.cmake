@@ -266,7 +266,7 @@ endmacro()
 macro(qm_include_qt_private _target _scope)
     foreach(_module ${ARGN})
         qm_find_qt(${_module}Private QUIET)
-        if (TARGET Qt${QT_VERSION_MAJOR}::${_module}Private)
+        if(TARGET Qt${QT_VERSION_MAJOR}::${_module}Private)
             target_link_libraries(${_target} ${_scope} Qt${QT_VERSION_MAJOR}::${_module}Private)
         else()
             qm_find_qt(${_module})
@@ -697,6 +697,7 @@ endfunction()
         [DESCRIPTION    <desc>]
         [COPYRIGHT      <copyright>]
         [ICON           <file>]
+        [INFO_PLIST     <file>]
     )
 ]] #
 function(qm_add_mac_bundle _target)
@@ -707,7 +708,7 @@ function(qm_add_mac_bundle _target)
     _qm_check_target_type_helper(${_target} _ "EXECUTABLE")
 
     set(options)
-    set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON)
+    set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON INFO_PLIST)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -730,6 +731,12 @@ function(qm_add_mac_bundle _target)
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${_app_version_1}.${_app_version_2}
         MACOSX_BUNDLE_COPYRIGHT ${_app_copyright}
     )
+
+    if(FUNC_INFO_PLIST)
+        set_target_properties(${_target} PROPERTIES
+            MACOSX_BUNDLE_INFO_PLIST ${FUNC_INFO_PLIST}
+        )
+    endif()
 
     if(FUNC_ICON)
         # And this part tells CMake where to find and install the file itself
