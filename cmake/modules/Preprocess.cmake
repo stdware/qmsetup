@@ -339,6 +339,7 @@ function(qm_generate_build_info _file)
     set(_git_commit_time "unknown")
     set(_git_commit_author "unknown")
     set(_git_commit_email "unknown")
+    set(_git_revision_id "0")
 
     # Check `git` command
     if(NOT GIT_EXECUTABLE)
@@ -389,6 +390,24 @@ function(qm_generate_build_info _file)
             list(GET _temp 3 _git_commit_email)
         elseif(FUNC_REQUIRED)
             message(FATAL_ERROR "Error running git log: ${_err}")
+        endif()
+
+        # Revision ID
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
+            OUTPUT_VARIABLE _temp
+            ERROR_VARIABLE _err
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            WORKING_DIRECTORY ${_dir}
+            RESULT_VARIABLE _code
+        )
+
+        if(_code EQUAL 0)
+            set(_git_revision_id ${_temp})
+        elseif(FUNC_REQUIRED)
+            message(FATAL_ERROR "Error running git rev-list: ${_err}")
         endif()
     endif()
 
@@ -458,6 +477,7 @@ function(qm_generate_build_info _file)
     list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_TIME=\"${_git_commit_time}\")
     list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_AUTHOR=\"${_git_commit_author}\")
     list(APPEND _definitions ${_prefix}_GIT_LAST_COMMIT_EMAIL=\"${_git_commit_email}\")
+    list(APPEND _definitions ${_prefix}_GIT_REVISION_ID=\"${_git_revision_id}\")
 
     _qm_generate_config_helper()
 endfunction()
