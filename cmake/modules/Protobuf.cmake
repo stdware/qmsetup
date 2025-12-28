@@ -41,7 +41,7 @@ function(qm_create_protobuf _out)
         get_target_property(PROTOC_EXECUTABLE protobuf::protoc LOCATION)
 
         if(NOT PROTOC_EXECUTABLE)
-            message(FATAL_ERROR "qm_create_protobuf: failed to get the location of `protoc`.")
+            message(FATAL_ERROR "qm_create_protobuf: failed to get the location of `protoc`, you could set PROTOC_EXECUTABLE manually.")
         endif()
 
         # Cache value

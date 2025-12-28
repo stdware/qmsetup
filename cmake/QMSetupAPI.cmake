@@ -266,6 +266,7 @@ endmacro()
 macro(qm_include_qt_private _target _scope)
     foreach(_module ${ARGN})
         qm_find_qt(${_module}Private QUIET)
+
         if(TARGET Qt${QT_VERSION_MAJOR}::${_module}Private)
             target_link_libraries(${_target} ${_scope} Qt${QT_VERSION_MAJOR}::${_module}Private)
         else()
@@ -1035,6 +1036,26 @@ function(qm_basic_install)
         "${CMAKE_CURRENT_BINARY_DIR}/${_name}ConfigVersion.cmake"
         DESTINATION ${_install_dir}
     )
+endfunction()
+
+#[[
+    Recursively include directories in a target.
+
+    qm_include_recursive(<target> <scope> <dir1> [<dir2> ...])
+#]]
+function(qm_include_recursive _target _scope)
+    foreach(_dir ${ARGN})
+        if(IS_DIRECTORY ${_dir})
+            target_include_directories(${_target} ${_scope} ${_dir})
+            file(GLOB_RECURSE _subdirs LIST_DIRECTORIES TRUE RELATIVE ${_dir} ${_dir}/*)
+
+            foreach(_subdir IN LISTS _subdirs)
+                if(IS_DIRECTORY ${_dir}/${_subdir})
+                    target_include_directories(${_target} ${_scope} ${_dir}/${_subdir})
+                endif()
+            endforeach()
+        endif()
+    endforeach()
 endfunction()
 
 # ----------------------------------

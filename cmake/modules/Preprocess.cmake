@@ -301,26 +301,26 @@ endfunction()
     Generate build info information header.
 
     qm_generate_build_info(<file>
+        [REQUIRED]
         [ROOT_DIRECTORY <dir>]
         [PREFIX <prefix>]
-        
         [YEAR] [TIME]
 
+        [PROJECT_NAME <name>]
         [WARNING_FILE <file>]
         [NO_WARNING]
         [NO_HASH]
-        [REQUIRED]
     )
 
     file: Output file
 
-    ROOT_DIRECTORY: Repository root directory (CMake will try to run `git` at this directory)
-    PREFIX: Macros prefix, default to the upper case of  `PROJECT_NAME`
     REQUIRED: Abort if there's any error with git
+    ROOT_DIRECTORY: Repository root directory (CMake will try to run `git` at this directory)
+    PREFIX: Macros prefix, default to the upper case of `PROJECT_NAME`
 ]] #
 function(qm_generate_build_info _file)
     set(options NO_WARNING NO_HASH YEAR TIME REQUIRED)
-    set(oneValueArgs ROOT_DIRECTORY PREFIX WARNING_FILE)
+    set(oneValueArgs ROOT_DIRECTORY PREFIX PROJECT_NAME WARNING_FILE)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -493,12 +493,6 @@ function(_qm_generate_config_helper)
         list(APPEND _args "-D${_item}")
     endforeach()
 
-    list(APPEND _args ${_file})
-
-    if(NOT FUNC_NO_WARNING)
-        list(APPEND _args "-w" ${FUNC_WARNING_FILE})
-    endif()
-
     if(FUNC_PROJECT_NAME)
         list(APPEND _args "-p" ${FUNC_PROJECT_NAME})
     endif()
@@ -506,6 +500,18 @@ function(_qm_generate_config_helper)
     if(FUNC_NO_HASH)
         list(APPEND _args "-f")
     endif()
+
+    list(APPEND _args ${_file})
+
+    if(NOT FUNC_NO_WARNING)
+        list(APPEND _args "-w")
+
+        if(FUNC_WARNING_FILE)
+            list(APPEND _args ${FUNC_WARNING_FILE})
+        endif()
+    endif()
+
+    message(STATUS "Generating ${_file} with arguments: ${_args}")
 
     execute_process(COMMAND ${QMSETUP_CORECMD_EXECUTABLE} configure ${_args}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
