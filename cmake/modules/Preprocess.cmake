@@ -531,8 +531,6 @@ function(_qm_generate_config_helper)
         endif()
     endif()
 
-    message(STATUS "Generating ${_file} with arguments: ${_args}")
-
     execute_process(COMMAND ${QMSETUP_CORECMD_EXECUTABLE} configure ${_args}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMAND_ERROR_IS_FATAL ANY
