@@ -439,10 +439,11 @@ function(qm_export_defines _target)
 
     if(NOT FUNC_PREFIX)
         string(TOUPPER ${_target} _prefix)
-        string(MAKE_C_IDENTIFIER ${_prefix} _prefix)
     else()
         set(_prefix ${FUNC_PREFIX})
     endif()
+
+    string(MAKE_C_IDENTIFIER ${_prefix} _prefix)
 
     qm_set_value(_static_macro FUNC_STATIC ${_prefix}_STATIC)
     qm_set_value(_library_macro FUNC_LIBRARY ${_prefix}_LIBRARY)

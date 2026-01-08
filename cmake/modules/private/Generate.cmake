@@ -47,7 +47,8 @@ endfunction()
     qm_add_binary_resource(<input> <output>)
 #]]
 function(qm_add_binary_resource _input _output)
-    if(WIN32)
+    find_program(_xxd "xxd")
+    if(NOT _xxd)
         get_filename_component(_name ${_output} NAME)
         string(MAKE_C_IDENTIFIER ${_name} _name)
         set(_cmd "${CMAKE_COMMAND}"
@@ -56,7 +57,7 @@ function(qm_add_binary_resource _input _output)
             -D "name=${_name}"
             -P "${QMSETUP_MODULES_DIR}/scripts/xxd.cmake")
     else()
-        set(_cmd "xxd" "-i" "${_input}" "${_output}")
+        set(_cmd "${_xxd}" "-i" "${_input}" "${_output}")
     endif()
 
     add_custom_command(
