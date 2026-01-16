@@ -146,7 +146,7 @@ for plugin_path in "${PLUGINS[@]}"; do
                     found_plugins+="$plugin_name "
                     ARGS+=("-c \"$plugin\" \"$dest_dir\"")
                 fi
-            done < <(find "${search_path}/${category}" -name "lib${name}.*" ! -name "*debug*" ! -d -print)
+            done < <(find "${search_path}/${category}" -name "lib${name}.*" ! -name "*debug*" ! -type d -print)
         done
 
         if [ ${#found_plugins[@]} -eq 0 ]; then
