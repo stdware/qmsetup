@@ -101,6 +101,11 @@ function(qm_install_package _name)
         execute_process(
             COMMAND ${CMAKE_COMMAND} -S ${_src_dir} -B ${_build_dir}
             ${_extra_args} ${_build_type}
+            # Pass through CMAKE_INSTALL_LIBDIR to ensure the package uses the same
+            # lib directory convention (e.g., lib vs lib64) as the parent project.
+            # Without this, packages using GNUInstallDirs may default to a different
+            # directory structure than expected.
+            "-DCMAKE_INSTALL_LIBDIR=${CMAKE_INSTALL_LIBDIR}"
             "-DCMAKE_INSTALL_PREFIX=${_install_dir}" ${FUNC_CONFIGURE_ARGS}
             OUTPUT_FILE ${_log_file}
             ERROR_FILE ${_log_file}
