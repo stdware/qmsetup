@@ -237,7 +237,7 @@ function(_qm_add_lupdate_target _target)
     set(_my_tsfiles ${_LUPDATE_OUTPUT})
 
     add_custom_target(${_target} DEPENDS ${_lupdate_deps})
-    _get_executable_location(Qt${QT_VERSION_MAJOR}::lupdate _lupdate_exe)
+    qm_get_executable_location(Qt${QT_VERSION_MAJOR}::lupdate _lupdate_exe)
 
     set(_create_once_warning)
     set(_create_once_warning_printed off)
@@ -332,7 +332,7 @@ function(_qm_add_lrelease_target _target)
     set(_lrelease_files ${_LRELEASE_INPUT})
     set(_lrelease_deps ${_LRELEASE_DEPENDS})
 
-    _get_executable_location(Qt${QT_VERSION_MAJOR}::lrelease _lrelease_exe)
+    qm_get_executable_location(Qt${QT_VERSION_MAJOR}::lrelease _lrelease_exe)
 
     set(_qm_files)
 
@@ -371,30 +371,4 @@ function(_qm_add_lrelease_target _target)
     if(_LRELEASE_OUTPUT)
         set(${_LRELEASE_OUTPUT} ${_qm_files} PARENT_SCOPE)
     endif()
-endfunction()
-
-function(_get_executable_location _target _var)
-    get_target_property(_path ${_target} IMPORTED_LOCATION)
-
-    if(NOT _path)
-        get_target_property(_path ${_target} IMPORTED_LOCATION_RELEASE)
-    endif()
-
-    if(NOT _path)
-        get_target_property(_path ${_target} IMPORTED_LOCATION_MINSIZEREL)
-    endif()
-
-    if(NOT _path)
-        get_target_property(_path ${_target} IMPORTED_LOCATION_RELWITHDEBINFO)
-    endif()
-
-    if(NOT _path)
-        get_target_property(_path ${_target} IMPORTED_LOCATION_DEBUG)
-    endif()
-
-    if(NOT _path)
-        message(FATAL_ERROR "Could not find imported location of target: ${_target}")
-    endif()
-
-    set(${_var} ${_path} PARENT_SCOPE)
 endfunction()

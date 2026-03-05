@@ -271,7 +271,37 @@ macro(qm_include_qt_private _target _scope)
             target_link_libraries(${_target} ${_scope} Qt${QT_VERSION_MAJOR}::${_module}Private)
         else()
             qm_find_qt(${_module})
-            target_include_directories(${_target} ${_scope} ${Qt${QT_VERSION_MAJOR}${_module}_PRIVATE_INCLUDE_DIRS})
+            set(_var_name Qt${QT_VERSION_MAJOR}${_module}_PRIVATE_INCLUDE_DIRS)
+
+            if(${_var_name})
+                target_include_directories(${_target} ${_scope} ${_var_name})
+            else()
+                # On Linux, QtGuiPrivate depends on XKB which may not be installed, directly include the
+                # private headers as a workaround.
+                if(NOT QT_INSTALL_HEADERS)
+                    if(NOT QT_QMAKE_EXECUTABLE)
+                        if(TARGET Qt${QT_VERSION_MAJOR}::qmake)
+                            qm_get_executable_location(Qt${QT_VERSION_MAJOR}::qmake _qmake_path)
+                            set(QT_QMAKE_EXECUTABLE "${_qmake_path}" CACHE FILEPATH "Path to qmake executable" FORCE)
+                        else()
+                            message(WARNING "qm_include_qt_private: qmake not defined, can't include private headers.")
+                        endif()
+                    endif()
+
+                    execute_process(
+                        COMMAND ${QT_QMAKE_EXECUTABLE} -query QT_INSTALL_HEADERS
+                        OUTPUT_VARIABLE _install_headers
+                        OUTPUT_STRIP_TRAILING_WHITESPACE
+                        COMMAND_ERROR_IS_FATAL ANY
+                    )
+
+                    set(QT_INSTALL_HEADERS ${_install_headers} CACHE PATH "Path to Qt headers" FORCE)
+                endif()
+
+                target_include_directories(${_target} ${_scope} ${QT_INSTALL_HEADERS}/Qt${_module}/${QT_VERSION})
+                target_include_directories(${_target} ${_scope} ${QT_INSTALL_HEADERS}/Qt${_module}/${QT_VERSION}/Qt${_module})
+                target_include_directories(${_target} ${_scope} ${QT_INSTALL_HEADERS}/Qt${_module}/${QT_VERSION}/Qt${_module}/private)
+            endif()
         endif()
     endforeach()
 endmacro()
@@ -1057,6 +1087,29 @@ function(qm_include_recursive _target _scope)
             endforeach()
         endif()
     endforeach()
+endfunction()
+
+#[[
+    Get the location of an executable target.
+
+    qm_get_executable_location(<target> <var>)
+#]]
+function(qm_get_executable_location _target _var)
+    set(_path)
+
+    foreach(_type IMPORTED_LOCATION IMPORTED_LOCATION_RELEASE IMPORTED_LOCATION_RELWITHDEBINFO IMPORTED_LOCATION_MINSIZEREL IMPORTED_LOCATION_DEBUG)
+        get_target_property(_path ${_target} ${_type})
+
+        if(_path)
+            break()
+        endif()
+    endforeach()
+
+    if(NOT _path)
+        message(FATAL_ERROR "Could not find imported location of target: ${_target}")
+    endif()
+
+    set(${_var} ${_path} PARENT_SCOPE)
 endfunction()
 
 # ----------------------------------
