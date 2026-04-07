@@ -44,11 +44,19 @@ endfunction()
 #[[
     Create a custom command to run `xxd`.
 
-    qm_add_binary_resource(<input> <output>)
+    qm_add_binary_resource(<input> <output>
+        [USE_SCRIPT]
+    )
 #]]
 function(qm_add_binary_resource _input _output)
+    set(options USE_SCRIPT)
+    set(oneValueArgs)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
     find_program(_xxd "xxd")
-    if(NOT _xxd)
+
+    if(NOT _xxd OR FUNC_USE_SCRIPT)
         get_filename_component(_name ${_output} NAME)
         string(MAKE_C_IDENTIFIER ${_name} _name)
         set(_cmd "${CMAKE_COMMAND}"
