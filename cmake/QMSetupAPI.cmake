@@ -370,14 +370,24 @@ macro(qm_configure_target _target)
     )
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    target_sources(${_target} PRIVATE ${FUNC_SOURCES})
+    get_target_property(_type ${_target} TYPE)
+    set(_public_scope PUBLIC)
+    set(_private_scope PRIVATE)
 
-    target_link_libraries(${_target} PUBLIC ${FUNC_LINKS})
-    target_link_libraries(${_target} PRIVATE ${FUNC_LINKS_PRIVATE})
+    # Interface libraries only accept interface scope.
+    if(_type STREQUAL "INTERFACE_LIBRARY")
+        set(_public_scope INTERFACE)
+        set(_private_scope INTERFACE)
+    else()
+        target_sources(${_target} PRIVATE ${FUNC_SOURCES})
+    endif()
+
+    target_link_libraries(${_target} ${_public_scope} ${FUNC_LINKS})
+    target_link_libraries(${_target} ${_private_scope} ${FUNC_LINKS_PRIVATE})
 
     if(FUNC_INCLUDE)
         _qm_resolve_dir_helper("${FUNC_INCLUDE}" _temp_dirs)
-        target_include_directories(${_target} PUBLIC ${_temp_dirs})
+        target_include_directories(${_target} ${_public_scope} ${_temp_dirs})
         unset(_temp_dirs)
     endif()
 
@@ -389,13 +399,13 @@ macro(qm_configure_target _target)
 
     if(FUNC_INCLUDE_PRIVATE)
         _qm_resolve_dir_helper("${FUNC_INCLUDE_PRIVATE}" _temp_dirs)
-        target_include_directories(${_target} PRIVATE ${_temp_dirs})
+        target_include_directories(${_target} ${_private_scope} ${_temp_dirs})
         unset(_temp_dirs)
     endif()
 
     if(FUNC_LINKDIR)
         _qm_resolve_dir_helper("${FUNC_LINKDIR}" _temp_dirs)
-        target_link_directories(${_target} PUBLIC ${_temp_dirs})
+        target_link_directories(${_target} ${_public_scope} ${_temp_dirs})
         unset(_temp_dirs)
     endif()
 
@@ -407,17 +417,17 @@ macro(qm_configure_target _target)
 
     if(FUNC_LINKDIR_PRIVATE)
         _qm_resolve_dir_helper("${FUNC_LINKDIR_PRIVATE}" _temp_dirs)
-        target_link_directories(${_target} PRIVATE ${_temp_dirs})
+        target_link_directories(${_target} ${_private_scope} ${_temp_dirs})
         unset(_temp_dirs)
     endif()
 
-    target_compile_definitions(${_target} PUBLIC ${FUNC_DEFINES})
+    target_compile_definitions(${_target} ${_public_scope} ${FUNC_DEFINES})
     target_compile_definitions(${_target} INTERFACE ${FUNC_DEFINES_INTERFACE})
-    target_compile_definitions(${_target} PRIVATE ${FUNC_DEFINES_PRIVATE})
+    target_compile_definitions(${_target} ${_private_scope} ${FUNC_DEFINES_PRIVATE})
 
-    target_compile_features(${_target} PUBLIC ${FUNC_FEATURES})
+    target_compile_features(${_target} ${_public_scope} ${FUNC_FEATURES})
     target_compile_features(${_target} INTERFACE ${FUNC_FEATURES_INTERFACE})
-    target_compile_features(${_target} PRIVATE ${FUNC_FEATURES_PRIVATE})
+    target_compile_features(${_target} ${_private_scope} ${FUNC_FEATURES_PRIVATE})
 
     # CMake won't add language standard flag if the compiler default mode supports the standard,
     # however, if the -std argument is not explicitly specified, the clang language server will
@@ -431,19 +441,23 @@ macro(qm_configure_target _target)
         endif()
     endforeach()
 
-    target_compile_options(${_target} PUBLIC ${FUNC_CCFLAGS_PUBLIC})
+    target_compile_options(${_target} ${_public_scope} ${FUNC_CCFLAGS_PUBLIC})
     target_compile_options(${_target} INTERFACE ${FUNC_CCFLAGS_INTERFACE})
-    target_compile_options(${_target} PRIVATE ${FUNC_CCFLAGS})
+    target_compile_options(${_target} ${_private_scope} ${FUNC_CCFLAGS})
 
-    target_link_options(${_target} PUBLIC ${FUNC_LDFLAGS_PUBLIC})
+    target_link_options(${_target} ${_public_scope} ${FUNC_LDFLAGS_PUBLIC})
     target_link_options(${_target} INTERFACE ${FUNC_LDFLAGS_INTERFACE})
-    target_link_options(${_target} PRIVATE ${FUNC_LDFLAGS})
+    target_link_options(${_target} ${_private_scope} ${FUNC_LDFLAGS})
 
-    qm_link_qt(${_target} PUBLIC ${FUNC_QT_LINKS})
+    qm_link_qt(${_target} ${_public_scope} ${FUNC_QT_LINKS})
     qm_link_qt(${_target} INTERFACE ${FUNC_QT_LINKS_INTERFACE})
-    qm_link_qt(${_target} PRIVATE ${FUNC_QT_LINKS_PRIVATE})
+    qm_link_qt(${_target} ${_private_scope} ${FUNC_QT_LINKS_PRIVATE})
 
-    qm_include_qt_private(${_target} PRIVATE ${FUNC_QT_INCLUDE_PRIVATE})
+    qm_include_qt_private(${_target} ${_private_scope} ${FUNC_QT_INCLUDE_PRIVATE})
+
+    unset(_type)
+    unset(_public_scope)
+    unset(_private_scope)
 
     if(FUNC_SKIP_AUTOMOC)
         _qm_resolve_file_helper("${FUNC_SKIP_AUTOMOC}" _temp_files)
