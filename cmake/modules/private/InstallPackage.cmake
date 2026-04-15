@@ -85,7 +85,7 @@ function(qm_install_package _name)
         endif()
 
         if(CMAKE_GENERATOR_PLATFORM)
-            set(_extra_args ${_extra_args} -A "${CMAKE_GENERATOR_PLATFORM}")
+            list(APPEND _extra_args -A "${CMAKE_GENERATOR_PLATFORM}")
         endif()
 
         # Remove old build directory
