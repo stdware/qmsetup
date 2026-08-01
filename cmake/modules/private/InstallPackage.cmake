@@ -12,6 +12,8 @@ include_guard(DIRECTORY)
     Install external package at configuration phase.
 
     qm_install_package(<name>
+        [HOST]
+
         [SOURCE_DIR <dir>]
         [BUILD_TREE_DIR <dir>]
         [INSTALL_DIR <dir>]
@@ -22,9 +24,21 @@ include_guard(DIRECTORY)
         
         [RESULT_PATH <VAR>]
     )
+
+    HOST
+        The package provides tools that run on the build machine rather than
+        artifacts to be linked into the target. `CMAKE_TOOLCHAIN_FILE` is then
+        removed from the environment of the nested configure step, because CMake
+        picks it up from there when a build tree is created, which would build the
+        package for the target and leave the tools unusable during the build.
+
+        The `find_package` call that imports the result should pass
+        `NO_CMAKE_FIND_ROOT_PATH` for the same reason: a toolchain setting
+        `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE` to `ONLY` re-roots every search path
+        into the target sysroot, where the package was never installed.
 ]] #
 function(qm_install_package _name)
-    set(options)
+    set(options HOST)
     set(oneValueArgs SOURCE_DIR BUILD_TREE_DIR INSTALL_DIR CMAKE_PACKAGE_SUBDIR BUILD_TYPE RESULT_PATH)
     set(multiValueArgs CONFIGURE_ARGS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -95,11 +109,18 @@ function(qm_install_package _name)
 
         file(MAKE_DIRECTORY ${_build_tree_dir})
 
+        # Keep the cross compiling toolchain out of a host package, see `HOST`
+        if(FUNC_HOST)
+            set(_cmake_command ${CMAKE_COMMAND} -E env --unset=CMAKE_TOOLCHAIN_FILE ${CMAKE_COMMAND})
+        else()
+            set(_cmake_command ${CMAKE_COMMAND})
+        endif()
+
         # Configure
         message(STATUS "Configuring ${_name}...")
         set(_log_file ${_build_tree_dir}/${_name}_configure.log)
         execute_process(
-            COMMAND ${CMAKE_COMMAND} -S ${_src_dir} -B ${_build_dir}
+            COMMAND ${_cmake_command} -S ${_src_dir} -B ${_build_dir}
             ${_extra_args} ${_build_type}
             # Pass through CMAKE_INSTALL_LIBDIR to ensure the package uses the same
             # lib directory convention (e.g., lib vs lib64) as the parent project.

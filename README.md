@@ -96,7 +96,11 @@ find_package(qmsetup REQUIRED)
 It still needs to be installed, but the installation occurs during the CMake Configure phase and is executed only once.
 
 ```cmake
-find_package(qmsetup QUIET)
+# `qmsetup` provides tools that run on the build machine, so it must always be
+# searched for there. Cross compiling toolchains that set
+# `CMAKE_FIND_ROOT_PATH_MODE_PACKAGE` to `ONLY` would otherwise redirect the lookups
+# below into the target sysroot, where the package was never installed.
+find_package(qmsetup QUIET NO_CMAKE_FIND_ROOT_PATH)
 
 if (NOT TARGET qmsetup::library)
     # Modify this variable according to your project structure
@@ -107,14 +111,16 @@ if (NOT TARGET qmsetup::library)
 
     # Install package in place
     set(_package_path)
-    qm_install_package(qmsetup
+    qm_install_package(qmsetup HOST
         SOURCE_DIR ${_source_dir}
         BUILD_TYPE Release
         RESULT_PATH _package_path
     )
 
-    # Find package again
-    find_package(qmsetup REQUIRED PATHS ${_package_path})
+    # Find package again, still on the build machine (see the note above)
+    find_package(qmsetup REQUIRED PATHS ${_package_path}
+        NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
+    )
 
     # Update import path
     set(qmsetup_DIR ${_package_path} CACHE PATH "" FORCE)
