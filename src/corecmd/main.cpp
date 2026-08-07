@@ -870,32 +870,6 @@ static int cmd_deploy(const cli::ParseResult &result) {
             tmp.emplace_back(stdc::path::clean_path(fs::absolute(str2tstr(item))));
         }
 
-        // Read configuration
-        const auto &configFiles = optionValues(result, "--linkdirs-file");
-        for (const auto &item : configFiles) {
-            std::ifstream file(fs::path(str2tstr(item)), std::ios::binary);
-            if (!file.is_open()) {
-                continue;
-            }
-
-            // Skip BOM
-            char bom[3];
-            file.read(bom, 3);
-            if (file.gcount() != 3 ||
-                !(bom[0] == (char) 0xEF && bom[1] == (char) 0xBB && bom[2] == (char) 0xBF)) {
-                file.seekg(0);
-            }
-
-            std::string line;
-            while (std::getline(file, line)) {
-                if (line.empty())
-                    continue;
-                if (line.size() >= 2 && line.front() == '\"' && line.back() == '\"')
-                    line = line.substr(1, line.size() - 2);
-                tmp.emplace_back(stdc::path::clean_path(fs::absolute(str2tstr(stdc::str::trim(std::move(line))))));
-            }
-        }
-
         // Add dest
         tmp.push_back(dest);
 
@@ -1543,16 +1517,10 @@ int main(int argc, char *argv[]) {
             cli::Option({"-o", "--out"},
                         "Set output directory of dependencies, defult to current directory")
                 .arg("dir"),
-#if 1
             cli::Option({"-L", "--linkdir"}, "Add a library searching path")
                 .arg("dir")
                 .multi()
                 .shortMatch(cli::Option::ShortMatchSingleChar),
-            cli::Option({"--linkdirs-file"}, "Add library searching paths from a list file")
-                .arg("file")
-                .multi()
-                .shortMatch(cli::Option::ShortMatchSingleChar),
-#endif
             cli::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             cli::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
             cli::Option({"-d", "--dryrun"}, "Print dependencies only"),

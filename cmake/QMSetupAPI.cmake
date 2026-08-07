@@ -553,7 +553,7 @@ function(qm_add_win_rc _target)
         get_filename_component(RC_ICON_PATH ${FUNC_ICON} ABSOLUTE)
     endif()
 
-    qm_set_value(_out_dir OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    qm_set_value(_out_dir FUNC_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
     set(_out_path "${_out_dir}/${_target}_res.rc")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
@@ -644,7 +644,7 @@ function(qm_add_win_rc_enhanced _target)
 
     set(RC_ICONS ${_icons})
 
-    qm_set_value(_out_dir OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    qm_set_value(_out_dir FUNC_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
     set(_out_path "${_out_dir}/${_target}_res.rc")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
@@ -703,7 +703,7 @@ function(qm_add_win_manifest _target)
         set(MANIFEST_PRIVILEGES "<requestedExecutionLevel level=\"asInvoker\" uiAccess=\"false\" />")
     endif()
 
-    qm_set_value(_out_dir OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    qm_set_value(_out_dir FUNC_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
     set(_out_path "${_out_dir}/${_target}_manifest.exe.manifest")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
 

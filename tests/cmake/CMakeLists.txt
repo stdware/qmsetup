@@ -1,17 +1,29 @@
 # Tests for the CMake layer, the qm_* functions in cmake/.
 #
-# The layout under here follows the one it tests, so that the tests for a module
-# are where you would look for them:
+# There are two shapes of test here, and the layout says which is which.
+#
+# A script test is a `cmake -P` run. Nothing it checks needs a project to exist,
+# so nothing configures or builds, and a failure names the check rather than
+# leaving a configure log to read through. These mirror what they test:
 #
 #   cmake/QMSetupAPI.cmake          QMSetupAPI/test_*.cmake
 #   cmake/modules/Preprocess.cmake  modules/Preprocess/test_*.cmake
 #
-# Each module is a script run with `cmake -P`. Nothing they check needs a
-# project to exist, so nothing configures or builds, and a failure names the
-# check rather than leaving a configure log to read through.
+# A project test is a whole project, under projects/, with a run.cmake beside it
+# that drives it. These are for the functions that work on targets or on an
+# installed tree, which no script can reach. They are not mirrored, because each
+# of them covers functions from more than one of the files above.
 #
-# What that leaves out is the target and directory property scopes, and
-# everything that wants Qt, protobuf or doxygen to be installed.
+# Not covered:
+#
+#   qm_compiler_* is left alone on purpose. Every one of them is a list of
+#   compiler flags chosen per compiler, so a test could only repeat the list
+#   back, which says nothing about whether the flags are the right ones. What
+#   would catch a mistake there is compiling with them, which is a different
+#   kind of test from any of these.
+#
+#   Anything wanting Qt, protobuf or doxygen installed, and the standalone
+#   scripts under cmake/scripts.
 
 set(_modules
     QMSetupAPI/test_version
@@ -44,21 +56,41 @@ foreach(_module IN LISTS _modules)
     )
 endforeach()
 
-# The functions that work on targets, which need a project to live in. This one
-# configures a project of its own rather than running a script, so it costs more
-# than all the others together and is kept apart from them.
-add_test(NAME cmake.project
+# The functions that work on targets. This configures a project of its own
+# rather than running a script, so it costs more than all the script tests
+# together, and it is kept apart from them.
+add_test(NAME cmake.projects.targets
     COMMAND ${CMAKE_COMMAND}
         -DQMSETUP_API=${QMSETUP_PROJECT_ROOT}/cmake/QMSetupAPI.cmake
         -DQMCORECMD=$<TARGET_FILE:qmcorecmd>
         -DQMTEST_HARNESS=${CMAKE_CURRENT_SOURCE_DIR}/harness.cmake
-        -DQMTEST_PROJECT=${CMAKE_CURRENT_SOURCE_DIR}/project
-        -DQMTEST_PROJECT_BUILD=${CMAKE_CURRENT_BINARY_DIR}/project-build
+        -DQMTEST_PROJECT=${CMAKE_CURRENT_SOURCE_DIR}/projects/targets
+        -DQMTEST_PROJECT_BUILD=${CMAKE_CURRENT_BINARY_DIR}/targets-build
         -DQMTEST_GENERATOR=${CMAKE_GENERATOR}
         -DQMTEST_C_COMPILER=${CMAKE_C_COMPILER}
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/configure_project.cmake
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/projects/targets/run.cmake
 )
-set_tests_properties(cmake.project PROPERTIES
+set_tests_properties(cmake.projects.targets PROPERTIES
     LABELS cmake
     TIMEOUT 300
+)
+
+# qm_basic_install and qm_deploy_directory both work by adding install rules,
+# and an install rule that is never run says nothing, so this one is built and
+# installed for real. It is the slowest test here by a long way.
+add_test(NAME cmake.projects.install
+    COMMAND ${CMAKE_COMMAND}
+        -DQMSETUP_API=${QMSETUP_PROJECT_ROOT}/cmake/QMSetupAPI.cmake
+        -DQMCORECMD=$<TARGET_FILE:qmcorecmd>
+        -DQMTEST_HARNESS=${CMAKE_CURRENT_SOURCE_DIR}/harness.cmake
+        -DQMTEST_PROJECT=${CMAKE_CURRENT_SOURCE_DIR}/projects/install
+        -DQMTEST_PROJECT_BUILD=${CMAKE_CURRENT_BINARY_DIR}/install-build
+        -DQMTEST_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/install-prefix
+        -DQMTEST_GENERATOR=${CMAKE_GENERATOR}
+        -DQMTEST_C_COMPILER=${CMAKE_C_COMPILER}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/projects/install/run.cmake
+)
+set_tests_properties(cmake.projects.install PROPERTIES
+    LABELS cmake
+    TIMEOUT 600
 )

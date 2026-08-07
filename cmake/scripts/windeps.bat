@@ -38,7 +38,6 @@ if "%1"=="-s" call :push_args -s & shift & goto :parse_args
 if "%1"=="-V" set "VERBOSE=-V" & shift & goto :parse_args
 if "%1"=="-h" call :usage & exit /b
 
-if "%1"=="--linkdirs-file" call :push_args --linkdirs-file %~2 & shift & shift & goto :parse_args
 if "%1"=="-L" call :push_args -L %~2 & shift & shift & goto :parse_args
 
 shift
@@ -288,7 +287,7 @@ echo Usage: %~n0 -i ^<dir^> -m ^<path^>
 echo                --plugindir ^<plugin_dir^> --libdir ^<lib_dir^> --qmldir ^<qml_dir^>
 echo               [--qmake ^<qmake_path^>] [--extra ^<extra_path^>]...
 echo               [--qml ^<qml_module^>]... [--plugin ^<plugin^>]... [--copy ^<src^> ^<dest^>]...
-echo               [--linkdirs-file ^<file^>]... [-L ^<path^>]...
+echo               [-L ^<path^>]...
 echo               [-f] [-s] [-V] [-h]
 exit /b
 :: ----------------------------------------------------------------------------------

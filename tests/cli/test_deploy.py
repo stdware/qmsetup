@@ -287,19 +287,6 @@ class TestDeployCommandLine(DeployTestCase):
         self.assertOk(joined)
         self.assertEqual(joined.out, separate.out)
 
-    def test_a_quoted_line_in_a_list_file_keeps_its_spaces(self):
-        self.write("linkdirs.txt", f'"{self.path(self.layout.directory("audiobin"))}"\n')
-        r = self.run_cmd(
-            "deploy", self.layout.path("app"), "--linkdirs-file", "linkdirs.txt", "-d", "-V"
-        )
-        self.assertOk(r)
-
-    def test_a_list_file_that_is_not_there_is_passed_over(self):
-        r = self.run_cmd(
-            "deploy", self.layout.path("app"), "--linkdirs-file", "nope.txt", "-d"
-        )
-        self.assertOk(r)
-
     def test_a_dry_run_reports_without_being_asked_to(self):
         """There is nothing else for a dry run to do, so it implies --verbose."""
         r = self.run_cmd("deploy", self.layout.path("app"), "-d")

@@ -167,18 +167,6 @@
             }
         },
         {
-            "name": "a list file stands in for the search paths",
-            "why": "--linkdirs-file is the long command line's way out, and has to reach the same place.",
-            "args": [
-                "deploy", "{app}", "{core}", "{util}",
-                "--linkdirs-file", "linkdirs.txt", "-o", "{dir.appbin}", "-s"
-            ],
-            "seed": {"linkdirs.txt": "{abs.dir.audiobin}\n"},
-            "expect": {
-                "myapp/bin": ["app", "core", "util", "audio", "render"]
-            }
-        },
-        {
             "name": "a dry run writes nothing",
             "why": "--dryrun resolves everything and touches nothing, plugins included.",
             "args": [

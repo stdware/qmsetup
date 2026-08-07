@@ -22,7 +22,6 @@ usage() {
     echo "  --qml <qml_module>          Relative path to QML directory (repeatable)"
     echo "  --plugin <plugin>           Specify a Qt plugin to deploy (repeatable)"
     echo "  --copy <src> <dest>         Specify additional binary file to copy and its destination directory (repeatable)"
-    echo "  --linkdirs-file             Add library searching paths from a list file"
     echo "  -L                          Add a library searching path"
     echo "  -f                          Force overwrite existing files"
     echo "  -s                          Ignore C/C++ runtime and system libraries"
@@ -44,7 +43,6 @@ while (( "$#" )); do
         -i)                INPUT_DIR="$2"; shift 2;;
         -m)                CORECMD_PATH="$2"; shift 2;;
         -L)                ARGS+=("-L \"$2\""); shift 2;;
-        --linkdirs-file)   ARGS+=("--linkdirs-file \"$2\""); shift 2;;
         --plugindir)       PLUGIN_DIR="$2"; shift 2;;
         --libdir)          LIB_DIR="$2"; shift 2;;
         --qmldir)          QML_DIR="$2"; shift 2;;
