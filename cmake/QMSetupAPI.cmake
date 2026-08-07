@@ -410,7 +410,7 @@ macro(qm_configure_target _target)
     endif()
 
     if(FUNC_LINKDIR_INTERFACE)
-        _qm_resolve_dir_helper("${FUNC_LINKDIR}" _temp_dirs)
+        _qm_resolve_dir_helper("${FUNC_LINKDIR_INTERFACE}" _temp_dirs)
         target_link_directories(${_target} INTERFACE ${_temp_dirs})
         unset(_temp_dirs)
     endif()
@@ -433,11 +433,15 @@ macro(qm_configure_target _target)
     # however, if the -std argument is not explicitly specified, the clang language server will
     # not work properly.
     # https://discourse.cmake.org/t/cmake-does-not-set-the-compiler-option-std-to-gnu17-or-c-17-although-i-set-the-target-compile-features-to-cxx-std-17/3299/8
+    # Named, and not appended to. Written as `set_property(TARGET APPEND ...)`
+    # the target list was empty, APPEND being where CMake stops reading names,
+    # so this set the standard on nothing at all. A standard is one value rather
+    # than a list, so there is nothing to append to either.
     foreach(_item IN LISTS FUNC_FEATURES FUNC_FEATURES_PRIVATE)
         if(_item MATCHES "cxx_std_(.+)")
-            set_property(TARGET APPEND PROPERTY CXX_STANDARD ${CMAKE_MATCH_1})
+            set_property(TARGET ${_target} PROPERTY CXX_STANDARD ${CMAKE_MATCH_1})
         elseif(_item MATCHES "c_std_(.+)")
-            set_property(TARGET APPEND PROPERTY C_STANDARD ${CMAKE_MATCH_1})
+            set_property(TARGET ${_target} PROPERTY C_STANDARD ${CMAKE_MATCH_1})
         endif()
     endforeach()
 
@@ -861,7 +865,10 @@ endfunction()
 ]] #
 function(qm_collect_targets _var)
     set(options EXECUTABLE SHARED STATIC INTERFACE UTILITY)
-    set(oneValueArgs DIR)
+    # DIRECTORY, which is what the body reads and what the documentation
+    # describes. Declared as DIR, it was never parsed, so every call started
+    # from the current directory whatever it was given.
+    set(oneValueArgs DIRECTORY)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 

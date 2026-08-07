@@ -182,7 +182,7 @@ function(qm_future_configure_file _input _output)
     endforeach()
 
     if(FUNC_FORCE)
-        list(APPLE _options -D "force=TRUE")
+        list(APPEND _options -D "force=TRUE")
     endif()
 
     add_custom_command(OUTPUT ${_output}

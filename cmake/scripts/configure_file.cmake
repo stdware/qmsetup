@@ -12,8 +12,8 @@
 # [-D args=<args...>]
 # -P configure_file.cmake
 
-if(force AND EXISTS ${_output})
-    file(REMOVE ${_output})
+if(force AND EXISTS ${output})
+    file(REMOVE ${output})
 endif()
 
 configure_file(${input} ${output} ${args})

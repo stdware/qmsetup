@@ -43,3 +43,22 @@ foreach(_module IN LISTS _modules)
         TIMEOUT 120
     )
 endforeach()
+
+# The functions that work on targets, which need a project to live in. This one
+# configures a project of its own rather than running a script, so it costs more
+# than all the others together and is kept apart from them.
+add_test(NAME cmake.project
+    COMMAND ${CMAKE_COMMAND}
+        -DQMSETUP_API=${QMSETUP_PROJECT_ROOT}/cmake/QMSetupAPI.cmake
+        -DQMCORECMD=$<TARGET_FILE:qmcorecmd>
+        -DQMTEST_HARNESS=${CMAKE_CURRENT_SOURCE_DIR}/harness.cmake
+        -DQMTEST_PROJECT=${CMAKE_CURRENT_SOURCE_DIR}/project
+        -DQMTEST_PROJECT_BUILD=${CMAKE_CURRENT_BINARY_DIR}/project-build
+        -DQMTEST_GENERATOR=${CMAKE_GENERATOR}
+        -DQMTEST_C_COMPILER=${CMAKE_C_COMPILER}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/configure_project.cmake
+)
+set_tests_properties(cmake.project PROPERTIES
+    LABELS cmake
+    TIMEOUT 300
+)

@@ -92,6 +92,41 @@ function(qmtest_false _what _value)
 endfunction()
 
 #[[
+    The list holds the item. A property read back from a target answers
+    -NOTFOUND when it was never set, which counts as holding nothing.
+
+    qmtest_contains(<what> <list> <item>)
+]] #
+function(qmtest_contains _what _list _item)
+    if(_list MATCHES "-NOTFOUND$")
+        set(_list)
+    endif()
+
+    if("${_item}" IN_LIST _list)
+        _qmtest_pass()
+        return()
+    endif()
+
+    _qmtest_fail("${_what}" "[${_item}] is not in [${_list}]")
+endfunction()
+
+#[[
+    qmtest_lacks(<what> <list> <item>)
+]] #
+function(qmtest_lacks _what _list _item)
+    if(_list MATCHES "-NOTFOUND$")
+        set(_list)
+    endif()
+
+    if("${_item}" IN_LIST _list)
+        _qmtest_fail("${_what}" "[${_item}] is in [${_list}] and should not be")
+        return()
+    endif()
+
+    _qmtest_pass()
+endfunction()
+
+#[[
     qmtest_exists(<what> <path>)
 ]] #
 function(qmtest_exists _what _path)
