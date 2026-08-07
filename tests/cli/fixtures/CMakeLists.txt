@@ -1,63 +1,70 @@
 # The binaries the deploy tests run against.
 #
 # `qmcorecmd deploy` finds what shared libraries a binary needs and copies them
-# somewhere. Testing that needs real binaries, so this builds nine of them.
-# They do nothing at all. What matters is who links whom, and where each one
-# sits, because that is what a deployment has to work out.
+# somewhere. Testing that needs real binaries, so this builds them. They do
+# nothing at all. What matters is who links whom, and where each one sits,
+# because that is what a deployment has to work out.
 #
-# The shape is the one a program has after it is installed alongside a
-# framework it uses. Read `audio` as Qt and it is the familiar case: an
-# application that links a framework has to carry the framework's libraries and
-# its plugins, and the plugins are not linked by anything, so nothing finds
-# them by following the graph. They are named on the command line instead.
+# The shape is the one a program has after it is installed alongside an SDK it
+# uses. Read the SDK as Qt and it is the familiar case: an application that
+# links one has to carry its libraries and its plugins, and the plugins are
+# linked by nothing, so following the graph never finds them. They are named on
+# the command line instead.
 #
-# Mine, under myapp/:
+# A name says where a thing sits. The prefix is the tree it belongs to, which is
+# also the directory that tree is in, so the two cannot drift apart. The rest of
+# the name says what it is doing in the graph:
 #
-#   bin/                qmtest_app          links core
-#                       qmtest_core         links util and audio
-#                       qmtest_util         a leaf
-#   lib/app/plugins/    qmtest_plugin1      links core
-#                       qmtest_plugin2      links audio, so a plugin of mine
-#                                           reaches into the framework directly
+#   _exe            the executable, which nothing links
+#   _lib            what the executable links, and the way into the tree
+#   _leaf           reached only through _lib, so a resolver that stops after
+#                   one level never sees it
+#   _alone          linked by nothing at all
+#   _plugin         a plugin, linked by nothing, that needs its own tree
+#   _plugin_<tree>  a plugin that reaches into the tree named
+#   _plugin_alone   the plugin that drags _alone in with it
 #
-# Theirs, under thirdparty/, which stands in for an installed framework:
+#   app/bin/            qmtest_app_exe          links app_lib
+#                       qmtest_app_lib          links app_leaf and sdk_lib
+#                       qmtest_app_leaf         a leaf
+#   app/lib/plugins/    qmtest_app_plugin       needs app_lib
+#                       qmtest_app_plugin_sdk   needs sdk_lib, so a plugin of
+#                                               mine reaches across the boundary
 #
-#   bin/                qmtest_audio        links render
-#                       qmtest_render       a leaf
-#                       qmtest_codec        a leaf nothing of mine reaches
-#   lib/audio/plugins/  qmtest_audioplugin1 links audio
-#                       qmtest_audioplugin2 links codec
+#   sdk/bin/            qmtest_sdk_lib          links sdk_leaf
+#                       qmtest_sdk_leaf         a leaf
+#                       qmtest_sdk_alone        a leaf nothing of mine reaches
+#   sdk/lib/plugins/    qmtest_sdk_plugin       needs sdk_lib
+#                       qmtest_sdk_plugin_alone needs sdk_alone
 #
-# So the application links core and nothing else. util, audio and render are
-# reached only by following core, and then by following audio. A resolver that
-# reads one level deep finds core and stops.
+# So the application links app_lib and nothing else, and everything else is two
+# or three steps behind it: app_leaf and sdk_lib through app_lib, sdk_leaf
+# through sdk_lib. A resolver that reads one level deep finds app_lib and stops.
 #
-# codec is the one nothing links. No amount of following the graph from the
-# application arrives at it, and it is there only because audioplugin2 wants
+# sdk_alone is the one nothing links. No amount of following the graph from the
+# application arrives at it, and it is there only because sdk_plugin_alone wants
 # it. That is the case plugin deployment exists for: naming the plugin has to
 # bring a library along that nothing else asked for.
 #
 # What a build leaves behind is that tree, laid out under this file's build
-# directory rather than flattened into one place:
+# directory rather than flattened into one place. On Windows:
 #
-#   myapp/bin/                    qmtest_app.exe qmtest_core.dll qmtest_util.dll
-#   myapp/lib/app/plugins/        qmtest_plugin1.dll qmtest_plugin2.dll
-#   thirdparty/bin/               qmtest_audio.dll qmtest_render.dll qmtest_codec.dll
-#   thirdparty/lib/audio/plugins/ qmtest_audioplugin1.dll qmtest_audioplugin2.dll
+#   app/bin/            qmtest_app_exe.exe qmtest_app_lib.dll qmtest_app_leaf.dll
+#   app/lib/plugins/    qmtest_app_plugin.dll qmtest_app_plugin_sdk.dll
+#   sdk/bin/            qmtest_sdk_lib.dll qmtest_sdk_leaf.dll qmtest_sdk_alone.dll
+#   sdk/lib/plugins/    qmtest_sdk_plugin.dll qmtest_sdk_plugin_alone.dll
 #
-# Those are the names Windows produces. Elsewhere the platform decorates them
-# its own way, as qmtest_app and libqmtest_core.so, or libqmtest_core.dylib on
-# macOS. That is why the tests name artifacts rather than files, and why
-# nothing here carries a debug postfix. The qmtest_ prefix is there so that no
-# fixture is ever named like something in C:\Windows\System32, which a
-# deployment filters out on sight and would turn into a failure on one machine
-# and not another.
+# Elsewhere the platform decorates them its own way, as qmtest_app_exe and
+# libqmtest_app_lib.so, or libqmtest_app_lib.dylib on macOS. That is why the
+# tests name artifacts rather than files, and why nothing here carries a debug
+# postfix. The qmtest_ prefix is there so that no fixture is ever named like
+# something in C:\Windows\System32, which a deployment filters out on sight and
+# would turn into a failure on one machine and not another.
 #
 # A test copies both trees into a sandbox of its own, keeping the structure. It
 # does not rearrange them, because the arrangement is the point. Which command
 # lines are run against it, and what each should leave behind, are declared in
-# ../deploy_scenarios.json, and the directory names there have to agree with
-# the ones set below.
+# ../deploy_scenarios.json, and the names there have to agree with these.
 
 # Symbols are exported by hand in fixture.h rather than wholesale, because
 # CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS does not cover MODULE libraries, and a
@@ -80,18 +87,18 @@ else()
     set(_origin "$ORIGIN")
 endif()
 
-set(_app_bin              myapp/bin)
-set(_app_plugins          myapp/lib/app/plugins)
-set(_third_bin            thirdparty/bin)
-set(_third_plugins        thirdparty/lib/audio/plugins)
+set(_app_bin           app/bin)
+set(_app_plugins       app/lib/plugins)
+set(_sdk_bin           sdk/bin)
+set(_sdk_plugins       sdk/lib/plugins)
 
-# myapp/bin reaches thirdparty/bin by going up two and across.
-set(_app_bin_rpath        "${_origin};${_origin}/../../thirdparty/bin")
-# myapp/lib/app/plugins goes up three to myapp, and four to the root.
-set(_app_plugins_rpath    "${_origin};${_origin}/../../../bin;${_origin}/../../../../thirdparty/bin")
-set(_third_bin_rpath      "${_origin}")
-# thirdparty/lib/audio/plugins goes up three to thirdparty.
-set(_third_plugins_rpath  "${_origin};${_origin}/../../../bin")
+# app/bin goes up two to the root and across to sdk/bin.
+set(_app_bin_rpath     "${_origin};${_origin}/../../sdk/bin")
+# app/lib/plugins goes up two to app/bin, and three to the root.
+set(_app_plugins_rpath "${_origin};${_origin}/../../bin;${_origin}/../../../sdk/bin")
+set(_sdk_bin_rpath     "${_origin}")
+# sdk/lib/plugins goes up two to sdk/bin.
+set(_sdk_plugins_rpath "${_origin};${_origin}/../../bin")
 
 # name, kind, output directory, rpath
 function(qmtest_fixture name kind directory rpath)
@@ -130,17 +137,17 @@ function(qmtest_fixture name kind directory rpath)
 endfunction()
 
 # Theirs first, since mine link it.
-qmtest_fixture(render       library     "${_third_bin}"      "${_third_bin_rpath}")
-qmtest_fixture(codec        library     "${_third_bin}"      "${_third_bin_rpath}")
-qmtest_fixture(audio        library     "${_third_bin}"      "${_third_bin_rpath}"     qmtest_render)
-qmtest_fixture(audioplugin1 plugin      "${_third_plugins}"  "${_third_plugins_rpath}" qmtest_audio)
-qmtest_fixture(audioplugin2 plugin      "${_third_plugins}"  "${_third_plugins_rpath}" qmtest_codec)
+qmtest_fixture(sdk_leaf         library     "${_sdk_bin}"      "${_sdk_bin_rpath}")
+qmtest_fixture(sdk_alone        library     "${_sdk_bin}"      "${_sdk_bin_rpath}")
+qmtest_fixture(sdk_lib          library     "${_sdk_bin}"      "${_sdk_bin_rpath}"     qmtest_sdk_leaf)
+qmtest_fixture(sdk_plugin       plugin      "${_sdk_plugins}"  "${_sdk_plugins_rpath}" qmtest_sdk_lib)
+qmtest_fixture(sdk_plugin_alone plugin      "${_sdk_plugins}"  "${_sdk_plugins_rpath}" qmtest_sdk_alone)
 
-qmtest_fixture(util         library     "${_app_bin}"        "${_app_bin_rpath}")
-qmtest_fixture(core         library     "${_app_bin}"        "${_app_bin_rpath}"       qmtest_util qmtest_audio)
-qmtest_fixture(app          application "${_app_bin}"        "${_app_bin_rpath}"       qmtest_core)
-qmtest_fixture(plugin1      plugin      "${_app_plugins}"    "${_app_plugins_rpath}"   qmtest_core)
-qmtest_fixture(plugin2      plugin      "${_app_plugins}"    "${_app_plugins_rpath}"   qmtest_audio)
+qmtest_fixture(app_leaf         library     "${_app_bin}"      "${_app_bin_rpath}")
+qmtest_fixture(app_lib          library     "${_app_bin}"      "${_app_bin_rpath}"     qmtest_app_leaf qmtest_sdk_lib)
+qmtest_fixture(app_exe          application "${_app_bin}"      "${_app_bin_rpath}"     qmtest_app_lib)
+qmtest_fixture(app_plugin       plugin      "${_app_plugins}"  "${_app_plugins_rpath}" qmtest_app_lib)
+qmtest_fixture(app_plugin_sdk   plugin      "${_app_plugins}"  "${_app_plugins_rpath}" qmtest_sdk_lib)
 
 # A real framework bundle, which is a shape only macOS has.
 #
@@ -176,8 +183,8 @@ if(APPLE)
 
     # An ordinary shared library that a framework needs, so that the walk leaves a bundle as well
     # as entering one.
-    add_library(qmtest_plainlib SHARED plainlib.c)
-    set_target_properties(qmtest_plainlib PROPERTIES
+    add_library(qmtest_fw_plain SHARED fw_plain.c)
+    set_target_properties(qmtest_fw_plain PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY "${_framework_dir}"
         DEBUG_POSTFIX ""
         SKIP_BUILD_RPATH ON
@@ -185,23 +192,23 @@ if(APPLE)
         INSTALL_NAME_DIR "@rpath"
     )
 
-    # bundleapp -> bundled.framework -> deeper.framework
-    #                                -> plainlib
+    # fw_exe -> fw_lib.framework -> fw_deep.framework
+    #                            -> fw_plain
     #
-    # Three levels, and the middle one is a bundle. Reaching deeper or plainlib means going into
-    # bundled for the library inside it, reading what that names, and coming back out to a bundle
+    # Three levels, and the middle one is a bundle. Reaching fw_deep or fw_plain means going into
+    # fw_lib for the library inside it, reading what that names, and coming back out to a bundle
     # again. One level of framework never asks for any of that.
-    qmtest_framework(deeper)
-    qmtest_framework(bundled qmtest_deeper qmtest_plainlib)
+    qmtest_framework(fw_deep)
+    qmtest_framework(fw_lib qmtest_fw_deep qmtest_fw_plain)
 
-    # Linked by nothing. It is the framework equivalent of codec above: no amount of following
+    # Linked by nothing. It is the framework equivalent of sdk_alone above: no amount of following
     # the graph arrives at it, so the only way it is ever deployed is by being named with -c,
     # and that is a different path through the deployment.
-    qmtest_framework(named)
+    qmtest_framework(fw_alone)
 
-    add_executable(qmtest_bundleapp bundleapp.c)
-    target_link_libraries(qmtest_bundleapp PRIVATE qmtest_bundled)
-    set_target_properties(qmtest_bundleapp PROPERTIES
+    add_executable(qmtest_fw_exe fw_exe.c)
+    target_link_libraries(qmtest_fw_exe PRIVATE qmtest_fw_lib)
+    set_target_properties(qmtest_fw_exe PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${_framework_dir}"
         DEBUG_POSTFIX ""
         SKIP_BUILD_RPATH ON

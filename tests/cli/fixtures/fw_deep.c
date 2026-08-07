@@ -4,4 +4,4 @@
    bundle to the library inside it, read that library, and come back out to a
    bundle again, which is the one thing a single level of framework never
    exercises. */
-QMTEST_EXPORT int qmtest_deeper_value(void) { return 11; }
+QMTEST_EXPORT int qmtest_fw_deep_value(void) { return 11; }

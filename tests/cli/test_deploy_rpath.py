@@ -107,9 +107,9 @@ class RpathTestCase(DeployTestCase):
         """The whole job, the way the declared scenarios run it."""
         return self.run_cmd(
             "deploy", *self.program(),
-            "-c", self.layout.path("audioplugin1"), self.layout.directory("appaudioplugins"),
-            "-c", self.layout.path("audioplugin2"), self.layout.directory("appaudioplugins"),
-            "-o", self.layout.directory("appbin"),
+            "-c", self.layout.path("sdk_plugin"), self.layout.directory("app_sdk_plugins"),
+            "-c", self.layout.path("sdk_plugin_alone"), self.layout.directory("app_sdk_plugins"),
+            "-o", self.layout.directory("app_bin"),
             *extra,
         )
 
@@ -120,44 +120,44 @@ class TestResolutionThroughAnRpath(RpathTestCase):
 
     def test_the_framework_is_found_without_a_search_path(self):
         r = self.run_cmd(
-            "deploy", *self.program(), "-o", self.layout.directory("appbin"), "-s", "-V"
+            "deploy", *self.program(), "-o", self.layout.directory("app_bin"), "-s", "-V"
         )
         self.assertOk(r)
-        for artifact in ("audio", "render"):
+        for artifact in ("sdk_lib", "sdk_leaf"):
             self.assertResolved(r, artifact)
 
     def test_it_is_copied_out_of_the_framework(self):
         r = self.run_cmd(
-            "deploy", *self.program(), "-o", self.layout.directory("appbin"), "-s"
+            "deploy", *self.program(), "-o", self.layout.directory("app_bin"), "-s"
         )
         self.assertOk(r)
-        landed = self.files_in(self.layout.directory("appbin"))
-        for artifact in ("audio", "render"):
+        landed = self.files_in(self.layout.directory("app_bin"))
+        for artifact in ("sdk_lib", "sdk_leaf"):
             self.assertIn(self.layout.name(artifact), landed)
 
     def test_the_framework_is_left_as_it_was(self):
         self.assertOk(
             self.run_cmd(
-                "deploy", *self.program(), "-o", self.layout.directory("appbin"), "-s"
+                "deploy", *self.program(), "-o", self.layout.directory("app_bin"), "-s"
             )
         )
-        for artifact in ("audio", "render", "codec"):
+        for artifact in ("sdk_lib", "sdk_leaf", "sdk_alone"):
             self.assertFile(self.layout.path(artifact))
 
     def test_what_only_a_plugin_wants_stays_behind_until_it_is_named(self):
         self.assertOk(
             self.run_cmd(
-                "deploy", *self.program(), "-o", self.layout.directory("appbin"), "-s"
+                "deploy", *self.program(), "-o", self.layout.directory("app_bin"), "-s"
             )
         )
         self.assertNotIn(
-            self.layout.name("codec"), self.files_in(self.layout.directory("appbin"))
+            self.layout.name("sdk_alone"), self.files_in(self.layout.directory("app_bin"))
         )
 
     def test_naming_the_plugin_brings_it(self):
         self.assertOk(self.deploy_everything("-s"))
         self.assertIn(
-            self.layout.name("codec"), self.files_in(self.layout.directory("appbin"))
+            self.layout.name("sdk_alone"), self.files_in(self.layout.directory("app_bin"))
         )
 
 
@@ -166,7 +166,7 @@ class TestRpathsAreRewritten(RpathTestCase):
 
     def test_a_deployed_library_is_pointed_at_its_new_neighbours(self):
         self.assertOk(self.deploy_everything("-s"))
-        copied = self.path(self.layout.directory("appbin")) / self.layout.name("audio")
+        copied = self.path(self.layout.directory("app_bin")) / self.layout.name("sdk_lib")
         self.assertTrue(copied.is_file(), msg=f"tree: {self.tree()}")
         expected = "@loader_path" if sys.platform == "darwin" else "$ORIGIN"
         self.assertIn(expected, read_rpath(copied))
@@ -176,8 +176,8 @@ class TestRpathsAreRewritten(RpathTestCase):
         across to where the libraries were gathered."""
         self.assertOk(self.deploy_everything("-s"))
         copied = (
-            self.path(self.layout.directory("appaudioplugins"))
-            / self.layout.name("audioplugin2")
+            self.path(self.layout.directory("app_sdk_plugins"))
+            / self.layout.name("sdk_plugin_alone")
         )
         self.assertTrue(copied.is_file(), msg=f"tree: {self.tree()}")
         rpath = read_rpath(copied)
@@ -188,14 +188,14 @@ class TestRpathsAreRewritten(RpathTestCase):
     def test_the_framework_is_no_longer_named_by_the_copies(self):
         """Otherwise the deployment still depends on the machine it was built on."""
         self.assertOk(self.deploy_everything("-s"))
-        framework = str(self.path(self.layout.directory("audiobin")))
-        for name in self.files_in(self.layout.directory("appbin")):
-            copied = self.path(self.layout.directory("appbin")) / name
+        framework = str(self.path(self.layout.directory("sdk_bin")))
+        for name in self.files_in(self.layout.directory("app_bin")):
+            copied = self.path(self.layout.directory("app_bin")) / name
             self.assertNotIn(framework, read_rpath(copied))
 
     def test_a_binary_that_was_named_is_pointed_at_the_output(self):
         self.assertOk(self.deploy_everything("-s"))
-        rpath = read_rpath(self.path(self.layout.path("plugin1")))
+        rpath = read_rpath(self.path(self.layout.path("app_plugin")))
         expected = "@loader_path" if sys.platform == "darwin" else "$ORIGIN"
         self.assertIn(expected, rpath)
         self.assertIn("bin", rpath)
@@ -207,12 +207,12 @@ class TestSystemLibraries(RpathTestCase):
     def deployed_runtime(self, *extra: str) -> set[str]:
         self.assertOk(
             self.run_cmd(
-                "deploy", *self.program(), "-o", self.layout.directory("appbin"), *extra
+                "deploy", *self.program(), "-o", self.layout.directory("app_bin"), *extra
             )
         )
         return {
             name
-            for name in self.files_in(self.layout.directory("appbin"))
+            for name in self.files_in(self.layout.directory("app_bin"))
             if self.is_runtime(name)
         }
 
@@ -233,7 +233,7 @@ class TestSystemLibraries(RpathTestCase):
 
     def test_standard_deploys_a_subset_of_what_it_would_otherwise(self):
         plain = self.deployed_runtime()
-        everything = self.files_in(self.layout.directory("appbin"))
+        everything = self.files_in(self.layout.directory("app_bin"))
 
         # Deploying rewrites the rpath of every binary it was pointed at, so the
         # program no longer names the framework and asking again would resolve
@@ -242,14 +242,14 @@ class TestSystemLibraries(RpathTestCase):
 
         self.assertOk(
             self.run_cmd(
-                "deploy", *self.program(), "-o", self.layout.directory("appbin"), "-s"
+                "deploy", *self.program(), "-o", self.layout.directory("app_bin"), "-s"
             )
         )
-        standard = self.files_in(self.layout.directory("appbin"))
+        standard = self.files_in(self.layout.directory("app_bin"))
 
         self.assertTrue(
             standard <= everything, msg=f"{sorted(standard - everything)} appeared"
         )
         self.assertFalse(plain & standard)
-        for artifact in ("audio", "render"):
+        for artifact in ("sdk_lib", "sdk_leaf"):
             self.assertIn(self.layout.name(artifact), standard)

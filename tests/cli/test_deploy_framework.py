@@ -68,11 +68,11 @@ class FrameworkTestCase(QmTestCase):
     """Gives each test the framework tree, copied whole so that the bundle keeps
     the symlinks that make it one."""
 
-    NAME = "qmtest_bundled"
-    DEEPER = "qmtest_deeper"
-    PLAIN = "qmtest_plainlib"
-    NAMED = "qmtest_named"
-    APP = "qmtest_bundleapp"
+    LIB = "qmtest_fw_lib"
+    DEEP = "qmtest_fw_deep"
+    PLAIN = "qmtest_fw_plain"
+    ALONE = "qmtest_fw_alone"
+    EXE = "qmtest_fw_exe"
 
     def setUp(self):
         super().setUp()
@@ -89,10 +89,10 @@ class FrameworkTestCase(QmTestCase):
         # it flat would be testing something else.
         shutil.copytree(source, self.built, symlinks=True)
 
-        self.app = self.built / self.APP
-        self.bundle = self.built / f"{self.NAME}.framework"
-        self.named = self.built / f"{self.NAMED}.framework"
-        if not self.app.is_file() or not self.bundle.is_dir() or not self.named.is_dir():
+        self.app = self.built / self.EXE
+        self.bundle = self.built / f"{self.LIB}.framework"
+        self.alone = self.built / f"{self.ALONE}.framework"
+        if not self.app.is_file() or not self.bundle.is_dir() or not self.alone.is_dir():
             self.skipTest(f"the framework fixture is not in {source}")
 
     def deploy(self, *extra: str):
@@ -104,7 +104,7 @@ class FrameworkTestCase(QmTestCase):
 
     @property
     def deployed_bundle(self) -> Path:
-        return self.out / f"{self.NAME}.framework"
+        return self.out / f"{self.LIB}.framework"
 
 
 class TestTheBundleIsCarriedAcross(FrameworkTestCase):
@@ -118,7 +118,7 @@ class TestTheBundleIsCarriedAcross(FrameworkTestCase):
     def test_the_library_inside_it_comes_too(self):
         self.assertOk(self.deploy("-s"))
         self.assertTrue(
-            (self.deployed_bundle / "Versions" / "A" / self.NAME).is_file(),
+            (self.deployed_bundle / "Versions" / "A" / self.LIB).is_file(),
             msg=f"tree: {self.tree()}",
         )
 
@@ -127,13 +127,13 @@ class TestTheBundleIsCarriedAcross(FrameworkTestCase):
         deployment took it for an ordinary shared library."""
         self.assertOk(self.deploy("-s"))
         self.assertFalse(
-            (self.out / self.NAME).exists(), msg=f"tree: {self.tree()}"
+            (self.out / self.LIB).exists(), msg=f"tree: {self.tree()}"
         )
 
     def test_what_it_was_built_from_is_left_as_it_was(self):
         self.assertOk(self.deploy("-s"))
         self.assertTrue(self.bundle.is_dir())
-        self.assertTrue((self.bundle / "Versions" / "A" / self.NAME).is_file())
+        self.assertTrue((self.bundle / "Versions" / "A" / self.LIB).is_file())
 
 
 class TestWhatIsLeftBehind(FrameworkTestCase):
@@ -167,12 +167,12 @@ class TestNamesAreRewritten(FrameworkTestCase):
         """The bundle moved, so what is inside it moved. Whatever it needs of its
         own is no longer where it was, and its own rpath is what has to say so."""
         self.assertOk(self.deploy("-s"))
-        library = self.deployed_bundle / "Versions" / "A" / self.NAME
+        library = self.deployed_bundle / "Versions" / "A" / self.LIB
         self.assertIn("@loader_path", " ".join(rpaths(library)), msg=f"tree: {self.tree()}")
 
     def test_the_library_inside_it_no_longer_names_where_it_was_built(self):
         self.assertOk(self.deploy("-s"))
-        library = self.deployed_bundle / "Versions" / "A" / self.NAME
+        library = self.deployed_bundle / "Versions" / "A" / self.LIB
         built = str(self.built)
         for path in rpaths(library):
             self.assertNotIn(built, path)
@@ -182,7 +182,7 @@ class TestNamesAreRewritten(FrameworkTestCase):
     def test_the_application_still_names_the_framework_by_rpath(self):
         self.assertOk(self.deploy("-s"))
         named = " ".join(install_names(self.app))
-        self.assertIn(f"{self.NAME}.framework", named)
+        self.assertIn(f"{self.LIB}.framework", named)
         self.assertIn("@rpath", named)
 
     def test_nothing_names_the_directory_it_was_built_in(self):
@@ -197,10 +197,10 @@ class TestNamesAreRewritten(FrameworkTestCase):
 class TestTheWalkGoesThroughABundle(FrameworkTestCase):
     """Three levels, with a bundle in the middle.
 
-        bundleapp -> bundled.framework -> deeper.framework
-                                       -> plainlib
+        fw_exe -> fw_lib.framework -> fw_deep.framework
+                                   -> fw_plain
 
-    Nothing reaches deeper or plainlib without going into bundled for the
+    Nothing reaches fw_deep or fw_plain without going into fw_lib for the
     library inside it, reading what that names, and coming back out to a bundle
     again. One level of framework asks for none of that, and one level is all
     there was.
@@ -211,12 +211,12 @@ class TestTheWalkGoesThroughABundle(FrameworkTestCase):
 
     def test_a_framework_behind_a_framework_is_reached(self):
         self.assertOk(self.deploy("-s"))
-        self.assertTrue(self.deployed(self.DEEPER).is_dir(), msg=f"tree: {self.tree()}")
+        self.assertTrue(self.deployed(self.DEEP).is_dir(), msg=f"tree: {self.tree()}")
 
     def test_and_the_library_inside_that_one_comes_too(self):
         self.assertOk(self.deploy("-s"))
         self.assertTrue(
-            (self.deployed(self.DEEPER) / "Versions" / "A" / self.DEEPER).is_file(),
+            (self.deployed(self.DEEP) / "Versions" / "A" / self.DEEP).is_file(),
             msg=f"tree: {self.tree()}",
         )
 
@@ -239,25 +239,25 @@ class TestTheWalkGoesThroughABundle(FrameworkTestCase):
         """A bundle has nothing to read. What the walk opens is the library."""
         r = self.deploy("-s", "-d", "-V")
         self.assertOk(r)
-        self.assertOut(r, f"{self.NAME}.framework/Versions/A/{self.NAME}")
+        self.assertOut(r, f"{self.LIB}.framework/Versions/A/{self.LIB}")
 
     def test_excluding_the_middle_one_hides_what_is_behind_it(self):
         """It is never opened, so what only it asked for is never found."""
-        self.assertOk(self.deploy("-s", "-e", self.NAME))
-        self.assertFalse(self.deployed(self.NAME).exists(), msg=f"tree: {self.tree()}")
-        self.assertFalse(self.deployed(self.DEEPER).exists(), msg=f"tree: {self.tree()}")
+        self.assertOk(self.deploy("-s", "-e", self.LIB))
+        self.assertFalse(self.deployed(self.LIB).exists(), msg=f"tree: {self.tree()}")
+        self.assertFalse(self.deployed(self.DEEP).exists(), msg=f"tree: {self.tree()}")
         self.assertFalse((self.out / f"lib{self.PLAIN}.dylib").exists())
 
     def test_the_deeper_bundle_is_pointed_somewhere_of_its_own(self):
         self.assertOk(self.deploy("-s"))
-        library = self.deployed(self.DEEPER) / "Versions" / "A" / self.DEEPER
+        library = self.deployed(self.DEEP) / "Versions" / "A" / self.DEEP
         self.assertIn("@loader_path", " ".join(rpaths(library)), msg=f"tree: {self.tree()}")
 
     def test_the_middle_one_still_names_what_is_behind_it_by_rpath(self):
         self.assertOk(self.deploy("-s"))
-        library = self.deployed_bundle / "Versions" / "A" / self.NAME
+        library = self.deployed_bundle / "Versions" / "A" / self.LIB
         named = " ".join(install_names(library))
-        self.assertIn(f"{self.DEEPER}.framework", named)
+        self.assertIn(f"{self.DEEP}.framework", named)
         self.assertIn("@rpath", named)
         self.assertNotIn(str(self.built), named)
 
@@ -271,65 +271,65 @@ class TestAFrameworkNothingLinks(FrameworkTestCase):
     different path from the ones that were resolved.
     """
 
-    def named_dir(self) -> Path:
+    def alone_dir(self) -> Path:
         return self.sandbox / "plugins"
 
-    def deployed_named(self) -> Path:
-        return self.named_dir() / f"{self.NAMED}.framework"
+    def deployed_alone(self) -> Path:
+        return self.alone_dir() / f"{self.ALONE}.framework"
 
-    def deploy_with_named(self, *extra: str):
-        return self.deploy("-c", str(self.named), str(self.named_dir()), *extra)
+    def deploy_with_alone(self, *extra: str):
+        return self.deploy("-c", str(self.alone), str(self.alone_dir()), *extra)
 
     def test_following_the_graph_never_reaches_it(self):
         self.assertOk(self.deploy("-s"))
         self.assertFalse(
-            (self.out / f"{self.NAMED}.framework").exists(), msg=f"tree: {self.tree()}"
+            (self.out / f"{self.ALONE}.framework").exists(), msg=f"tree: {self.tree()}"
         )
 
     def test_naming_it_brings_the_bundle(self):
-        self.assertOk(self.deploy_with_named("-s"))
-        self.assertTrue(self.deployed_named().is_dir(), msg=f"tree: {self.tree()}")
+        self.assertOk(self.deploy_with_alone("-s"))
+        self.assertTrue(self.deployed_alone().is_dir(), msg=f"tree: {self.tree()}")
 
     def test_it_goes_where_it_was_told_rather_than_to_the_output(self):
-        self.assertOk(self.deploy_with_named("-s"))
+        self.assertOk(self.deploy_with_alone("-s"))
         self.assertFalse(
-            (self.out / f"{self.NAMED}.framework").exists(), msg=f"tree: {self.tree()}"
+            (self.out / f"{self.ALONE}.framework").exists(), msg=f"tree: {self.tree()}"
         )
 
     def test_the_library_inside_it_comes_too(self):
-        self.assertOk(self.deploy_with_named("-s"))
+        self.assertOk(self.deploy_with_alone("-s"))
         self.assertTrue(
-            (self.deployed_named() / "Versions" / "A" / self.NAMED).is_file(),
+            (self.deployed_alone() / "Versions" / "A" / self.ALONE).is_file(),
             msg=f"tree: {self.tree()}",
         )
 
     def test_its_headers_are_left_behind_as_well(self):
-        self.assertTrue((self.named / "Versions" / "A" / "Headers").is_dir())
-        self.assertOk(self.deploy_with_named("-s"))
+        self.assertTrue((self.alone / "Versions" / "A" / "Headers").is_dir())
+        self.assertOk(self.deploy_with_alone("-s"))
         self.assertFalse(
-            (self.deployed_named() / "Versions" / "A" / "Headers").exists(),
+            (self.deployed_alone() / "Versions" / "A" / "Headers").exists(),
             msg=f"tree: {self.tree()}",
         )
 
     def test_it_is_pointed_back_at_where_the_libraries_went(self):
         """It landed in a directory of its own, so its rpath has to reach across
         to the output directory rather than naming only itself."""
-        self.assertOk(self.deploy_with_named("-s"))
-        library = self.deployed_named() / "Versions" / "A" / self.NAMED
+        self.assertOk(self.deploy_with_alone("-s"))
+        library = self.deployed_alone() / "Versions" / "A" / self.ALONE
         self.assertIn("@loader_path", " ".join(rpaths(library)))
 
     def test_what_it_was_copied_from_is_left_as_it_was(self):
-        self.assertOk(self.deploy_with_named("-s"))
-        self.assertTrue((self.named / "Versions" / "A" / self.NAMED).is_file())
+        self.assertOk(self.deploy_with_alone("-s"))
+        self.assertTrue((self.alone / "Versions" / "A" / self.ALONE).is_file())
 
 
 class TestTheGraphThroughAFramework(FrameworkTestCase):
     def test_a_dry_run_reports_the_framework_and_writes_nothing(self):
         r = self.deploy("-s", "-d")
         self.assertOk(r)
-        self.assertOut(r, f"{self.NAME}.framework")
+        self.assertOut(r, f"{self.LIB}.framework")
         self.assertFalse(self.out.exists(), msg=f"tree: {self.tree()}")
 
     def test_excluding_it_leaves_it_behind(self):
-        self.assertOk(self.deploy("-s", "-e", self.NAME))
+        self.assertOk(self.deploy("-s", "-e", self.LIB))
         self.assertFalse(self.deployed_bundle.exists(), msg=f"tree: {self.tree()}")

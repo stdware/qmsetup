@@ -8,23 +8,23 @@
         "`scenarios` then gives a command line and the directory structure it",
         "should leave behind.",
         "",
-        "Artifacts are named by what they are, `audio` or `plugin1`, never by",
-        "file name, because that is `qmtest_audio.dll` on one platform and",
-        "`libqmtest_audio.so` on another. The test resolves them.",
+        "Artifacts are named by where they sit, `sdk_lib` or `app_plugin`, never",
+        "by file name, because that is `qmtest_sdk_lib.dll` on one platform and",
+        "`libqmtest_sdk_lib.so` on another. The test resolves them.",
         "",
-        "In `args`, `{audio}` is an artifact's path and `{dir.audiobin}` is one",
+        "In `args`, `{sdk_lib}` is an artifact's path and `{dir.sdk_bin}` is one",
         "of the directories below. In `expect`, a directory maps to exactly the",
         "artifacts that must be in it. Exactly, so an unexpected file is a",
         "failure too, and `[]` means empty or absent.",
         "",
-        "The shape is a program installed beside a framework it uses. Read",
-        "`audio` as Qt. The binaries that belong to the program are named on",
+        "The shape is a program installed beside an SDK it uses. Read the SDK",
+        "as Qt. The binaries that belong to the program are named on",
         "the command line and stay where they are; what they need is found and",
-        "copied to `-o`. The framework's plugins are linked by nothing, so no",
+        "copied to `-o`. The SDK's plugins are linked by nothing, so no",
         "amount of following the graph reaches them, and they are named with",
         "`-c` instead, which says where each one goes.",
         "",
-        "Every line passes `-L` for the framework's directory, which is what",
+        "Every line passes `-L` for the SDK's directory, which is what",
         "Windows needs. Unix resolves it through the rpath the fixtures were",
         "built with and would manage without.",
         "",
@@ -35,156 +35,156 @@
         "difference, which the Unix tests cover on its own."
     ],
 
-    "trees": ["myapp", "thirdparty"],
+    "trees": ["app", "sdk"],
 
     "directories": {
-        "appbin": "myapp/bin",
-        "appplugins": "myapp/lib/app/plugins",
-        "appaudioplugins": "myapp/lib/audio/plugins",
-        "audiobin": "thirdparty/bin",
-        "audioplugins": "thirdparty/lib/audio/plugins"
+        "app_bin": "app/bin",
+        "app_plugins": "app/lib/plugins",
+        "app_sdk_plugins": "app/lib/sdk/plugins",
+        "sdk_bin": "sdk/bin",
+        "sdk_plugins": "sdk/lib/plugins"
     },
 
     "artifacts": {
-        "app": {"kind": "application", "directory": "appbin"},
-        "core": {"kind": "library", "directory": "appbin"},
-        "util": {"kind": "library", "directory": "appbin"},
-        "plugin1": {"kind": "plugin", "directory": "appplugins"},
-        "plugin2": {"kind": "plugin", "directory": "appplugins"},
+        "app_exe": {"kind": "application", "directory": "app_bin"},
+        "app_lib": {"kind": "library", "directory": "app_bin"},
+        "app_leaf": {"kind": "library", "directory": "app_bin"},
+        "app_plugin": {"kind": "plugin", "directory": "app_plugins"},
+        "app_plugin_sdk": {"kind": "plugin", "directory": "app_plugins"},
 
-        "audio": {"kind": "library", "directory": "audiobin"},
-        "render": {"kind": "library", "directory": "audiobin"},
-        "codec": {"kind": "library", "directory": "audiobin"},
-        "audioplugin1": {"kind": "plugin", "directory": "audioplugins"},
-        "audioplugin2": {"kind": "plugin", "directory": "audioplugins"}
+        "sdk_lib": {"kind": "library", "directory": "sdk_bin"},
+        "sdk_leaf": {"kind": "library", "directory": "sdk_bin"},
+        "sdk_alone": {"kind": "library", "directory": "sdk_bin"},
+        "sdk_plugin": {"kind": "plugin", "directory": "sdk_plugins"},
+        "sdk_plugin_alone": {"kind": "plugin", "directory": "sdk_plugins"}
     },
 
     "scenarios": [
         {
             "name": "a program and the framework's plugins",
-            "why": "The whole job at once. The program's own binaries are named and stay where they are. audio and render arrive because core links audio and audio links render. codec arrives only because audioplugin2 was named, since nothing in the program reaches it. Both framework plugins land where -c put them, and the framework's own tree is left as it was.",
+            "why": "The whole job at once. The program's own binaries are named and stay where they are. sdk_lib and sdk_leaf arrive because app_lib links sdk_lib and sdk_lib links sdk_leaf. sdk_alone arrives only because sdk_plugin_alone was named, since nothing in the program reaches it. Both SDK plugins land where -c put them, and the SDK's own tree is left as it was.",
             "args": [
-                "deploy", "{app}", "{core}", "{util}", "{plugin1}", "{plugin2}",
-                "-c", "{audioplugin1}", "{dir.appaudioplugins}",
-                "-c", "{audioplugin2}", "{dir.appaudioplugins}",
-                "-L", "{dir.audiobin}",
-                "-o", "{dir.appbin}",
+                "deploy", "{app_exe}", "{app_lib}", "{app_leaf}", "{app_plugin}", "{app_plugin_sdk}",
+                "-c", "{sdk_plugin}", "{dir.app_sdk_plugins}",
+                "-c", "{sdk_plugin_alone}", "{dir.app_sdk_plugins}",
+                "-L", "{dir.sdk_bin}",
+                "-o", "{dir.app_bin}",
                 "-s"
             ],
             "expect": {
-                "myapp/bin": ["app", "core", "util", "audio", "render", "codec"],
-                "myapp/lib/app/plugins": ["plugin1", "plugin2"],
-                "myapp/lib/audio/plugins": ["audioplugin1", "audioplugin2"],
-                "thirdparty/bin": ["audio", "render", "codec"],
-                "thirdparty/lib/audio/plugins": ["audioplugin1", "audioplugin2"]
+                "app/bin": ["app_exe", "app_lib", "app_leaf", "sdk_lib", "sdk_leaf", "sdk_alone"],
+                "app/lib/plugins": ["app_plugin", "app_plugin_sdk"],
+                "app/lib/sdk/plugins": ["sdk_plugin", "sdk_plugin_alone"],
+                "sdk/bin": ["sdk_lib", "sdk_leaf", "sdk_alone"],
+                "sdk/lib/plugins": ["sdk_plugin", "sdk_plugin_alone"]
             }
         },
         {
             "name": "a program without the framework's plugins",
-            "why": "Naming no plugin leaves codec behind, because following the graph from the program never arrives at it. audio and render still come, since the program links them.",
+            "why": "Naming no plugin leaves sdk_alone behind, because following the graph from the program never arrives at it. sdk_lib and sdk_leaf still come, since the program links them.",
             "args": [
-                "deploy", "{app}", "{core}", "{util}", "{plugin1}", "{plugin2}",
-                "-L", "{dir.audiobin}", "-o", "{dir.appbin}", "-s"
+                "deploy", "{app_exe}", "{app_lib}", "{app_leaf}", "{app_plugin}", "{app_plugin_sdk}",
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s"
             ],
             "expect": {
-                "myapp/bin": ["app", "core", "util", "audio", "render"],
-                "myapp/lib/audio/plugins": []
+                "app/bin": ["app_exe", "app_lib", "app_leaf", "sdk_lib", "sdk_leaf"],
+                "app/lib/sdk/plugins": []
             }
         },
         {
             "name": "one framework plugin, the one that needs nothing new",
-            "why": "audioplugin1 wants audio, which the program already brought, so the only thing that is new is the plugin itself.",
+            "why": "sdk_plugin wants sdk_lib, which the program already brought, so the only thing that is new is the plugin itself.",
             "args": [
-                "deploy", "{app}", "{core}", "{util}", "{plugin1}", "{plugin2}",
-                "-c", "{audioplugin1}", "{dir.appaudioplugins}",
-                "-L", "{dir.audiobin}", "-o", "{dir.appbin}", "-s"
+                "deploy", "{app_exe}", "{app_lib}", "{app_leaf}", "{app_plugin}", "{app_plugin_sdk}",
+                "-c", "{sdk_plugin}", "{dir.app_sdk_plugins}",
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s"
             ],
             "expect": {
-                "myapp/bin": ["app", "core", "util", "audio", "render"],
-                "myapp/lib/audio/plugins": ["audioplugin1"]
+                "app/bin": ["app_exe", "app_lib", "app_leaf", "sdk_lib", "sdk_leaf"],
+                "app/lib/sdk/plugins": ["sdk_plugin"]
             }
         },
         {
             "name": "one framework plugin, the one that brings a library with it",
-            "why": "This is what plugin deployment is for. codec is in nobody's dependency graph, and naming audioplugin2 is the only thing that brings it.",
+            "why": "This is what plugin deployment is for. sdk_alone is in nobody's dependency graph, and naming sdk_plugin_alone is the only thing that brings it.",
             "args": [
-                "deploy", "{app}", "{core}", "{util}", "{plugin1}", "{plugin2}",
-                "-c", "{audioplugin2}", "{dir.appaudioplugins}",
-                "-L", "{dir.audiobin}", "-o", "{dir.appbin}", "-s"
+                "deploy", "{app_exe}", "{app_lib}", "{app_leaf}", "{app_plugin}", "{app_plugin_sdk}",
+                "-c", "{sdk_plugin_alone}", "{dir.app_sdk_plugins}",
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s"
             ],
             "expect": {
-                "myapp/bin": ["app", "core", "util", "audio", "render", "codec"],
-                "myapp/lib/audio/plugins": ["audioplugin2"]
+                "app/bin": ["app_exe", "app_lib", "app_leaf", "sdk_lib", "sdk_leaf", "sdk_alone"],
+                "app/lib/sdk/plugins": ["sdk_plugin_alone"]
             }
         },
         {
             "name": "the application alone, without its own libraries named",
-            "why": "core sits beside the application, so it is found without being named, and copying it over itself is passed over rather than being an error. What lies behind it still arrives.",
+            "why": "app_lib sits beside the application, so it is found without being named, and copying it over itself is passed over rather than being an error. What lies behind it still arrives.",
             "args": [
-                "deploy", "{app}",
-                "-L", "{dir.audiobin}", "-o", "{dir.appbin}", "-s"
+                "deploy", "{app_exe}",
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s"
             ],
             "expect": {
-                "myapp/bin": ["app", "core", "util", "audio", "render"]
+                "app/bin": ["app_exe", "app_lib", "app_leaf", "sdk_lib", "sdk_leaf"]
             }
         },
         {
             "name": "a plugin of the program's own",
-            "why": "plugin2 reaches into the framework directly rather than through the program, and deploying it alone still gathers what it needs into the program's bin.",
+            "why": "app_plugin_sdk reaches into the SDK directly rather than through the program, and deploying it alone still gathers what it needs into the program's bin.",
             "args": [
-                "deploy", "{plugin2}",
-                "-L", "{dir.audiobin}", "-o", "{dir.appbin}", "-s"
+                "deploy", "{app_plugin_sdk}",
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s"
             ],
             "expect": {
-                "myapp/bin": ["app", "core", "util", "audio", "render"],
-                "myapp/lib/app/plugins": ["plugin1", "plugin2"]
+                "app/bin": ["app_exe", "app_lib", "app_leaf", "sdk_lib", "sdk_leaf"],
+                "app/lib/plugins": ["app_plugin", "app_plugin_sdk"]
             }
         },
         {
             "name": "excluding a library drops what lies behind it",
-            "why": "render is reachable only through audio, so refusing audio hides render as well. An excluded library is never opened, and what only it asked for is never found. This is why the resolver has to read a binary's own dependencies rather than the flattened closure a loader would report, and every platform is held to it.",
+            "why": "sdk_leaf is reachable only through sdk_lib, so refusing sdk_lib hides sdk_leaf as well. An excluded library is never opened, and what only it asked for is never found. This is why the resolver has to read a binary's own dependencies rather than the flattened closure a loader would report, and every platform is held to it.",
             "args": [
-                "deploy", "{app}", "{core}", "{util}",
-                "-L", "{dir.audiobin}", "-o", "{dir.appbin}", "-s",
-                "-e", "audio"
+                "deploy", "{app_exe}", "{app_lib}", "{app_leaf}",
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s",
+                "-e", "sdk_lib"
             ],
             "expect": {
-                "myapp/bin": ["app", "core", "util"]
+                "app/bin": ["app_exe", "app_lib", "app_leaf"]
             }
         },
         {
             "name": "deploying twice leaves the same thing",
             "why": "A second run has nothing to do, and must not undo or duplicate the first.",
             "args": [
-                "deploy", "{app}", "{core}", "{util}", "{plugin1}", "{plugin2}",
-                "-c", "{audioplugin1}", "{dir.appaudioplugins}",
-                "-L", "{dir.audiobin}", "-o", "{dir.appbin}", "-s"
+                "deploy", "{app_exe}", "{app_lib}", "{app_leaf}", "{app_plugin}", "{app_plugin_sdk}",
+                "-c", "{sdk_plugin}", "{dir.app_sdk_plugins}",
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s"
             ],
             "repeat": 2,
             "expect": {
-                "myapp/bin": ["app", "core", "util", "audio", "render"],
-                "myapp/lib/audio/plugins": ["audioplugin1"]
+                "app/bin": ["app_exe", "app_lib", "app_leaf", "sdk_lib", "sdk_leaf"],
+                "app/lib/sdk/plugins": ["sdk_plugin"]
             }
         },
         {
             "name": "a dry run writes nothing",
             "why": "--dryrun resolves everything and touches nothing, plugins included.",
             "args": [
-                "deploy", "{app}", "{core}", "{util}", "{plugin1}", "{plugin2}",
-                "-c", "{audioplugin2}", "{dir.appaudioplugins}",
-                "-L", "{dir.audiobin}", "-o", "{dir.appbin}", "-s", "-d"
+                "deploy", "{app_exe}", "{app_lib}", "{app_leaf}", "{app_plugin}", "{app_plugin_sdk}",
+                "-c", "{sdk_plugin_alone}", "{dir.app_sdk_plugins}",
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s", "-d"
             ],
-            "resolves": ["audio", "render", "codec"],
+            "resolves": ["sdk_lib", "sdk_leaf", "sdk_alone"],
             "unchanged": true,
             "expect": {
-                "myapp/bin": ["app", "core", "util"],
-                "myapp/lib/audio/plugins": []
+                "app/bin": ["app_exe", "app_lib", "app_leaf"],
+                "app/lib/sdk/plugins": []
             }
         },
         {
             "name": "a binary that is not there is refused",
             "why": "And nothing is written on the way to finding out.",
-            "args": ["deploy", "no_such_binary", "-o", "{dir.appbin}"],
+            "args": ["deploy", "no_such_binary", "-o", "{dir.app_bin}"],
             "exit": "fail",
             "unchanged": true
         }

@@ -6,14 +6,14 @@ program's binaries stay where they are, what they need is gathered next to
 them, and the framework's plugins have to be named by hand because nothing
 links them.
 
-    myapp/       app -> core -> util
-                             -> audio
-                 plugin1 -> core
-                 plugin2 -> audio
-    thirdparty/  audio -> render
-                 codec                     linked by nothing of the program's
-                 audioplugin1 -> audio
-                 audioplugin2 -> codec
+    app/  app_exe -> app_lib -> app_leaf
+                             -> sdk_lib
+          app_plugin -> app_lib
+          app_plugin_sdk -> sdk_lib
+    sdk/  sdk_lib -> sdk_leaf
+          sdk_alone                        linked by nothing of the program's
+          sdk_plugin -> sdk_lib
+          sdk_plugin_alone -> sdk_alone
 
 What each command line should leave behind is declared in
 ``deploy_scenarios.json``, not written out here, and one test is generated per
@@ -56,8 +56,8 @@ def resolution_problem(executable: str, fixture_dir: str) -> str:
         layout = fixtures.copy_into(sandbox)
         completed = subprocess.run(
             [
-                executable, "deploy", layout.path("app"),
-                "-L", layout.directory("audiobin"),
+                executable, "deploy", layout.path("app_exe"),
+                "-L", layout.directory("sdk_bin"),
                 "-d", "-V",
             ],
             cwd=sandbox,
@@ -69,7 +69,7 @@ def resolution_problem(executable: str, fixture_dir: str) -> str:
         if completed.returncode != 0:
             return f"deploy could not run here: {out.strip()[:300]}"
         for line in out.splitlines():
-            if layout.name("audio") in line:
+            if layout.name("sdk_lib") in line:
                 if "[Not Found]" in line:
                     return "the resolver saw the dependency but could not place it"
                 return ""
@@ -96,16 +96,16 @@ class DeployTestCase(QmTestCase):
 
     def search_paths(self) -> list[str]:
         """Where the framework is, which is what Windows needs told."""
-        return ["-L", self.layout.directory("audiobin")]
+        return ["-L", self.layout.directory("sdk_bin")]
 
     def program(self) -> list[str]:
         """The program's own binaries, which stay where they are."""
-        return [self.layout.path(a) for a in ("app", "core", "util", "plugin1", "plugin2")]
+        return [self.layout.path(a) for a in ("app_exe", "app_lib", "app_leaf", "app_plugin", "app_plugin_sdk")]
 
     # Reading the declaration
 
     def expand(self, token: str) -> str:
-        """Turns `{render}` into its path and `{dir.media}` into its directory.
+        """Turns `{sdk_leaf}` into its path and `{dir.media}` into its directory.
 
         `{abs.…}` gives the same thing as an absolute path, for the places a
         relative one would be read against the wrong directory.
@@ -261,7 +261,7 @@ class TestDeployCommandLine(DeployTestCase):
 
     def test_an_unknown_option_is_refused(self):
         self.assertRefused(
-            self.run_cmd("deploy", self.layout.path("app"), "--nosuchoption")
+            self.run_cmd("deploy", self.layout.path("app_exe"), "--nosuchoption")
         )
 
     def test_a_file_that_is_not_a_binary_is_refused(self):
@@ -271,25 +271,25 @@ class TestDeployCommandLine(DeployTestCase):
     def test_a_copy_source_that_is_not_a_binary_is_refused(self):
         self.write("notabinary.txt", "not a binary at all")
         self.assertRefused(
-            self.run_cmd("deploy", self.layout.path("app"), "-c", "notabinary.txt", "out", "-d")
+            self.run_cmd("deploy", self.layout.path("app_exe"), "-c", "notabinary.txt", "out", "-d")
         )
 
     def test_a_search_path_may_be_joined_to_its_option(self):
         """-L takes a single-character short match, as a linker's -L does."""
         joined = self.run_cmd(
-            "deploy", self.layout.path("app"),
-            f"-L{self.layout.directory('audiobin')}",
+            "deploy", self.layout.path("app_exe"),
+            f"-L{self.layout.directory('sdk_bin')}",
             "-d", "-V",
         )
         separate = self.run_cmd(
-            "deploy", self.layout.path("app"), *self.search_paths(), "-d", "-V"
+            "deploy", self.layout.path("app_exe"), *self.search_paths(), "-d", "-V"
         )
         self.assertOk(joined)
         self.assertEqual(joined.out, separate.out)
 
     def test_a_dry_run_reports_without_being_asked_to(self):
         """There is nothing else for a dry run to do, so it implies --verbose."""
-        r = self.run_cmd("deploy", self.layout.path("app"), "-d")
+        r = self.run_cmd("deploy", self.layout.path("app_exe"), "-d")
         self.assertOk(r)
         self.assertOut(r, "Resolve:")
 
@@ -317,7 +317,7 @@ class TestResolutionDetails(DeployTestCase):
         platform happens to have resolved alongside them.
         """
         r = self.run_cmd(
-            "deploy", self.layout.path("app"), *self.search_paths(), "-s", "-d", "-V"
+            "deploy", self.layout.path("app_exe"), *self.search_paths(), "-s", "-d", "-V"
         )
         self.assertOk(r)
         resolved = [line for line in r.out.splitlines() if line.startswith("Resolve:")]
@@ -327,9 +327,9 @@ class TestResolutionDetails(DeployTestCase):
     def test_a_library_beside_the_binary_needs_no_search_path(self):
         """The directory a named binary sits in is searched without being asked,
         which is why the program's own libraries need no -L."""
-        r = self.run_cmd("deploy", self.layout.path("app"), "-d", "-V")
+        r = self.run_cmd("deploy", self.layout.path("app_exe"), "-d", "-V")
         self.assertOk(r)
-        self.assertResolved(r, "core")
+        self.assertResolved(r, "app_lib")
 
     def test_force_overwrites_what_is_already_there(self):
         """What was in the way is gone, and a binary of the same kind is there.
@@ -339,23 +339,23 @@ class TestResolutionDetails(DeployTestCase):
         no longer the same file by the time anyone could look. What survives
         that is the format, which the first bytes name.
         """
-        stale = self.path(f"out/{self.layout.name('audio')}")
+        stale = self.path(f"out/{self.layout.name('sdk_lib')}")
         stale.parent.mkdir(parents=True, exist_ok=True)
         stale.write_bytes(b"stale")
         r = self.run_cmd(
-            "deploy", self.layout.path("app"), *self.search_paths(), "-o", "out", "-f", "-s"
+            "deploy", self.layout.path("app_exe"), *self.search_paths(), "-o", "out", "-f", "-s"
         )
         self.assertOk(r)
         written = stale.read_bytes()
         self.assertNotEqual(written, b"stale")
         self.assertEqual(
-            written[:4], self.path(self.layout.path("audio")).read_bytes()[:4]
+            written[:4], self.path(self.layout.path("sdk_lib")).read_bytes()[:4]
         )
 
     def test_verbose_names_what_it_copied(self):
         r = self.run_cmd(
-            "deploy", self.layout.path("app"), *self.search_paths(), "-o", "out", "-s", "-V"
+            "deploy", self.layout.path("app_exe"), *self.search_paths(), "-o", "out", "-s", "-V"
         )
         self.assertOk(r)
         self.assertOut(r, "Copy: from")
-        self.assertOut(r, self.layout.name("audio"))
+        self.assertOut(r, self.layout.name("sdk_lib"))
