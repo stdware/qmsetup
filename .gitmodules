@@ -1,4 +1,4 @@
 [submodule "src/stdcorelib"]
 	path = src/stdcorelib
-	url = ../stdcorelib.git
+	url = ../../stdware/stdcorelib.git
 	branch = main
