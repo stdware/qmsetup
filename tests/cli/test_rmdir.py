@@ -1,6 +1,6 @@
 """`rmdir` removes empty directories, recursively, and keeps the rest."""
 
-from harness import QmTestCase
+from testing.harness import QmTestCase
 
 
 class TestRmdir(QmTestCase):

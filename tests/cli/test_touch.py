@@ -2,7 +2,7 @@
 
 import time
 
-from harness import QmTestCase
+from testing.harness import QmTestCase
 
 
 class TestTouch(QmTestCase):

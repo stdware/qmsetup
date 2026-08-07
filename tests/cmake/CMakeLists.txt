@@ -6,19 +6,23 @@
 #   cmake/QMSetupAPI.cmake          QMSetupAPI/
 #   cmake/modules/Preprocess.cmake  modules/Preprocess/
 #
+# testing/ is the exception, being the only thing under here that is not a test:
+# the assertions every test uses, and the two drivers that run the ones that are
+# projects.
+#
 # There are three kinds, and each covers one group of functions:
 #
 #   test_*.cmake     a script, run with `cmake -P`. Nothing it checks needs a
 #                    project to exist, so nothing configures or builds, and it
 #                    finishes in hundredths of a second.
 #
-#   test_*/          a project, configured by drivers/configure.cmake, for the
+#   test_*/          a project, configured by testing/configure.cmake, for the
 #                    functions that work on targets. The assertions are in its
 #                    CMakeLists.txt, so a configure that stops is a test that
 #                    failed. Nothing is built.
 #
 #   test_*/          with a check.cmake beside it, a project that is built and
-#                    installed by drivers/build_install.cmake, for the functions
+#                    installed by testing/build.cmake, for the functions
 #                    that work by adding install rules. The assertions are in
 #                    check.cmake, which runs against the installed tree. These
 #                    are the slowest here by a long way.
@@ -72,10 +76,14 @@ endif()
 # Projects that are built and installed
 # ------------------------------------------------------------------
 
-set(_installed_projects
+set(_built_projects
     QMSetupAPI/test_basic_install
     modules/Deploy/test_deploy_directory
 )
+
+if(WIN32)
+    list(APPEND _built_projects modules/Deploy/test_win_applocal_deps)
+endif()
 
 # ------------------------------------------------------------------
 # Registration
@@ -91,7 +99,7 @@ function(qmtest_cmake_add _module _driver)
             -DQMCORECMD=$<TARGET_FILE:qmcorecmd>
             # Passed in rather than found relative to the test, which would have
             # every file counting how deep it sits.
-            -DQMTEST_HARNESS=${CMAKE_CURRENT_SOURCE_DIR}/harness.cmake
+            -DQMTEST_HARNESS=${CMAKE_CURRENT_SOURCE_DIR}/testing/harness.cmake
             -DQMTEST_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/${_module}/work
             -DQMTEST_PROJECT=${CMAKE_CURRENT_SOURCE_DIR}/${_module}
             -DQMTEST_PROJECT_BUILD=${CMAKE_CURRENT_BINARY_DIR}/${_module}/build
@@ -111,9 +119,9 @@ foreach(_module IN LISTS _scripts)
 endforeach()
 
 foreach(_module IN LISTS _configured_projects)
-    qmtest_cmake_add(${_module} ${CMAKE_CURRENT_SOURCE_DIR}/drivers/configure.cmake)
+    qmtest_cmake_add(${_module} ${CMAKE_CURRENT_SOURCE_DIR}/testing/configure.cmake)
 endforeach()
 
-foreach(_module IN LISTS _installed_projects)
-    qmtest_cmake_add(${_module} ${CMAKE_CURRENT_SOURCE_DIR}/drivers/build_install.cmake)
+foreach(_module IN LISTS _built_projects)
+    qmtest_cmake_add(${_module} ${CMAKE_CURRENT_SOURCE_DIR}/testing/build.cmake)
 endforeach()

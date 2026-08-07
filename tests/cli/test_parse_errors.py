@@ -8,7 +8,7 @@ nothing written on the way out. Where a message is qmcorecmd's own, such as
 what it says about a path that is not there, it is asserted as well.
 """
 
-from harness import QmTestCase
+from testing.harness import QmTestCase
 
 
 class TestUnknownNames(QmTestCase):

@@ -2,7 +2,7 @@
 either by copying them or by leaving a one-line stub that includes the real one.
 """
 
-from harness import QmTestCase
+from testing.harness import QmTestCase
 
 
 class IncsyncTestCase(QmTestCase):

@@ -37,7 +37,7 @@ def main() -> int:
     os.environ.setdefault("QMTEST_SCENARIOS", str(HERE / "deploy_scenarios.json"))
 
     sys.path.insert(0, str(HERE))
-    from harness import run_all
+    from testing.harness import run_all
 
     return run_all()
 

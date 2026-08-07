@@ -1,6 +1,6 @@
 # What qm_deploy_directory brought into the install tree.
 #
-# Included by drivers/build_install.cmake once the tree exists. `_prefix` is
+# Included by testing/build.cmake once the tree exists. `_prefix` is
 # where it was installed.
 #
 # The application was installed without the library it links, so a deployment

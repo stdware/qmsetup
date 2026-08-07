@@ -116,6 +116,16 @@ function(qm_win_applocal_deps _target)
 
     list(APPEND _args "$<TARGET_FILE:${_target}>")
 
+    # Made first, and on its own, since a working directory applies to every
+    # command of the one it is given to and would be entered before this ran.
+    # The default output directory is the one the target was built into and is
+    # always there, but an OUTPUT_DIR of the caller's own need not be, and a
+    # working directory that does not exist stops the build.
+    add_custom_command(TARGET ${_deploy_target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${_out_dir}
+        VERBATIM
+    )
+
     add_custom_command(TARGET ${_deploy_target} POST_BUILD
         COMMAND ${QMSETUP_CORECMD_EXECUTABLE} deploy ${_args}
         WORKING_DIRECTORY ${_out_dir}

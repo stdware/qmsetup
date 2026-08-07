@@ -1,9 +1,13 @@
-# Builds and installs a project, then runs the checks that come with it.
+# Configures, builds and installs a project, then runs the checks that come
+# with it.
 #
-# For the functions that work by adding install rules. An install rule that is
-# never run says nothing, so unlike the configure driver this one goes all the
-# way through. The project has a check.cmake beside it, which is included here
-# once the install tree exists and is what does the asserting.
+# For the functions whose work happens at build or install time rather than at
+# configure time. A rule that is never run says nothing, so unlike the configure
+# driver this one goes all the way through. The project has a check.cmake beside
+# it, which is included at the end and is what does the asserting.
+#
+# A project with nothing to install has nothing installed, the step passing over
+# it quietly, so a test that only needs a build needs nothing special.
 #
 # These are the slowest tests in the directory by a long way.
 

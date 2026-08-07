@@ -1,7 +1,7 @@
 # The QMSetupAPI functions that work on targets.
 #
 # A target needs a project to live in, so this is a project, configured by
-# drivers/configure.cmake. Nothing is built. What these functions do is set
+# testing/configure.cmake. Nothing is built. What these functions do is set
 # target properties, and a property can be read back as soon as it is set.
 #
 # Compiler and linker flags below are made up. They are never handed to a

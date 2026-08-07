@@ -1,6 +1,6 @@
 """`copy` copies files and directories, skipping what has not changed."""
 
-from harness import QmTestCase
+from testing.harness import QmTestCase
 
 
 class TestFiles(QmTestCase):

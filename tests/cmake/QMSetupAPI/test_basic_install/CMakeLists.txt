@@ -2,7 +2,7 @@
 #
 # It works by adding install rules, and an install rule that is never run says
 # nothing, so this project is built and installed for real by
-# drivers/build_install.cmake. What it left behind is asserted in check.cmake.
+# testing/build.cmake. What it left behind is asserted in check.cmake.
 
 cmake_minimum_required(VERSION 3.19)
 project(qmtest_basic_install VERSION 2.3.4 LANGUAGES C)

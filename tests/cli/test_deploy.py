@@ -34,8 +34,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-import fixtures_layout
-from harness import QmTestCase
+from testing import fixtures_layout
+from testing.harness import QmTestCase
 
 PLACEHOLDER = re.compile(r"\{([a-zA-Z0-9_.]+)\}")
 

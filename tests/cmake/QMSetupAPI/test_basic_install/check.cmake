@@ -1,6 +1,6 @@
 # What qm_basic_install left in the install tree.
 #
-# Included by drivers/build_install.cmake once the tree exists. `_prefix` is
+# Included by testing/build.cmake once the tree exists. `_prefix` is
 # where it was installed.
 #
 # Where the package files land depends on what GNUInstallDirs decided the

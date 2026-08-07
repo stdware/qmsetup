@@ -4,7 +4,7 @@
 without touching the disk.
 """
 
-from harness import QmTestCase
+from testing.harness import QmTestCase
 
 
 class TestDefinitions(QmTestCase):

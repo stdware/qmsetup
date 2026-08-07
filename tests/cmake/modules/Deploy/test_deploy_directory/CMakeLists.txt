@@ -2,7 +2,7 @@
 #
 # It works by adding an install rule that runs windeps.bat or unixdeps.sh, which
 # runs qmcorecmd, so nothing short of a real install exercises any of it. The
-# project is built and installed by drivers/build_install.cmake and what it left
+# project is built and installed by testing/build.cmake and what it left
 # behind is asserted in check.cmake.
 #
 # The application is installed. The library it links is deliberately not, which
