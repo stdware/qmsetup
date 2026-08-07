@@ -3,20 +3,35 @@ project(qmcorecmd VERSION ${QMSETUP_VERSION})
 set(RC_COPYRIGHT "Copyright 2023-present Stdware Collections")
 set(RC_DESCRIPTION "QMSetup Core Utility Command")
 
+# Two directories, and the rule between them is one line: utils/ is about the machine, and
+# commands/ is about what this program does with it. main.cpp is the command line and nothing
+# else. Only deploy differs per platform, and it is split the way utils already was.
 set(_src
     main.cpp
-    sha-256.h
-    sha-256.cpp
-    utils.h
+
+    commands/commands.h
+    commands/filesystem.cpp
+    commands/configure.cpp
+    commands/incsync.cpp
+    commands/deploy_p.h
+    commands/deploy.cpp
+
+    utils/utils.h
+    utils/utils.cpp
+    utils/sha-256.h
+    utils/sha-256.cpp
 )
 
 if(WIN32)
-    list(APPEND _src utils_win.cpp)
+    list(APPEND _src utils/utils_win.cpp commands/deploy_win.cpp)
 else()
-    list(APPEND _src utils_unix.cpp)
+    list(APPEND _src utils/utils_unix.cpp commands/deploy_unix.cpp)
 endif()
 
 add_executable(${PROJECT_NAME} ${_src})
+
+# So that a file reaches another directory by naming it, as `utils/utils.h`.
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(${PROJECT_NAME} PRIVATE stdcorelib::stdcorelib)
 
 # Add features
