@@ -11,10 +11,17 @@ if(QMSETUP_STATIC_RUNTIME)
 endif()
 
 # Get stdcorelib
+#
+# Installed if there is one, and the submodule under this directory if there is not. Neither
+# STDC_BUILD_STATIC nor STDC_BUILD_SHARED is set, which leaves it static, and qmcorecmd wants it
+# that way: CMake calls the tool from whatever directory it happens to be in, and a shared
+# stdcorelib would have to be findable from all of them.
 find_package(stdcorelib QUIET)
 
 if(NOT TARGET stdcorelib::stdcorelib)
-    set(STDCORELIB_INSTALL off)
+    # STDC_INSTALL, which is what the option is called. Written as STDCORELIB_INSTALL it set
+    # nothing, and stdcorelib was installed alongside qmsetup whether or not anyone wanted it.
+    set(STDC_INSTALL off)
     add_subdirectory(stdcorelib)
 endif()
 

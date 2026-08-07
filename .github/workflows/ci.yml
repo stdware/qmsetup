@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # One job per compiler rather than per configuration. What varies here is not what the code
+  # does, it is what the platform does underneath it: deploy reads an import table on Windows,
+  # asks otool on macOS and reads DT_NEEDED on Linux, and those are three different bodies of
+  # code covered by the same tests. Windows gets more than one compiler because it is the
+  # platform where the compiler decides what a binary looks like.
+  build:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ linux-gcc, linux-clang, macos, windows-msvc, windows-clang-cl ]
+        include:
+          - platform: linux-gcc
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+          - platform: linux-clang
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+          - platform: macos
+            os: macos-latest
+            cc: clang
+            cxx: clang++
+          - platform: windows-msvc
+            os: windows-latest
+            cc: cl
+            cxx: cl
+          - platform: windows-clang-cl
+            os: windows-latest
+            cc: clang-cl
+            cxx: clang-cl
+
+    steps:
+      # stdcorelib is a submodule under src, and src/CMakeLists.txt falls back to it when no
+      # installed copy is found. Without this the configure stops on a directory that is not
+      # there.
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: ./.github/actions/setup
+
+      # QMSETUP_STATIC_RUNTIME is off, though it is on by default. Turning it on adds /MT to
+      # everything in this build, stdcorelib included, and a submodule built that way against a
+      # CMake default of /MDd is a link error rather than a test result. Whether the default
+      # works is a question about how it is written rather than about the code under test, and
+      # docs/TODO.md says so.
+      - name: Configure
+        shell: bash
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DQMSETUP_BUILD_TESTS=ON \
+            -DQMSETUP_STATIC_RUNTIME=OFF
+
+      - name: Build
+        run: cmake --build build
+
+      # --no-tests=error is not optional. ctest exits 0 when it finds nothing to run, and both
+      # halves of this suite register themselves conditionally: the CLI tests on an interpreter
+      # being found, the CMake tests on the fixtures having built. A run that registered neither
+      # would otherwise pass.
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+  # Installing is the other half of what this project is. The tests cover the qm_* functions
+  # against the source tree, and this covers what a downstream project actually gets: an install
+  # tree with qmcorecmd in it and a package configuration that find_package can place.
+  install:
+    name: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: ./.github/actions/setup
+
+      - name: Build and install
+        shell: bash
+        run: |
+          cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX="$RUNNER_TEMP/prefix"
+          cmake --build build --target install
+
+      # find_package against what was just installed, and one qm_* function called, which is as
+      # far as a consumer gets before anything else can work.
+      - name: Use it
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/consumer"
+          cd "$RUNNER_TEMP/consumer"
+          cat > CMakeLists.txt <<'EOF'
+          cmake_minimum_required(VERSION 3.19)
+          project(consumer NONE)
+          find_package(qmsetup REQUIRED)
+          qm_import(Preprocess)
+          qm_add_definition(CONSUMED)
+          qm_generate_config("${CMAKE_CURRENT_BINARY_DIR}/config.h" NO_WARNING)
+          if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/config.h")
+              message(FATAL_ERROR "qm_generate_config wrote nothing")
+          endif()
+          EOF
+          cmake -S . -B build -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/prefix"
+          grep -q "define CONSUMED" build/config.h
+
+  # MinGW builds but does not test. What is worth knowing here is that the Windows sources
+  # compile and link against something other than the Microsoft toolchain, and the tests bring in
+  # a second toolchain question of their own, since the CMake ones configure projects of their
+  # own with whatever compiler they were given.
+  mingw:
+    name: windows-mingw
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug -DQMSETUP_BUILD_TESTS=OFF
+          cmake --build build

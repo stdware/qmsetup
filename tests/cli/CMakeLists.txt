@@ -9,9 +9,12 @@
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 
+# Asking for tests and being given none is worse than not being given a choice. Without this it
+# was a line of status output, and a run that registered half the suite passed as readily as one
+# that registered all of it.
 if(NOT Python3_Interpreter_FOUND)
-    message(STATUS "qmcorecmd tests: no Python 3 interpreter found, tests are skipped")
-    return()
+    message(FATAL_ERROR "qmcorecmd tests: no Python 3 interpreter found. Point CMake at one with "
+        "-DPython3_EXECUTABLE=..., or turn QMSETUP_BUILD_TESTS off.")
 endif()
 
 message(STATUS "qmcorecmd tests: using ${Python3_EXECUTABLE} (${Python3_VERSION})")

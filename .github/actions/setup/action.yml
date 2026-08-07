@@ -1,0 +1,37 @@
+name: Set up the build
+description: Ninja, Python and the compiler environment, so that a job only has to run cmake.
+
+runs:
+  using: composite
+  steps:
+    # patchelf is not optional on Linux. qmcorecmd rewrites an rpath with it, and the tests that
+    # cover that skip themselves when it is missing, so leaving it out would turn a whole module
+    # green without running any of it.
+    - name: Ninja and patchelf (Linux)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build patchelf
+
+    # install_name_tool and otool come with the command line tools, which the image has.
+    - name: Ninja (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: brew install ninja
+
+    - name: Ninja (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: choco install ninja -y --no-progress
+
+    # The CLI tests are Python, and CMake registers none of them when it cannot find an
+    # interpreter. Asked for by name rather than left to whatever the image ships.
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - uses: ilammy/msvc-dev-cmd@v1
+      if: runner.os == 'Windows'
+      with:
+        arch: x64
