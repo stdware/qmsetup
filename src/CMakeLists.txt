@@ -10,12 +10,12 @@ if(QMSETUP_STATIC_RUNTIME)
     endif()
 endif()
 
-# Get syscmdline
-find_package(syscmdline QUIET)
+# Get stdcorelib
+find_package(stdcorelib QUIET)
 
-if(NOT TARGET syscmdline::syscmdline)
-    set(SYSCMDLINE_INSTALL off)
-    add_subdirectory(syscmdline)
+if(NOT TARGET stdcorelib::stdcorelib)
+    set(STDCORELIB_INSTALL off)
+    add_subdirectory(stdcorelib)
 endif()
 
 # Add subdirectories

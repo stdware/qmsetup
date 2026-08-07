@@ -1,10 +1,11 @@
 #include "utils.h"
 
+#include <stdcorelib/platform/windows/stdc_windows.h>
+#include <stdcorelib/platform/windows/winextra.h>
+
 #include <shlwapi.h>
 
 #include <delayimp.h>
-
-#include <windows.h>
 
 #include <algorithm>
 #include <sstream>
@@ -12,9 +13,9 @@
 #include <stdexcept>
 #include <utility>
 
-#include <syscmdline/system.h>
+#include <stdcorelib/str.h>
 
-namespace SCL = SysCmdLine;
+namespace SCL = stdc;
 
 namespace fs = std::filesystem;
 
@@ -84,7 +85,7 @@ namespace Utils {
         // Create a pipe for the child process's STDOUT.
         if (!::CreatePipe(&hReadPipe, &hWritePipe, &sa, 0)) {
             throw std::runtime_error("failed to call \"CreatePipe\": " +
-                                     SCL::wideToUtf8(winErrorMessage(::GetLastError())));
+                                     SCL::wstring_conv::to_utf8(winErrorMessage(::GetLastError())));
         }
 
         // Ensure the read handle to the pipe for STDOUT is not inherited.
@@ -92,7 +93,7 @@ namespace Utils {
             ::CloseHandle(hWritePipe);
             ::CloseHandle(hReadPipe);
             throw std::runtime_error("failed to call \"SetHandleInformation\": " +
-                                     SCL::wideToUtf8(winErrorMessage(::GetLastError())));
+                                     SCL::wstring_conv::to_utf8(winErrorMessage(::GetLastError())));
         }
 
         // Set up members of the STARTUPINFO structure.
@@ -116,7 +117,7 @@ namespace Utils {
             ::CloseHandle(hReadPipe);
 
             throw std::runtime_error("failed to call \"CreateProcess\": " +
-                                     SCL::wideToUtf8(winErrorMessage(::GetLastError())));
+                                     SCL::wstring_conv::to_utf8(winErrorMessage(::GetLastError())));
         }
 
         // Close the write end of the pipe before reading from the read end of the pipe.
@@ -148,52 +149,29 @@ namespace Utils {
         if (exitCode == 0)
             return output;
 
-        throw std::runtime_error(SCL::wideToUtf8(output));
-    }
-
-    // Helper functions to convert between FILETIME and std::chrono::system_clock::time_point
-    static std::chrono::system_clock::time_point filetime_to_timepoint(const FILETIME &ft) {
-        // Windows file time starts from January 1, 1601
-        // std::chrono::system_clock starts from January 1, 1970
-        static constexpr const long long WIN_EPOCH =
-            116444736000000000LL; // in hundreds of nanoseconds
-        long long duration = (static_cast<long long>(ft.dwHighDateTime) << 32) + ft.dwLowDateTime;
-        duration -= WIN_EPOCH; // convert to Unix epoch
-        return std::chrono::system_clock::from_time_t(duration / 10000000LL);
-    }
-
-    static FILETIME timepoint_to_filetime(const std::chrono::system_clock::time_point &tp) {
-        FILETIME ft;
-        static constexpr const long long WIN_EPOCH =
-            116444736000000000LL; // in hundreds of nanoseconds
-        long long duration =
-            std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch()).count();
-        duration = duration * 10 + WIN_EPOCH;
-        ft.dwLowDateTime = static_cast<DWORD>(duration & 0xFFFFFFFF);
-        ft.dwHighDateTime = static_cast<DWORD>((duration >> 32) & 0xFFFFFFFF);
-        return ft;
+        throw std::runtime_error(SCL::wstring_conv::to_utf8(output));
     }
 
     FileTime fileTime(const fs::path &path) {
         HANDLE hFile = ::CreateFileW(path.wstring().data(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path.wstring()) + "\"");
+            throw std::runtime_error("invalid path: \"" + SCL::wstring_conv::to_utf8(path.wstring()) + "\"");
         }
 
         FILETIME creationTime, lastAccessTime, lastWriteTime;
         if (!::GetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
             ::CloseHandle(hFile);
             throw std::runtime_error("failed to get file time: \"" +
-                                     SCL::wideToUtf8(path.wstring()) + "\"");
+                                     SCL::wstring_conv::to_utf8(path.wstring()) + "\"");
         }
         ::CloseHandle(hFile);
 
         FileTime times;
         // ... (convert FILETIMEs to std::chrono::system_clock::time_point and store in times)
-        times.accessTime = filetime_to_timepoint(lastAccessTime);
-        times.modifyTime = filetime_to_timepoint(lastWriteTime);
-        times.statusChangeTime = filetime_to_timepoint(creationTime);
+        times.accessTime = stdc::windows::FileTimeToTimePoint(lastAccessTime);
+        times.modifyTime = stdc::windows::FileTimeToTimePoint(lastWriteTime);
+        times.statusChangeTime = stdc::windows::FileTimeToTimePoint(creationTime);
 
         return times;
     }
@@ -202,44 +180,22 @@ namespace Utils {
         HANDLE hFile = ::CreateFileW(path.wstring().data(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_WRITE,
                                      nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (hFile == INVALID_HANDLE_VALUE) {
-            throw std::runtime_error("invalid path: \"" + SCL::wideToUtf8(path.wstring()) + "\"");
+            throw std::runtime_error("invalid path: \"" + SCL::wstring_conv::to_utf8(path.wstring()) + "\"");
         }
 
         FILETIME creationTime, lastAccessTime, lastWriteTime;
-        lastAccessTime = timepoint_to_filetime(times.accessTime);
-        lastWriteTime = timepoint_to_filetime(times.modifyTime);
-        creationTime = timepoint_to_filetime(times.statusChangeTime);
+        lastAccessTime = stdc::windows::TimePointToFileTime(times.accessTime);
+        lastWriteTime = stdc::windows::TimePointToFileTime(times.modifyTime);
+        creationTime = stdc::windows::TimePointToFileTime(times.statusChangeTime);
 
         if (!::SetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
             ::CloseHandle(hFile);
             throw std::runtime_error("failed to set file time: \"" +
-                                     SCL::wideToUtf8(path.wstring()) + "\"");
+                                     SCL::wstring_conv::to_utf8(path.wstring()) + "\"");
         }
         ::CloseHandle(hFile);
     }
 
-    std::vector<std::filesystem::path> getPathsFromEnv() {
-        DWORD length = ::GetEnvironmentVariableW(L"PATH", nullptr, 0);
-        if (length == 0) {
-            return {};
-        }
-
-        auto buf = new wchar_t[length];
-        ::GetEnvironmentVariableW(L"PATH", buf, length);
-
-        std::wstring pathStr = buf;
-        delete[] buf;
-        std::wstringstream wss(pathStr);
-        std::wstring item;
-
-        std::vector<fs::path> paths;
-        while (std::getline(wss, item, L';')) {
-            if (!item.empty()) {
-                paths.push_back(item);
-            }
-        }
-        return paths;
-    }
 
     // ================================================================================
     // Modified from windeployqt 5.15.2(Copyright Qt company)
@@ -471,7 +427,7 @@ namespace Utils {
         unsigned short machineArchIn;
         if (!WindowsDeployQt::readPeExecutable(path, &errorMessage, &dependentLibrariesIn,
                                                &wordSizeIn, isMinGW, &machineArchIn)) {
-            throw std::runtime_error(SCL::wideToUtf8(errorMessage));
+            throw std::runtime_error(SCL::wstring_conv::to_utf8(errorMessage));
         }
 
         // Search

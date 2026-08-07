@@ -7,9 +7,14 @@
 
 #include <cstring>
 #include <filesystem>
+#include <map>
 #include <regex>
 #include <set>
 #include <sstream>
+
+#include <stdcorelib/path.h>
+#include <stdcorelib/str.h>
+#include <stdcorelib/stlextra/algorithms.h>
 
 namespace fs = std::filesystem;
 
@@ -116,7 +121,7 @@ namespace Utils {
                 return output;
 
             // Throw error
-            throw std::runtime_error(trim(output));
+            throw std::runtime_error(stdc::str::trim(std::move(output)));
         }
 
         if (WIFSIGNALED(status)) {
@@ -151,25 +156,6 @@ namespace Utils {
         }
     }
 
-    std::vector<fs::path> getPathsFromEnv() {
-        const char *pathEnv = std::getenv("PATH");
-        if (pathEnv == nullptr) {
-            return {};
-        }
-
-        std::string pathStr = pathEnv;
-        std::stringstream ss(pathStr);
-        std::string item;
-
-        std::vector<fs::path> paths;
-        while (std::getline(ss, item, ':')) {
-            if (!item.empty()) {
-                paths.push_back(fs::path(item));
-            }
-        }
-
-        return paths;
-    }
 
 #ifdef __APPLE__
     // Mac
@@ -269,7 +255,7 @@ namespace Utils {
                 }
             }
 
-            target = cleanPath(target);
+            target = stdc::path::clean_path(target);
             if (fs::exists(target)) {
                 if (fs::canonical(target).filename() == fs::canonical(path).filename())
                     continue;
@@ -309,7 +295,7 @@ namespace Utils {
             std::vector<std::string> args;
             args.reserve(paths.size() * 2 + 1);
             for (const auto &rpath : std::as_const(paths)) {
-                if (Utils::contains(visited, rpath))
+                if (stdc::contains(visited, rpath))
                     continue;
 
                 visited.insert(rpath);
@@ -379,10 +365,56 @@ namespace Utils {
     // Linux
     // Use `ldd` and `patchelf`
 
-    static std::vector<std::string>
-        readLddOutput(const std::string &fileName,
-                      const std::vector<std::filesystem::path> &searchingPaths,
-                      std::vector<std::string> *unparsed) {
+    // The dynamic loader, which the C library names as a dependency of its own.
+    //
+    // It is the interpreter rather than a library to be deployed, it is never
+    // where a binary says it is, and `ldd` reports it on a line of its own with
+    // no name to resolve. Spelled out rather than as "ld-", which would take a
+    // library that happens to begin that way with it.
+    static bool isDynamicLoader(const std::string &name) {
+        return stdc::str::starts_with(name, "ld-linux") ||
+               stdc::str::starts_with(name, "ld-musl") ||
+               stdc::str::starts_with(name, "ld-elf") ||
+               stdc::str::starts_with(name, "ld.so") ||
+               stdc::str::starts_with(name, "ld64.so");
+    }
+
+    // The names in the binary's own DT_NEEDED, which is where its dependency
+    // graph actually has an edge.
+    static std::vector<std::string> readNeededNames(const std::string &fileName) {
+        std::string output;
+
+        try {
+            output = executeCommand("patchelf", {
+                                                    "--print-needed",
+                                                    fileName,
+                                                });
+        } catch (const std::exception &e) {
+            throw std::runtime_error("Failed to get dependencies: " + std::string(e.what()));
+        }
+
+        std::vector<std::string> names;
+        std::istringstream iss(output);
+        std::string line;
+        while (std::getline(iss, line)) {
+            auto name = std::string(stdc::str::trim(line));
+            if (!name.empty() && !isDynamicLoader(name)) {
+                names.push_back(std::move(name));
+            }
+        }
+        return names;
+    }
+
+    // What each name in the binary's closure resolves to.
+    //
+    // Working this out by hand would mean reimplementing the loader: the
+    // search order of DT_RPATH against DT_RUNPATH, the way the first is
+    // inherited down the loading chain and the second is not, LD_LIBRARY_PATH,
+    // the binary format of /etc/ld.so.cache, whatever /etc/ld.so.conf.d says,
+    // multiarch directories, the hwcaps subdirectories, and skipping a library
+    // of the wrong ELF class. `ldd` has all of that right for the machine it
+    // runs on, so it is asked instead.
+    static std::map<std::string, std::string> readLddOutput(const std::string &fileName) {
         std::string output;
 
         try {
@@ -394,41 +426,67 @@ namespace Utils {
         std::istringstream iss(output);
         std::string line;
 
-        static const std::regex regexp("^\\s*.+ => (.+) \\(.*");
-        static const std::regex regexp2("^\\s*(.+) => not found");
+        static const std::regex regexp("^\\s*(.+) => (.+) \\(.*");
 
-        std::vector<std::string> dependencies;
+        std::map<std::string, std::string> resolved;
         while (std::getline(iss, line)) {
             std::smatch match;
-            if (std::regex_match(line, match, regexp) && match.size() >= 2) {
-                dependencies.push_back(cleanPath(match[1].str()));
-            } else if (std::regex_match(line, match, regexp2) && match.size() >= 2) {
-                // Search in search paths
-                fs::path target;
-                for (const auto &item : searchingPaths) {
-                    auto fullPath = item / match[1].str();
-                    if (fs::exists(fullPath)) {
-                        target = fullPath;
-                        break;
-                    }
-                }
-
-                if (!target.empty()) {
-                    dependencies.push_back(target);
-                } else {
-                    unparsed->push_back(cleanPath(match[1].str()));
-                }
+            if (std::regex_match(line, match, regexp) && match.size() >= 3) {
+                resolved.emplace(std::string(stdc::str::trim(match[1].str())),
+                                 stdc::path::clean_path(match[2].str()));
             }
         }
-
-        return dependencies;
+        return resolved;
     }
 
     std::vector<std::string>
         resolveUnixBinaryDependencies(const std::filesystem::path &path,
                                       const std::vector<std::filesystem::path> &searchingPaths,
                                       std::vector<std::string> *unparsed) {
-        return readLddOutput(path, searchingPaths, unparsed);
+        // `ldd` answers with the whole closure at once, flattened, so reading
+        // its output as a list of edges makes everything in the closure look
+        // like a direct dependency of this one file. That is wrong wherever
+        // the shape of the graph matters rather than only its contents.
+        // Excluding a library, for one, would then leave behind whatever was
+        // reachable only through it instead of dropping that too.
+        //
+        // So the two questions are asked separately. What the names are comes
+        // from the binary itself, and what they resolve to comes from `ldd`.
+        // Its table holds more than this file asks for, which does no harm,
+        // because only the names it asks for are looked up.
+        const auto &needed = readNeededNames(path);
+        if (needed.empty()) {
+            return {};
+        }
+        const auto &resolved = readLddOutput(path);
+
+        std::vector<std::string> dependencies;
+        dependencies.reserve(needed.size());
+        for (const auto &name : needed) {
+            const auto it = resolved.find(name);
+            if (it != resolved.end()) {
+                dependencies.push_back(it->second);
+                continue;
+            }
+
+            // `ldd` said the name is not there, or did not mention it at all.
+            fs::path target;
+            for (const auto &item : searchingPaths) {
+                auto fullPath = item / name;
+                if (fs::exists(fullPath)) {
+                    target = fullPath;
+                    break;
+                }
+            }
+
+            if (!target.empty()) {
+                dependencies.push_back(target);
+            } else if (unparsed) {
+                unparsed->push_back(name);
+            }
+        }
+
+        return dependencies;
     }
 
     void setFileRPaths(const std::string &file, const std::vector<std::string> &paths) {
@@ -447,7 +505,7 @@ namespace Utils {
         try {
             std::ignore = executeCommand("patchelf", {
                                                          "--set-rpath",
-                                                         join(paths, std::string(":")),
+                                                         stdc::str::join(paths, ":"),
                                                          file,
                                                      });
         } catch (const std::exception &e) {
@@ -476,7 +534,7 @@ namespace Utils {
             throw std::runtime_error("Failed to get interpreter: " + std::string(e.what()));
         }
 
-        output = trim(output);
+        output = stdc::str::trim(std::move(output));
         replaceString(output, std::string("$ORIGIN"), fs::canonical(file).parent_path().string());
         return output;
     }

@@ -9,7 +9,6 @@ set(_src
     sha-256.h
     sha-256.cpp
     utils.h
-    utils.cpp
 )
 
 if(WIN32)
@@ -19,7 +18,7 @@ else()
 endif()
 
 add_executable(${PROJECT_NAME} ${_src})
-target_link_libraries(${PROJECT_NAME} PRIVATE syscmdline::syscmdline)
+target_link_libraries(${PROJECT_NAME} PRIVATE stdcorelib::stdcorelib)
 
 # Add features
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20 cxx_std_17)

@@ -8,17 +8,21 @@
 #include <iomanip>
 #include <map>
 
-#include <syscmdline/parser.h>
-#include <syscmdline/system.h>
+#include <stdcorelib/console.h>
+#include <stdcorelib/path.h>
+#include <stdcorelib/str.h>
+#include <stdcorelib/system.h>
+#include <stdcorelib/stlextra/algorithms.h>
+#include <stdcorelib/support/commandline.h>
 
 #include "sha-256.h"
 #include "utils.h"
 
-namespace SCL = SysCmdLine;
+namespace cli = stdc::cli;
 
 namespace fs = std::filesystem;
 
-using SCL::u8info;
+using stdc::u8printf;
 
 // ---------------------------------------- Definitions ----------------------------------------
 
@@ -52,19 +56,11 @@ using TStringSet = std::set<TString>;
 // ---------------------------------------- Functions ----------------------------------------
 
 static inline std::string tstr2str(const TString &str) {
-#ifdef _WIN32
-    return SCL::wideToUtf8(str);
-#else
-    return str;
-#endif
+    return stdc::path::to_utf8(str);
 }
 
 static inline TString str2tstr(const std::string &str) {
-#ifdef _WIN32
-    return SCL::utf8ToWide(str);
-#else
-    return str;
-#endif
+    return stdc::path::from_utf8(str);
 }
 
 static std::string time2str(const std::chrono::system_clock::time_point &t) {
@@ -104,7 +100,7 @@ static bool removeEmptyDirectories(const fs::path &path, bool verbose) {
     // Remove self if empty
     if (isEmpty) {
         if (verbose) {
-            u8info("Remove: \"%s\"\n", tstr2str(path).data());
+            u8printf("Remove: \"%s\"\n", tstr2str(path).data());
         }
         fs::remove(path);
     }
@@ -117,7 +113,7 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path 
                      bool force, bool verbose) {
     auto target = dest / file.filename();
     if (fs::exists(target)) {
-        if (Utils::cleanPath(target) == Utils::cleanPath(file))
+        if (stdc::path::clean_path(target) == stdc::path::clean_path(file))
             return false; // Same file
 
         if (!force && Utils::fileTime(target).modifyTime >= Utils::fileTime(file).modifyTime)
@@ -128,7 +124,7 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path 
 
     if (!symlinkContent.empty()) {
         if (verbose) {
-            u8info("Link: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
+            u8printf("Link: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
                    tstr2str(symlinkContent).data());
         }
 
@@ -137,7 +133,7 @@ static bool copyFile(const fs::path &file, const fs::path &dest, const fs::path 
         fs::create_symlink(symlinkContent, target);
     } else {
         if (verbose) {
-            u8info("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(), tstr2str(target).data());
+            u8printf("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(), tstr2str(target).data());
         }
         fs::copy(file, dest, fs::copy_options::overwrite_existing);
         Utils::syncFileTime(target, file); // Sync time for each file
@@ -169,7 +165,7 @@ static void copyDirectory(const fs::path &srcRootDir, const fs::path &srcDir,
 
             // Copy if symlink points inside the source directory
             copyFile(entryPath, destDir,
-                     Utils::starts_with(linkPath.string(), srcRootDir.string())
+                     stdc::str::starts_with(linkPath.string(), srcRootDir.string())
                          ? fs::relative(linkPath, fs::canonical(entryPath.parent_path())).string()
                          : std::string(),
                      force, verbose);
@@ -192,7 +188,7 @@ static std::string standardError(int code = errno) {
 
 #ifdef __APPLE__
 static inline bool isFramework(const fs::path &path) {
-    return Utils::toLower(path.extension().string()) == ".framework";
+    return stdc::str::to_lower(path.extension().string()) == ".framework";
 }
 
 static fs::path lib2framework(fs::path path, const fs::path &fallback = {}) {
@@ -227,11 +223,11 @@ static fs::path framework2lib_debug(fs::path path, const fs::path &fallback = {}
 
 #ifdef _WIN32
 static inline bool isMSVCLibrary(const TString &fileName) {
-    return Utils::starts_with(fileName, _TSTR("vcruntime")) ||
-           Utils::starts_with(fileName, _TSTR("msvcp")) ||
-           Utils::starts_with(fileName, _TSTR("concrt")) ||
-           Utils::starts_with(fileName, _TSTR("vccorlib")) ||
-           Utils::starts_with(fileName, _TSTR("ucrtbase"));
+    return stdc::str::starts_with(fileName, _TSTR("vcruntime")) ||
+           stdc::str::starts_with(fileName, _TSTR("msvcp")) ||
+           stdc::str::starts_with(fileName, _TSTR("concrt")) ||
+           stdc::str::starts_with(fileName, _TSTR("vccorlib")) ||
+           stdc::str::starts_with(fileName, _TSTR("ucrtbase"));
 }
 
 static inline fs::path searchWindowsSystemPaths(const TString &fileName) {
@@ -312,23 +308,38 @@ static inline fs::path fromFramework(const fs::path &path) {
 
 // ---------------------------------------- Commands ----------------------------------------
 
-static inline bool isForceSet(const SCL::ParseResult &result) {
-    return result.isOptionSet("-f");
+static inline bool isForceSet(const cli::ParseResult &result) {
+    return result.option("-f").has_value();
 }
 
-static inline bool isDryRunSet(const SCL::ParseResult &result) {
-    return result.isOptionSet("-d");
+static inline bool isDryRunSet(const cli::ParseResult &result) {
+    return result.option("-d").has_value();
 }
 
-static inline bool isVerboseSet(const SCL::ParseResult &result) {
-    return result.isRoleSet(SCL::Option::Verbose);
+static inline bool isVerboseSet(const cli::ParseResult &result) {
+    return result.isRoleSet(cli::Option::Verbose);
 }
 
-static inline bool isStandardSet(const SCL::ParseResult &result) {
-    return result.isOptionSet("-s");
+static inline bool isStandardSet(const cli::ParseResult &result) {
+    return result.option("-s").has_value();
 }
 
-static int cmd_copy(const SCL::ParseResult &result) {
+// The values of one argument of an option, across every time the option was given.
+static std::vector<std::string> optionValues(const cli::ParseResult &result,
+                                             std::string_view token, int index = 0) {
+    auto given = result.option(token);
+    if (!given) {
+        return {};
+    }
+    return given->values<std::string>(index).value_or(std::vector<std::string>{});
+}
+
+// The values of one positional argument of the command that was reached.
+static std::vector<std::string> argumentValues(const cli::ParseResult &result, int index) {
+    return result.values<std::string>(index).value_or(std::vector<std::string>{});
+}
+
+static int cmd_copy(const cli::ParseResult &result) {
     bool force = isForceSet(result);
     bool verbose = isVerboseSet(result);
 
@@ -336,15 +347,13 @@ static int cmd_copy(const SCL::ParseResult &result) {
     std::set<fs::path> directories;
     std::set<fs::path> directoryContents;
     {
-        const auto &srcResult = result.values(0);
-        for (const auto &item : srcResult) {
-            const auto &rawString = item.toString();
+        for (const auto &rawString : argumentValues(result, 0)) {
             bool contents = false;
             if (auto last = rawString.back(); last == '/' || last == '\\') {
                 contents = true;
             }
 
-            const auto &path = Utils::cleanPath(fs::absolute(str2tstr(rawString)));
+            const auto &path = stdc::path::clean_path(fs::absolute(str2tstr(rawString)));
             if (fs::is_directory(path)) {
                 (contents ? directoryContents : directories).insert(path);
             } else if (fs::exists(path)) {
@@ -355,15 +364,16 @@ static int cmd_copy(const SCL::ParseResult &result) {
         }
     }
 
-    const auto &dest = Utils::cleanPath(fs::absolute(str2tstr(result.value(1).toString())));
+    const auto &dest =
+        stdc::path::clean_path(fs::absolute(str2tstr(result.value<std::string>(1).value_or(std::string()))));
 
     // Add excludes
     TStringList excludes;
     {
-        const auto &excludeResult = result.option("-e").allValues();
+        const auto &excludeResult = optionValues(result, "-e");
         excludes.reserve(excludeResult.size());
         for (const auto &item : excludeResult) {
-            excludes.emplace_back(str2tstr(item.toString()));
+            excludes.emplace_back(str2tstr(item));
         }
     }
 
@@ -385,15 +395,15 @@ static int cmd_copy(const SCL::ParseResult &result) {
     return 0;
 }
 
-static int cmd_rmdir(const SCL::ParseResult &result) {
+static int cmd_rmdir(const cli::ParseResult &result) {
     bool verbose = isVerboseSet(result);
 
     std::vector<fs::path> dirs;
     {
-        const auto &dirsResult = result.values(0);
+        const auto &dirsResult = argumentValues(result, 0);
         dirs.reserve(dirsResult.size());
         for (const auto &item : dirsResult) {
-            dirs.emplace_back(fs::absolute(str2tstr(item.toString())));
+            dirs.emplace_back(fs::absolute(str2tstr(item)));
         }
     }
 
@@ -406,11 +416,11 @@ static int cmd_rmdir(const SCL::ParseResult &result) {
     return 0;
 }
 
-static int cmd_touch(const SCL::ParseResult &result) {
+static int cmd_touch(const cli::ParseResult &result) {
     bool verbose = isVerboseSet(result);
 
-    const auto &file = str2tstr(result.value(0).toString());
-    const auto &refFile = str2tstr(result.value(1).toString());
+    const auto &file = str2tstr(result.value<std::string>(0).value_or(std::string()));
+    const auto &refFile = str2tstr(result.value<std::string>(1).value_or(std::string()));
 
     // Check existence
     if (!fs::is_regular_file(file)) {
@@ -432,27 +442,28 @@ static int cmd_touch(const SCL::ParseResult &result) {
 
     // Set time
     if (verbose) {
-        u8info("Set A-Time: %s\n", time2str(t.accessTime).data());
-        u8info("Set M-Time: %s\n", time2str(t.modifyTime).data());
-        u8info("Set C-Time: %s\n", time2str(t.statusChangeTime).data());
+        u8printf("Set A-Time: %s\n", time2str(t.accessTime).data());
+        u8printf("Set M-Time: %s\n", time2str(t.modifyTime).data());
+        u8printf("Set C-Time: %s\n", time2str(t.statusChangeTime).data());
     }
     Utils::setFileTime(file, t);
     return 0;
 }
 
-static int cmd_configure(const SCL::ParseResult &result) {
+static int cmd_configure(const cli::ParseResult &result) {
     bool dryrun = isDryRunSet(result);
     bool force = isForceSet(result);
     bool verbose = dryrun || isVerboseSet(result);
 
-    const auto &projectName = result.valueForOption("-p").toString();
-    const auto &fileName = fs::absolute(str2tstr(result.value(0).toString()));
+    const auto &projectName = result.valueForOption<std::string>("-p").value_or(std::string());
+    const auto &fileName = fs::absolute(str2tstr(result.value<std::string>(0).value_or(std::string())));
 
     // Warning file
     std::vector<std::string> warningLines;
-    if (const auto &warningResult = result.option("-w"); warningResult.isSet()) {
+    if (const auto &warningResult = result.option("-w"); warningResult) {
         do {
-            const auto &warningFileString = warningResult.value(0).toString();
+            const auto &warningFileString =
+                warningResult->value<std::string>(0).value_or(std::string());
             if (warningFileString.empty())
                 break;
 
@@ -464,7 +475,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
 
             std::string line;
             while (std::getline(inFile, line)) {
-                line = Utils::trim(line);
+                line = stdc::str::trim(std::move(line));
                 if (line.empty())
                     continue;
                 warningLines.push_back(line);
@@ -483,14 +494,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
     }
 
     // Add defines
-    std::vector<std::string> defines;
-    {
-        const auto &definesResult = result.option("-D").allValues();
-        defines.reserve(definesResult.size());
-        for (const auto &item : definesResult) {
-            defines.emplace_back(item.toString());
-        }
-    }
+    const std::vector<std::string> defines = optionValues(result, "-D");
 
     // Generate definitions content
     std::string definitions;
@@ -571,7 +575,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
             }
 
             // To upper case
-            guard = Utils::toUpper(guard);
+            guard = stdc::str::to_upper(guard);
         }
 
         std::stringstream ss;
@@ -603,7 +607,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
     }
 
     if (dryrun) {
-        u8info("%s", content.data());
+        u8printf("%s", content.data());
         return 0;
     }
 
@@ -637,7 +641,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
                 continue;
             }
 
-            if (!Utils::starts_with(line, "//"))
+            if (!stdc::str::starts_with(line, "//"))
                 break;
 
             if (std::regex_match(line, match, hashPattern)) {
@@ -651,8 +655,9 @@ static int cmd_configure(const SCL::ParseResult &result) {
 
         if (matched) {
             if (verbose) {
-                SCL::u8debug(SCL::MessageType::MT_Warning, true, "Content matched. (%s)\n",
-                             hash.data());
+                stdc::console::printf(stdc::console::bold, stdc::console::yellow,
+                                      stdc::console::nocolor, "Content matched. (%s)\n",
+                                      hash.data());
             }
             // Same hash found, no need to overwrite the file
             return 0;
@@ -677,7 +682,7 @@ static int cmd_configure(const SCL::ParseResult &result) {
 
         if (verbose) {
             if (!hash.empty()) {
-                u8info("SHA256: %s\n", hash.data());
+                u8printf("SHA256: %s\n", hash.data());
             }
         }
     }
@@ -685,16 +690,18 @@ static int cmd_configure(const SCL::ParseResult &result) {
     return 0;
 }
 
-static int cmd_incsync(const SCL::ParseResult &result) {
+static int cmd_incsync(const cli::ParseResult &result) {
     bool dryrun = isDryRunSet(result);
     bool verbose = dryrun || isVerboseSet(result);
     bool force = isForceSet(result);
     bool standard = isStandardSet(result);
-    bool copy = result.isOptionSet("-c");
-    bool all = !result.isOptionSet("-n");
+    bool copy = result.option("-c").has_value();
+    bool all = !result.option("-n").has_value();
 
-    const fs::path &src = Utils::cleanPath(fs::absolute(str2tstr(result.value(0).toString())));
-    const fs::path &dest = Utils::cleanPath(fs::absolute(str2tstr(result.value(1).toString())));
+    const fs::path &src =
+        stdc::path::clean_path(fs::absolute(str2tstr(result.value<std::string>(0).value_or(std::string()))));
+    const fs::path &dest =
+        stdc::path::clean_path(fs::absolute(str2tstr(result.value<std::string>(1).value_or(std::string()))));
     if (!fs::is_directory(src)) {
         throw std::runtime_error("not a directory: \"" + tstr2str(src) + "\"");
     }
@@ -703,7 +710,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
     std::vector<std::pair<TString, TString>> includes;
     {
         const auto &includeResult = result.option("-i");
-        int cnt = includeResult.count();
+        int cnt = includeResult ? includeResult->count() : 0;
         includes.reserve(cnt + 1);
 
         // Add standard
@@ -712,18 +719,19 @@ static int cmd_incsync(const SCL::ParseResult &result) {
         }
 
         for (int i = 0; i < cnt; ++i) {
-            includes.emplace_back(str2tstr(includeResult.value(0, i).toString()),
-                                  str2tstr(includeResult.value(1, i).toString()));
+            includes.emplace_back(
+                str2tstr(includeResult->value<std::string>(0, i).value_or(std::string())),
+                str2tstr(includeResult->value<std::string>(1, i).value_or(std::string())));
         }
     }
 
     // Add excludes
     TStringList excludes;
     {
-        const auto &excludeResult = result.option("-e").allValues();
+        const auto &excludeResult = optionValues(result, "-e");
         excludes.reserve(excludeResult.size());
         for (const auto &item : excludeResult) {
-            excludes.emplace_back(str2tstr(item.toString()));
+            excludes.emplace_back(str2tstr(item));
         }
     }
 
@@ -735,7 +743,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
     for (const auto &entry : fs::recursive_directory_iterator(src)) {
         if (entry.is_regular_file()) {
             const auto &path = entry.path();
-            const auto &ext = Utils::toLower(TString(path.extension()));
+            const auto &ext = stdc::str::to_lower(TString(path.extension()));
             if (!(ext == _TSTR(".h") || ext == _TSTR(".hh") || ext == _TSTR(".hpp") ||
                   ext == _TSTR(".hxx"))) {
                 continue;
@@ -765,7 +773,7 @@ static int cmd_incsync(const SCL::ParseResult &result) {
 
             auto targetPath = targetDir / path.filename();
             if (verbose) {
-                u8info("Sync: from \"%s\" to \"%s\"\n", tstr2str(path).data(),
+                u8printf("Sync: from \"%s\" to \"%s\"\n", tstr2str(path).data(),
                        tstr2str(targetPath).data());
             }
 
@@ -812,23 +820,23 @@ static int cmd_incsync(const SCL::ParseResult &result) {
     return 0;
 }
 
-static int cmd_deploy(const SCL::ParseResult &result) {
+static int cmd_deploy(const cli::ParseResult &result) {
     bool dryrun = isDryRunSet(result);
     bool verbose = dryrun || isVerboseSet(result);
     bool force = isForceSet(result);
     bool standard = isStandardSet(result);
 
     fs::path dest = fs::current_path(); // Default to current path
-    if (auto destResult = result.option("-o"); destResult.isSet()) {
-        dest = Utils::cleanPath(fs::absolute(str2tstr(destResult.value().toString())));
+    if (auto destResult = result.option("-o"); destResult) {
+        dest = stdc::path::clean_path(fs::absolute(
+            str2tstr(destResult->value<std::string>().value_or(std::string()))));
     }
 
     // Add file names
     std::set<fs::path> orgFiles;
     {
-        const auto &files = result.values(0);
-        for (const auto &item : files) {
-            orgFiles.insert(toFramework(Utils::cleanPath(fs::absolute(str2tstr(item.toString())))));
+        for (const auto &item : argumentValues(result, 0)) {
+            orgFiles.insert(toFramework(stdc::path::clean_path(fs::absolute(str2tstr(item)))));
         }
     }
 
@@ -836,13 +844,14 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     std::vector<std::pair<fs::path, fs::path>> extraOrgFiles;
     {
         const auto &copiesResult = result.option("-c");
-        int cnt = copiesResult.count();
+        int cnt = copiesResult ? copiesResult->count() : 0;
         extraOrgFiles.reserve(cnt);
         for (int i = 0; i < cnt; ++i) {
             extraOrgFiles.emplace_back(
-                toFramework(
-                    Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(0, i).toString())))),
-                Utils::cleanPath(fs::absolute(str2tstr(copiesResult.value(1, i).toString()))));
+                toFramework(stdc::path::clean_path(fs::absolute(str2tstr(
+                    copiesResult->value<std::string>(0, i).value_or(std::string()))))),
+                stdc::path::clean_path(fs::absolute(str2tstr(
+                    copiesResult->value<std::string>(1, i).value_or(std::string())))));
         }
     }
 
@@ -850,7 +859,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Add searching paths
     std::vector<fs::path> searchingPaths;
     {
-        const auto &linkResult = result.option("-L").allValues();
+        const auto &linkResult = optionValues(result, "-L");
 
         std::vector<fs::path> tmp;
         tmp.reserve(linkResult.size() + orgFiles.size());
@@ -862,13 +871,13 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
         // Add searching paths
         for (const auto &item : linkResult) {
-            tmp.emplace_back(Utils::cleanPath(fs::absolute(str2tstr(item.toString()))));
+            tmp.emplace_back(stdc::path::clean_path(fs::absolute(str2tstr(item))));
         }
 
         // Read configuration
-        const auto &configFiles = result.option("--linkdirs-file").allValues();
+        const auto &configFiles = optionValues(result, "--linkdirs-file");
         for (const auto &item : configFiles) {
-            std::ifstream file(fs::path(str2tstr(item.toString())), std::ios::binary);
+            std::ifstream file(fs::path(str2tstr(item)), std::ios::binary);
             if (!file.is_open()) {
                 continue;
             }
@@ -887,7 +896,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                     continue;
                 if (line.size() >= 2 && line.front() == '\"' && line.back() == '\"')
                     line = line.substr(1, line.size() - 2);
-                tmp.emplace_back(Utils::cleanPath(fs::absolute(str2tstr(Utils::trim(line)))));
+                tmp.emplace_back(stdc::path::clean_path(fs::absolute(str2tstr(stdc::str::trim(std::move(line))))));
             }
         }
 
@@ -902,7 +911,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             else if (!fs::is_directory(item))
                 continue;
 
-            if (Utils::contains(visited, item)) {
+            if (stdc::contains(visited, item)) {
                 continue;
             }
             visited.insert(item);
@@ -914,10 +923,10 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Add excludes
     TStringList excludes;
     {
-        const auto &excludeResult = result.option("-e").allValues();
+        const auto &excludeResult = optionValues(result, "-e");
         excludes.reserve(excludeResult.size());
         for (const auto &item : excludeResult) {
-            excludes.emplace_back(str2tstr(item.toString()));
+            excludes.emplace_back(str2tstr(item));
         }
     }
 
@@ -945,7 +954,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             std::set<TString> result;
             for (const auto &path : std::as_const(paths)) {
                 if (verbose) {
-                    u8info("Resolve: \"%s\"\n", tstr2str(path).data());
+                    u8printf("Resolve: \"%s\"\n", tstr2str(path).data());
                 }
 
                 std::vector<std::string> unparsed;
@@ -959,7 +968,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                     ;
                 for (const auto &item : deps) {
                     if (verbose) {
-                        u8info("    %s\n", tstr2str(item).data());
+                        u8printf("    %s\n", tstr2str(item).data());
                     }
                     result.insert(item);
                 }
@@ -970,7 +979,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                         maxSize = std::max(maxSize, item.size());
                     }
                     for (const auto &item : std::as_const(unparsed)) {
-                        u8info("    %s%s[Not Found]\n", item.data(),
+                        u8printf("    %s%s[Not Found]\n", item.data(),
                                std::string(maxSize + 4 - item.size(), ' ').data());
                     }
                 }
@@ -999,37 +1008,42 @@ static int cmd_deploy(const SCL::ParseResult &result) {
             for (const auto &lib : std::as_const(libs)) {
                 const auto &path = toFramework(lib);
                 // Ignore orginal file
-                if (Utils::contains(allOrgFileNames, path.filename()))
+                if (stdc::contains(allOrgFileNames, path.filename()))
                     continue;
 
                 // Ignore files in standard mode
-                TString fileName = Utils::toLower(TString(path.filename()));
+                // Lower cased, so every name matched against it below has to be lower case
+                // too. A pattern with a capital in it never matches anything.
+                TString fileName = stdc::str::to_lower(TString(path.filename()));
                 if ((standard && (
 #ifdef _WIN32
                                      isMSVCLibrary(fileName)
 #elif defined(__APPLE__)
-                                     Utils::starts_with(fileName, "libc++") ||
-                                     Utils::starts_with(fileName, "libSystem") ||
-                                     Utils::starts_with(fileName, "/System")
+                                     stdc::str::starts_with(fileName, "libc++") ||
+                                     stdc::str::starts_with(fileName, "libsystem")
 #else
-                                     Utils::starts_with(fileName, "libstdc++") ||
-                                     Utils::starts_with(fileName, "libgcc") ||
-                                     Utils::starts_with(fileName, "libglib") ||
-                                     Utils::starts_with(fileName, "libpthread") ||
-                                     Utils::starts_with(fileName, "libgthread") ||
-                                     Utils::starts_with(fileName, "libicu") ||
-                                     Utils::starts_with(fileName, "libc.so") ||
-                                     Utils::starts_with(fileName, "libc-") ||
-                                     Utils::starts_with(fileName, "libdl.so") ||
-                                     Utils::starts_with(fileName, "libdl-")
+                                     stdc::str::starts_with(fileName, "libstdc++") ||
+                                     stdc::str::starts_with(fileName, "libgcc") ||
+                                     stdc::str::starts_with(fileName, "libglib") ||
+                                     stdc::str::starts_with(fileName, "libpthread") ||
+                                     stdc::str::starts_with(fileName, "libgthread") ||
+                                     stdc::str::starts_with(fileName, "libicu") ||
+                                     stdc::str::starts_with(fileName, "libc.so") ||
+                                     stdc::str::starts_with(fileName, "libc-") ||
+                                     stdc::str::starts_with(fileName, "libdl.so") ||
+                                     stdc::str::starts_with(fileName, "libdl-") ||
+                                     // Spelled out rather than as "libm", which would take
+                                     // libmagic and libmount with it.
+                                     stdc::str::starts_with(fileName, "libm.so") ||
+                                     stdc::str::starts_with(fileName, "libm-")
 #endif
                                          )) ||
 #ifdef _WIN32
                     (!searchWindowsSystemPaths(fileName).empty() ||
-                     Utils::starts_with(fileName, _TSTR("api-ms-win-")) ||
-                     Utils::starts_with(fileName, _TSTR("ext-ms-win-"))) ||
+                     stdc::str::starts_with(fileName, _TSTR("api-ms-win-")) ||
+                     stdc::str::starts_with(fileName, _TSTR("ext-ms-win-"))) ||
 #endif
-                    Utils::contains(visited, fileName)) {
+                    stdc::contains(visited, fileName)) {
                     continue;
                 }
                 visited.insert(fileName);
@@ -1083,9 +1097,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     const auto &fixRPaths = [verbose](const std::string &file,
                                       const std::vector<std::string> &paths) {
         if (verbose) {
-            u8info("Fix rpath: \"%s\"\n", file.data());
+            u8printf("Fix rpath: \"%s\"\n", file.data());
             for (const auto &path : paths) {
-                u8info("    %s\n", path.data());
+                u8printf("    %s\n", path.data());
             }
         }
         Utils::setFileRPaths(file, paths);
@@ -1164,10 +1178,10 @@ static int cmd_deploy(const SCL::ParseResult &result) {
         std::string currentArch;
         try {
             currentArch = Utils::executeCommand("uname", {"-m"});
-            currentArch = Utils::trim(currentArch);
+            currentArch = stdc::str::trim(std::move(currentArch));
         } catch (const std::exception &e) {
             if (verbose) {
-                u8info("Warning: Failed to get current architecture: %s\n", e.what());
+                u8printf("Warning: Failed to get current architecture: %s\n", e.what());
             }
             currentArch = "unknown";
         }
@@ -1195,7 +1209,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 // Check if current architecture is present
                 if (lipoInfo.find(currentArch) == std::string::npos) {
                     if (verbose) {
-                        u8info(
+                        u8printf(
                             "Warning: Universal binary \"%s\" does not contain %s architecture\n",
                             file.string().data(), currentArch.data());
                     }
@@ -1206,7 +1220,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 bool lipoPassed = false;
                 try {
                     if (verbose) {
-                        u8info("Strip universal binary: \"%s\" (keep %s)\n", file.string().data(),
+                        u8printf("Strip universal binary: \"%s\" (keep %s)\n", file.string().data(),
                                currentArch.data());
                     }
                     std::ignore = Utils::executeCommand(
@@ -1214,7 +1228,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                     lipoPassed = true;
                 } catch (const std::exception &e) {
                     if (verbose) {
-                        u8info("Warning: Failed to strip universal binary \"%s\": %s\n",
+                        u8printf("Warning: Failed to strip universal binary \"%s\": %s\n",
                                file.string().data(), e.what());
                     }
                 }
@@ -1284,7 +1298,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 
                 // Only collected dependencies will be normalized
                 if (fs::exists(depPath) &&
-                    Utils::contains(targetFileNames, fs::canonical(depPath).filename())) {
+                    stdc::contains(targetFileNames, fs::canonical(depPath).filename())) {
                     normalized.emplace_back(dep, "@rpath/" + depPath.filename().string());
                 }
             }
@@ -1293,9 +1307,9 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                 return;
 
             if (verbose) {
-                u8info("Normalize dependencies: \"%s\"\n", file.string().data());
+                u8printf("Normalize dependencies: \"%s\"\n", file.string().data());
                 for (const auto &item : std::as_const(normalized)) {
-                    u8info("    %s\n", item.first.data());
+                    u8printf("    %s\n", item.first.data());
                 }
             }
 
@@ -1327,7 +1341,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
                       {
                           "@executable_path/../Frameworks",
                           "@loader_path/" +
-                              Utils::cleanPath(fs::relative(dest, file.parent_path())).string(),
+                              stdc::path::clean_path(fs::relative(dest, file.parent_path())).string(),
                       });
         }
     }
@@ -1355,8 +1369,8 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 #  else
     // const auto &setInterpreter = [verbose](const std::string &file, const std::string &interp) {
     //     if (verbose) {
-    //         u8info("Set interpreter: \"%s\"\n", file.data());
-    //         u8info("    %s\n", interp.data());
+    //         u8printf("Set interpreter: \"%s\"\n", file.data());
+    //         u8printf("    %s\n", interp.data());
     //     }
     //     Utils::setFileInterpreter(file, interp);
     // };
@@ -1382,7 +1396,7 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     // Fix rpath for original files
     for (const auto &file : std::as_const(targetOrgFiles)) {
         fixRPaths(file,
-                  {"$ORIGIN/" + Utils::cleanPath(fs::relative(dest, file.parent_path())).string()});
+                  {"$ORIGIN/" + stdc::path::clean_path(fs::relative(dest, file.parent_path())).string()});
     }
 
     // Fix rpath for dependencies
@@ -1419,13 +1433,13 @@ static int cmd_deploy(const SCL::ParseResult &result) {
     //     interpreter = dest / interpreterName;
 
     //     if (verbose) {
-    //         u8info("Interpreter: \"%s\"\n", interpreter.string().data());
+    //         u8printf("Interpreter: \"%s\"\n", interpreter.string().data());
     //     }
 
     //     // Set interpreter for original files
     //     for (const auto &file : std::as_const(targetOrgFiles)) {
     //         setInterpreter(file,
-    //                        "$ORIGIN/" + Utils::cleanPath(fs::relative(dest, file.parent_path()) /
+    //                        "$ORIGIN/" + stdc::path::clean_path(fs::relative(dest, file.parent_path()) /
     //                                                      interpreter.filename())
     //                                         .string());
     //     }
@@ -1441,119 +1455,119 @@ static int cmd_deploy(const SCL::ParseResult &result) {
 }
 
 int main(int argc, char *argv[]) {
-    SCL::Command copyCommand = []() {
-        SCL::Command command("copy", "Copy files or directories if different");
+    cli::Command copyCommand = []() {
+        cli::Command command("copy", "Copy files or directories if different");
         command.addArguments({
-            SCL::Argument("src", "Source files or directories").multi(),
-            SCL::Argument("dest", "Destination directory"),
+            cli::Argument("src", "Source files or directories").multi(),
+            cli::Argument("dest", "Destination directory"),
         });
         command.addOptions({
-            SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-            SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
+            cli::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+            cli::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
-        command.addOptions({SCL::Option::Verbose});
+        command.addOptions({cli::Option::Verbose});
         command.setHandler(cmd_copy);
         return command;
     }();
 
-    SCL::Command rmdirCommand = []() {
-        SCL::Command command("rmdir", "Remove empty directories recursively");
+    cli::Command rmdirCommand = []() {
+        cli::Command command("rmdir", "Remove empty directories recursively");
         command.addArguments({
-            SCL::Argument("dir", "Directories").multi(),
+            cli::Argument("dir", "Directories").multi(),
         });
-        command.addOption({SCL::Option::Verbose});
+        command.addOption({cli::Option::Verbose});
         command.setHandler(cmd_rmdir);
         return command;
     }();
 
-    SCL::Command touchCommand = []() {
-        SCL::Command command("touch", "Update file timestamp");
+    cli::Command touchCommand = []() {
+        cli::Command command("touch", "Update file timestamp");
         command.addArguments({
-            SCL::Argument("file", "File to update time stamp"),
-            SCL::Argument("ref file", "Reference file", false),
+            cli::Argument("file", "File to update time stamp"),
+            cli::Argument("ref file", "Reference file", false),
         });
-        command.addOption({SCL::Option::Verbose});
+        command.addOption({cli::Option::Verbose});
         command.setHandler(cmd_touch);
         return command;
     }();
 
-    SCL::Command configureCommand = []() {
-        SCL::Command command("configure", "Generate configuration header");
-        command.addArgument(SCL::Argument("output file", "Output header path"));
+    cli::Command configureCommand = []() {
+        cli::Command command("configure", "Generate configuration header");
+        command.addArgument(cli::Argument("output file", "Output header path"));
         command.addOptions({
-            SCL::Option({"-D", "--define"},
+            cli::Option({"-D", "--define"},
                         R"(Define a variable, format: <key>, <key>=<value>, %<raw>)")
                 .arg("expr")
                 .multi()
-                .short_match(SCL::Option::ShortMatchSingleChar),
-            SCL::Option({"-p", "--project"}, "Set project name").arg("name"),
-            SCL::Option({"-w", "--warning"}, "Generate warning text").arg("file", false),
-            SCL::Option({"-f", "--force"}, "Skip calculating hash and overwrite always"),
-            SCL::Option({"-d", "--dryrun"}, "Print contents only"),
+                .shortMatch(cli::Option::ShortMatchSingleChar),
+            cli::Option({"-p", "--project"}, "Set project name").arg("name"),
+            cli::Option({"-w", "--warning"}, "Generate warning text").arg("file", false),
+            cli::Option({"-f", "--force"}, "Skip calculating hash and overwrite always"),
+            cli::Option({"-d", "--dryrun"}, "Print contents only"),
         });
-        command.addOption({SCL::Option::Verbose});
+        command.addOption({cli::Option::Verbose});
         command.setHandler(cmd_configure);
         return command;
     }();
 
-    SCL::Command incsyncCommand = []() {
-        SCL::Command command("incsync", "Reorganize header files of include directory");
+    cli::Command incsyncCommand = []() {
+        cli::Command command("incsync", "Reorganize header files of include directory");
         command.addArguments({
-            SCL::Argument("src", "Input directory containing source headers"),
-            SCL::Argument("dest", "Output directory of reorganized headers"),
+            cli::Argument("src", "Input directory containing source headers"),
+            cli::Argument("dest", "Output directory of reorganized headers"),
         });
         command.addOptions({
-            SCL::Option({"-i", "--include"}, "Add a path pattern and corresponding subdirectory")
+            cli::Option({"-i", "--include"}, "Add a path pattern and corresponding subdirectory")
                 .arg("regex")
                 .arg("subdir")
                 .multi(),
-            SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-            SCL::Option({"-s", "--standard"}, "Add standard public-private name pattern"),
-            SCL::Option({"-n", "--not-all"}, "Ignore unclassified files"),
-            SCL::Option({"-c", "--copy"}, "Copy files rather than indirect reference"),
-            SCL::Option({"-d", "--dryrun"}, "Print reorganizing details only"),
-            SCL::Option({"-f", "--force"}, "Force deleting existing directory"),
+            cli::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+            cli::Option({"-s", "--standard"}, "Add standard public-private name pattern"),
+            cli::Option({"-n", "--not-all"}, "Ignore unclassified files"),
+            cli::Option({"-c", "--copy"}, "Copy files rather than indirect reference"),
+            cli::Option({"-d", "--dryrun"}, "Print reorganizing details only"),
+            cli::Option({"-f", "--force"}, "Force deleting existing directory"),
         });
-        command.addOption({SCL::Option::Verbose});
+        command.addOption({cli::Option::Verbose});
         command.setHandler(cmd_incsync);
         return command;
     }();
 
-    SCL::Command deployCommand = []() {
-        SCL::Command command("deploy", "Resolve and deploy " OS_EXECUTABLE " files' dependencies");
+    cli::Command deployCommand = []() {
+        cli::Command command("deploy", "Resolve and deploy " OS_EXECUTABLE " files' dependencies");
         command.addArguments({
-            SCL::Argument("file", OS_EXECUTABLE " file(s)").multi(),
+            cli::Argument("file", OS_EXECUTABLE " file(s)").multi(),
         });
         command.addOptions({
-            SCL::Option({"-c", "--copy"}, "Additional " OS_EXECUTABLE " file(s) to copy")
+            cli::Option({"-c", "--copy"}, "Additional " OS_EXECUTABLE " file(s) to copy")
                 .arg("src")
                 .arg("dir")
                 .multi()
-                .prior(SCL::Option::IgnoreMissingArguments),
-            SCL::Option({"-o", "--out"},
+                .prior(cli::Option::IgnoreMissingArguments),
+            cli::Option({"-o", "--out"},
                         "Set output directory of dependencies, defult to current directory")
                 .arg("dir"),
 #if 1
-            SCL::Option({"-L", "--linkdir"}, "Add a library searching path")
+            cli::Option({"-L", "--linkdir"}, "Add a library searching path")
                 .arg("dir")
                 .multi()
-                .short_match(SCL::Option::ShortMatchSingleChar),
-            SCL::Option({"--linkdirs-file"}, "Add library searching paths from a list file")
+                .shortMatch(cli::Option::ShortMatchSingleChar),
+            cli::Option({"--linkdirs-file"}, "Add library searching paths from a list file")
                 .arg("file")
                 .multi()
-                .short_match(SCL::Option::ShortMatchSingleChar),
+                .shortMatch(cli::Option::ShortMatchSingleChar),
 #endif
-            SCL::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
-            SCL::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
-            SCL::Option({"-d", "--dryrun"}, "Print dependencies only"),
-            SCL::Option({"-f", "--force"}, "Force overwrite existing files"),
+            cli::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
+            cli::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
+            cli::Option({"-d", "--dryrun"}, "Print dependencies only"),
+            cli::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
-        command.addOption({SCL::Option::Verbose});
+        command.addOption({cli::Option::Verbose});
         command.setHandler(cmd_deploy);
         return command;
     }();
 
-    SCL::Command rootCommand(SCL::appName(),
+    cli::Command rootCommand(stdc::system::application_name(),
                              "Cross-platform utility commands for C/C++ build systems.");
     rootCommand.addCommands({
         copyCommand,
@@ -1565,64 +1579,55 @@ int main(int argc, char *argv[]) {
     });
     rootCommand.addVersionOption(TOOL_VERSION);
     rootCommand.addHelpOption(true, true);
-    rootCommand.setHandler([](const SCL::ParseResult &result) -> int {
-        result.showHelpText();
-        return 0;
-    });
 
-    SCL::CommandCatalogue cc;
+    cli::CommandCatalogue cc;
     cc.addCommands("Filesystem Commands", {"copy", "rmdir", "touch"});
     cc.addCommands("Buildsystem Commands", {"configure", "incsync", "deploy"});
     rootCommand.setCatalogue(cc);
 
-    SCL::HelpLayout hl = []() {
-        SCL::HelpLayout res;
-        res.addHelpTextItem(SCL::HelpLayout::HT_Prologue);
-        res.addMessageItem(SCL::HelpLayout::MI_Information);
-        res.addMessageItem(SCL::HelpLayout::MI_Warning);
-        res.addMessageItem(SCL::HelpLayout::MI_Critical);
-        res.addHelpTextItem(SCL::HelpLayout::HT_Description);
-        res.addHelpTextItem(SCL::HelpLayout::HT_Usage);
-        res.addHelpListItem(SCL::HelpLayout::HL_Arguments);
-        res.addHelpListItem(SCL::HelpLayout::HL_Options);
-        res.addHelpListItem(SCL::HelpLayout::HL_Commands);
-        res.addHelpTextItem(SCL::HelpLayout::HT_Epilogue, [](const SCL::HelpLayout::Context &ctx) {
-            SCL::u8debug(SCL::MT_Warning, true, "%s\n", ctx.text->lines.c_str());
-            if (ctx.hasNext) {
-                SCL::u8info("\n");
-            }
-        });
-        return res;
-    }();
-    rootCommand.setHelpLayout(hl);
-
-    SCL::Parser parser(rootCommand);
+    cli::Parser parser(rootCommand);
     parser.setPrologue(TOOL_DESC);
     parser.setEpilogue(TOOL_COPYRIGHT);
-    parser.setDisplayOptions(SCL::Parser::AlignAllCatalogues);
+    parser.setDisplayOptions(cli::Parser::AlignAllCatalogues);
+
+    // The copyright line under the page is worth setting apart from the page.
+    {
+        auto layout = cli::HelpLayout::defaultLayout();
+        layout.setBodyStyle(cli::HelpBlock::Epilogue,
+                            {stdc::console::bold, stdc::console::yellow});
+        parser.setHelpLayout(layout);
+    }
+
+    // On Windows the arguments that reach main() are in the machine's ANSI code page, so the
+    // wide command line is read instead and converted. Everywhere else argv is already what
+    // the user typed.
+    std::vector<std::string> args;
+#ifdef _WIN32
+    std::ignore = argc;
+    std::ignore = argv;
+    {
+        const auto &given = stdc::system::command_line_arguments();
+        args.assign(given.begin(), given.end());
+    }
+#else
+    args.assign(argv, argv + argc);
+#endif
 
     int ret;
     try {
-        int parseOptions = SCL::Parser::EnableResponseFile;
-#ifdef _WIN32
-        std::ignore = argc;
-        std::ignore = argv;
-        ret = parser.invoke(SCL::commandLineArguments(), -1, parseOptions);
-#else
-        ret = parser.invoke(argc, argv, -1, parseOptions);
-#endif
+        ret = parser.invoke(args, -1, cli::Parser::EnableResponseFile);
     } catch (const std::exception &e) {
         std::string msg = e.what();
 
 #ifdef _WIN32
         if (typeid(e) == typeid(fs::filesystem_error)) {
-            auto err = static_cast<const fs::filesystem_error &>(e);
-            // msg = "\"" + tstr2str(err.path1()) + "\": " + standardError();
-            msg = SCL::ansiToUtf8(err.what());
+            // What the standard library puts in what() is in the ANSI code page too.
+            msg = stdc::wstring_conv::to_utf8(stdc::wstring_conv::from_ansi(e.what()));
         }
 #endif
 
-        SCL::u8debug(SCL::MT_Critical, true, "Error: %s\n", msg.data());
+        stdc::console::printf(stdc::console::bold, stdc::console::lightred,
+                              stdc::console::nocolor, "Error: %s\n", msg.data());
         ret = -1;
     }
     return ret;
