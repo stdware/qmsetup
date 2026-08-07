@@ -7,6 +7,7 @@ project(qmsetup VERSION 1.0.0.0)
 # ----------------------------------
 option(QMSETUP_VCPKG_TOOLS_HINT "Install executables to tools directory" OFF)
 option(QMSETUP_STATIC_RUNTIME "Static link runtime libraries on Windows" ON)
+option(QMSETUP_BUILD_TESTS "Build test cases" OFF)
 
 # ----------------------------------
 # CMake Settings
@@ -44,3 +45,8 @@ set(QMSETUP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 include(cmake/QMSetupAPI.cmake)
 
 add_subdirectory(src)
+
+if(QMSETUP_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

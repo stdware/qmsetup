@@ -1,0 +1,166 @@
+{
+    "$comment": [
+        "What the deploy tests are, as data rather than as code.",
+        "",
+        "`artifacts` names the binaries built by fixtures/CMakeLists.txt and says",
+        "where each one is put before anything is deployed. `scenarios` then gives",
+        "a command line and the directory structure it should leave behind.",
+        "",
+        "Artifacts are named by what they are, `render` or `plugin_b`, never by",
+        "file name, because that is `qmtest_render.dll` on one platform and",
+        "`libqmtest_render.so` on another. The test resolves them.",
+        "",
+        "In `args`, `{render}` is an artifact's path and `{dir.media}` is one of",
+        "the directories below. In `expect`, a directory maps to exactly the",
+        "artifacts that must be in it. Exactly, so an unexpected file is a",
+        "failure too, and `[]` means empty or absent."
+    ],
+
+    "directories": {
+        "app": "app",
+        "core": "libs/core",
+        "media": "libs/media",
+        "plugins": "plugins"
+    },
+
+    "artifacts": {
+        "app": {"kind": "application", "directory": "app"},
+        "base": {"kind": "library", "directory": "core"},
+        "util": {"kind": "library", "directory": "core"},
+        "render": {"kind": "library", "directory": "media"},
+        "audio": {"kind": "library", "directory": "media"},
+        "plugin_a": {"kind": "plugin", "directory": "plugins"},
+        "plugin_b": {"kind": "plugin", "directory": "plugins"}
+    },
+
+    "scenarios": [
+        {
+            "name": "the application alone",
+            "why": "The app names render alone, so util and base can only arrive by following it. Nothing on this line wants audio, so audio must not arrive at all, and nothing is moved out of where it started.",
+            "args": ["deploy", "{app}", "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out", "-V"],
+            "resolves": ["render", "util", "base"],
+            "expect": {
+                "app": ["app"],
+                "libs/core": ["base", "util"],
+                "libs/media": ["render", "audio"],
+                "plugins": ["plugin_a", "plugin_b"],
+                "out": ["render", "util", "base"]
+            }
+        },
+        {
+            "name": "without a search path nothing can be placed",
+            "why": "Nothing sits beside anything it depends on, so a line that names no search path resolves nothing and writes nothing.",
+            "args": ["deploy", "{app}", "-o", "out", "-V"],
+            "notFound": ["render"],
+            "unchanged": true,
+            "expect": {"out": []}
+        },
+        {
+            "name": "a list file stands in for the search paths",
+            "why": "--linkdirs-file is the long command line's way out, and has to reach the same place.",
+            "args": ["deploy", "{app}", "--linkdirs-file", "linkdirs.txt", "-o", "out", "-V"],
+            "seed": {"linkdirs.txt": "{abs.dir.core}\n{abs.dir.media}\n"},
+            "resolves": ["render", "util", "base"],
+            "expect": {"out": ["render", "util", "base"]}
+        },
+        {
+            "name": "the output directory defaults to the current one",
+            "why": "With no -o, the dependencies land where the tool was run.",
+            "args": ["deploy", "{app}", "-L", "{dir.core}", "-L", "{dir.media}"],
+            "expect": {".": ["render", "util", "base"]}
+        },
+        {
+            "name": "deploying twice leaves the same thing",
+            "why": "A second run has nothing to do, and must not undo or duplicate the first.",
+            "args": ["deploy", "{app}", "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out"],
+            "repeat": 2,
+            "expect": {"out": ["render", "util", "base"]}
+        },
+        {
+            "name": "excluding a library drops what lies behind it",
+            "why": "base is reachable only through util, so refusing util hides base as well. render is named directly and stays.",
+            "args": ["deploy", "{app}", "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out", "-e", "util"],
+            "expect": {"out": ["render"]}
+        },
+        {
+            "name": "a plugin over what the application has adds nothing",
+            "why": "plugin_a wants render, which the app already brought, so only the plugin itself is new.",
+            "args": [
+                "deploy", "{app}",
+                "-c", "{plugin_a}", "out/plugins",
+                "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out"
+            ],
+            "expect": {
+                "out": ["render", "util", "base"],
+                "out/plugins": ["plugin_a"]
+            }
+        },
+        {
+            "name": "a plugin brings the branch it needs",
+            "why": "plugin_b wants audio, which nothing else on this line does, so audio and the plugin both arrive.",
+            "args": [
+                "deploy", "{app}",
+                "-c", "{plugin_b}", "out/plugins",
+                "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out"
+            ],
+            "expect": {
+                "out": ["render", "util", "base", "audio"],
+                "out/plugins": ["plugin_b"]
+            }
+        },
+        {
+            "name": "both plugins together",
+            "why": "The two plugins overlap on render's branch and differ on audio's, and the union is what should arrive.",
+            "args": [
+                "deploy", "{app}",
+                "-c", "{plugin_a}", "out/plugins",
+                "-c", "{plugin_b}", "out/plugins",
+                "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out"
+            ],
+            "expect": {
+                "out": ["render", "util", "base", "audio"],
+                "out/plugins": ["plugin_a", "plugin_b"]
+            }
+        },
+        {
+            "name": "plugins may go to directories of their own",
+            "why": "Each --copy names its own destination, and the libraries still gather in one place.",
+            "args": [
+                "deploy", "{app}",
+                "-c", "{plugin_a}", "out/plugins/a",
+                "-c", "{plugin_b}", "out/plugins/b",
+                "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out"
+            ],
+            "expect": {
+                "out": ["render", "util", "base", "audio"],
+                "out/plugins/a": ["plugin_a"],
+                "out/plugins/b": ["plugin_b"]
+            }
+        },
+        {
+            "name": "a plugin deployed on its own",
+            "why": "Named as the binary rather than as a copy, a plugin brings its own branch and nothing of the application's.",
+            "args": ["deploy", "{plugin_b}", "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out"],
+            "expect": {"out": ["audio", "base"]}
+        },
+        {
+            "name": "a dry run writes nothing",
+            "why": "--dryrun resolves everything and touches nothing, plugins included.",
+            "args": [
+                "deploy", "{app}",
+                "-c", "{plugin_b}", "out/plugins",
+                "-L", "{dir.core}", "-L", "{dir.media}", "-o", "out", "-d"
+            ],
+            "resolves": ["render", "util", "base", "audio"],
+            "unchanged": true,
+            "expect": {"out": []}
+        },
+        {
+            "name": "a binary that is not there is refused",
+            "why": "And nothing is written on the way to finding out.",
+            "args": ["deploy", "no_such_binary", "-o", "out"],
+            "exit": "fail",
+            "unchanged": true
+        }
+    ]
+}
