@@ -2,7 +2,7 @@
 
 **QMSetup** is a set of CMake Modules and Basic Libraries for C/C++ projects.
 
-**This project is independent from Qt and other 3rdparty libraries.** Due to the fact that it encompasses some tools that need to be compiled, it's strongly not suggested to be included as a subproject.
+**This project is independent from Qt and other 3rdparty libraries.** It ships tools that have to be compiled and then run on the build machine, so adding it with `add_subdirectory` is strongly discouraged. Install it first, or let your project install it during configure, as described under [Integrate](#integrate).
 
 ## Features
 
@@ -13,7 +13,7 @@
 
 ### Generators
 + Generate Windows RC files, manifest files
-+ Generate MacOS Bundle info files
++ Generate macOS bundle info files
 + Generate configuration header files
 + Generate Git information header files
 
@@ -27,12 +27,12 @@
 ### Extended Build Rules
 + Create translations with **Qt Linguist** tools
 + Create source files with **Protobuf** compiler
-+ Create documentations with **Doxygen**
++ Create documentation with **Doxygen**
 
-## Support Platforms
+## Supported Platforms
 
 + Microsoft Windows
-+ Apple Macintosh
++ Apple macOS
 + GNU/Linux
 
 ## Dependencies
@@ -41,15 +41,19 @@
 
 #### Windows
 
-Windows deploy command acquires the shared library paths by reading the PE files and searching the specified paths so that it doesn't depend on `dumpbin` tool.
+The deploy command reads the import table out of the PE file itself and looks for each name along the paths it was given, so nothing has to be installed and `dumpbin` is not needed.
 
-#### Unix
+#### Linux
 
-Unix deploy command acquires the shared library paths by running `ldd`/`otool` command and fixes the *rpath*s by runing the `patchelf`/`install_name_tool` command, make sure you have installed them.
+The deploy command reads what a binary asks for with `patchelf`, works out where each of those resolves to with `ldd`, and fixes the *rpath*s with `patchelf` again. `ldd` comes with the C library, so `patchelf` is the one to install.
 
 ```sh
 sudo apt install patchelf
 ```
+
+#### macOS
+
+The deploy command reads dependencies with `otool`, fixes install names and *rpath*s with `install_name_tool`, and thins a universal binary with `lipo`. All three come with the Xcode command line tools, so there is nothing to install.
 
 ### Build System
 
@@ -57,7 +61,7 @@ sudo apt install patchelf
 + CMake 3.19
 
 ### Open-Source Libraries
-+ https://github.com/SineStriker/syscmdline
++ https://github.com/stdware/stdcorelib
 + https://github.com/jothepro/doxygen-awesome-css
 
 ## Integrate
@@ -79,8 +83,8 @@ git clone --recursive git@github.com:stdware/qmsetup.git
 ```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release \
                -DCMAKE_INSTALL_PREFIX=/path/to
-cmake --build build --target all
-cmake --build build --target install
+cmake --build build --config Release
+cmake --install build --config Release
 ```
 
 #### Import
@@ -193,7 +197,7 @@ qm_add_translation(${PROJECT_NAME}_translations
 )
 ```
 
-#### Generate Protubuf Source Files
+#### Generate Protobuf Source Files
 ```cmake
 qm_import(Protobuf)
 
@@ -215,7 +219,7 @@ qm_setup_doxygen(${PROJECT_NAME}_RunDoxygen
     NAME ${PROJECT_NAME}
     DESCRIPTION "my project"
     MDFILE "${CMAKE_SOURCE_DIR}/README.md"
-    OUTPUT_DIR "${CMAK_BINARY_DIR}/doc"
+    OUTPUT_DIR "${CMAKE_BINARY_DIR}/doc"
     INPUT src
     TARGETS ${PROJECT_NAME}
     DEPENDS ${PROJECT_NAME}
@@ -223,7 +227,7 @@ qm_setup_doxygen(${PROJECT_NAME}_RunDoxygen
         Q_OBJECT
         Q_GADGET
         Q_DECLARE_TR_FUNCTIONS
-    COMPILE_DEFINITIONS 
+    COMPILE_DEFINITIONS
         Q_SIGNALS=Q_SIGNALS
         Q_SLOTS=Q_SLOTS
     GENERATE_TAGFILE "${PROJECT_NAME}_tagfile.xml"
@@ -238,13 +242,11 @@ Use `qm_find_package` to find supported third-party packages.
 + YY-Thunks: https://github.com/Chuyu-Team/YY-Thunks
 + VC-LTL5: https://github.com/Chuyu-Team/VC-LTL5
 
-### Detailed Documentations
+### Detailed Documentation
 
 + [About qmcorecmd](docs/AboutCoreCMD.md)
 
-The CMake Modules documentations is provided in the comments.
-
-See `examples` to get detailed use cases.
+The CMake modules are documented in the comments above each function.
 
 ## Contributors
 
