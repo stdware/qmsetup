@@ -42,35 +42,40 @@ function(qm_make_output_file _infile _prefix _ext _out)
 endfunction()
 
 #[[
-    Create a custom command to run `xxd`.
+    Create a custom command that writes a binary file out as a C array.
 
-    qm_add_binary_resource(<input> <output>
-        [USE_SCRIPT]
-    )
+    qm_add_binary_resource(<input> <output>)
+
+    The array is named after the output file, made into an identifier, and the
+    number of bytes follows it as <name>_len.
 #]]
 function(qm_add_binary_resource _input _output)
-    set(options USE_SCRIPT)
-    set(oneValueArgs)
-    set(multiValueArgs)
-    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    find_program(_xxd "xxd")
-
-    if(NOT _xxd OR FUNC_USE_SCRIPT)
-        get_filename_component(_name ${_output} NAME)
-        string(MAKE_C_IDENTIFIER ${_name} _name)
-        set(_cmd "${CMAKE_COMMAND}"
-            -D "input=${_input}"
-            -D "output=${_output}"
-            -D "name=${_name}"
-            -P "${QMSETUP_MODULES_DIR}/scripts/xxd.cmake")
-    else()
-        set(_cmd "${_xxd}" "-i" "${_input}" "${_output}")
-    endif()
+    # Always the script, never the xxd the machine may have. They do not agree
+    # on what to call the array, and cannot be made to.
+    #
+    # `xxd -i` names it after the input path as that path was written on the
+    # command line, so an absolute one becomes _home_me_proj_assets_logo_png and
+    # carries the whole checkout in the symbol, while a relative one gives
+    # something else again. The script is told the name instead, and works it out
+    # from the output. So the same call gave one symbol on a machine with xxd
+    # installed and another on a machine without, and the first of the two
+    # changed if the checkout moved.
+    #
+    # Running xxd from the input's own directory only narrows the difference. It
+    # answers logo_png where the script answers logo_c, and the input may be a
+    # generator expression, so there is no directory to change to until build
+    # time anyway.
+    get_filename_component(_name ${_output} NAME)
+    string(MAKE_C_IDENTIFIER ${_name} _name)
 
     add_custom_command(
         OUTPUT ${_output}
-        COMMAND ${_cmd}
+        COMMAND ${CMAKE_COMMAND}
+            -D "input=${_input}"
+            -D "output=${_output}"
+            -D "name=${_name}"
+            -P "${QMSETUP_MODULES_DIR}/scripts/xxd.cmake"
         DEPENDS ${_input}
+        VERBATIM
     )
 endfunction()
