@@ -186,6 +186,59 @@ qmtest_contains("and everything under it" "${_inc}" "${_here}/include/a")
 qmtest_contains("all of it" "${_inc}" "${_here}/include/b")
 
 # ------------------------------------------------------------------
+# qm_skip_automoc
+#
+# Moc reads every source of a target that has automoc turned on, and a header
+# it was never meant to see is a build error rather than a warning. This marks
+# them, by name or by the directory they are in.
+# ------------------------------------------------------------------
+
+qm_skip_automoc("${_here}/src/lib.c")
+get_source_file_property(_skipped "${_here}/src/lib.c" SKIP_AUTOMOC)
+qmtest_true("a file named is skipped" "${_skipped}")
+
+get_source_file_property(_not_skipped "${_here}/src/app.c" SKIP_AUTOMOC)
+qmtest_false("and nothing else is" "${_not_skipped}")
+
+# A directory stands for the sources in it.
+qm_skip_automoc("${_here}/include")
+get_source_file_property(_skipped "${_here}/include/root.h" SKIP_AUTOMOC)
+qmtest_true("a directory skips what is in it" "${_skipped}")
+
+# One level, so a header further down is not reached. What is under it is that
+# directory's business, and would be named separately.
+get_source_file_property(_deeper "${_here}/include/a/a.h" SKIP_AUTOMOC)
+qmtest_false("and does not go down into another" "${_deeper}")
+
+# A name that is neither a file nor a directory is passed over rather than
+# being an error, so a caller can name something optional.
+qm_skip_automoc("${_here}/nothing_of_that_name.h")
+qmtest_equal("a name that is not there is passed over" "reached here" "reached here")
+
+# ------------------------------------------------------------------
+# qm_get_executable_location
+#
+# For an imported tool, whose location is under a different property for every
+# configuration, so that a caller does not have to try each one.
+# ------------------------------------------------------------------
+
+set(_pretend_tool "${CMAKE_CURRENT_BINARY_DIR}/pretend-tool")
+file(WRITE "${_pretend_tool}" "not really a tool")
+
+add_executable(qmtest_imported_tool IMPORTED)
+set_target_properties(qmtest_imported_tool PROPERTIES IMPORTED_LOCATION "${_pretend_tool}")
+
+qm_get_executable_location(qmtest_imported_tool _where)
+qmtest_equal("the location of an imported tool" "${_where}" "${_pretend_tool}")
+
+# One that has it only under a configuration is found there instead.
+add_executable(qmtest_release_tool IMPORTED)
+set_target_properties(qmtest_release_tool PROPERTIES IMPORTED_LOCATION_RELEASE "${_pretend_tool}")
+
+qm_get_executable_location(qmtest_release_tool _where)
+qmtest_equal("and of one that has it only for a configuration" "${_where}" "${_pretend_tool}")
+
+# ------------------------------------------------------------------
 # qm_collect_targets
 #
 # Last, so that it sees everything defined above.

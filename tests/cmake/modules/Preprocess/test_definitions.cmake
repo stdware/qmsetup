@@ -242,4 +242,12 @@ qm_remove_definition(FOO PROPERTY OTHER_DEFINITIONS)
 get_property(_other GLOBAL PROPERTY OTHER_DEFINITIONS)
 qmtest_equal("removing from the property it was put in" "${_other}" "BAR")
 
+# ------------------------------------------------------------------
+# A call that does not mean anything
+# ------------------------------------------------------------------
+
+qmtest_script_fails("a definition of three parts is refused"
+    "incorrect number of arguments"
+    "qm_import(Preprocess)\nqm_add_definition(A B C)")
+
 qmtest_report()

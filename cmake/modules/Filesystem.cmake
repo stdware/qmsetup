@@ -108,8 +108,12 @@ function(qm_add_copy_command _target)
     set(_extra_args)
     set(_ignore_stdout)
 
+    # Escaped, so that the whole of it stays one argument. A list put into a
+    # command becomes one argument for each of its items, which left the script
+    # with the first of them and handed the rest to CMake itself.
     if(FUNC_EXTRA_ARGS)
-        list(APPEND _extra_args -D "args=${FUNC_EXTRA_ARGS}")
+        string(REPLACE ";" "\\;" _escaped_args "${FUNC_EXTRA_ARGS}")
+        list(APPEND _extra_args -D "args=${_escaped_args}")
     endif()
 
     if(NOT FUNC_VERBOSE)
@@ -135,10 +139,18 @@ function(qm_add_copy_command _target)
             message(FATAL_ERROR "qm_add_copy_command: `QMSETUP_BUILD_DIR` not defined, the install directory cannot be determined.")
         endif()
 
+        # The same pair the build phase passes. Written out rather than expanded
+        # from a variable, which would have handed the script bare arguments
+        # with no name to read them under.
+        set(_install_extra_args)
+
+        if(FUNC_EXTRA_ARGS)
+            set(_install_extra_args "-D \"args=${FUNC_EXTRA_ARGS}\"")
+        endif()
+
         # Install phase
         install(CODE "
             set(_src \"${FUNC_SOURCES}\")
-            set(_extra_args \"${FUNC_EXTRA_ARGS}\")
 
             # Calculate the relative path from build phase destination to build directory
             get_filename_component(_build_dir \"${_dest}\" ABSOLUTE BASE_DIR \"${_dest_base}\")
@@ -151,7 +163,7 @@ function(qm_add_copy_command _target)
                 COMMAND \${CMAKE_COMMAND}
                 -D \"src=\${_src}\"
                 -D \"dest=\${_dest}\"
-                \${_extra_args}
+                ${_install_extra_args}
                 -P \"${QMSETUP_MODULES_DIR}/scripts/copy.cmake\"
                 WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
             )

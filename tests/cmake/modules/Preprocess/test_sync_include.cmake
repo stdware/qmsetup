@@ -96,4 +96,12 @@ qm_sync_include("${_src}" "${_dest}" FORCE)
 qmtest_not_exists("FORCE wipes it and starts again" "${_dest}/marker.txt")
 qmtest_exists("and the headers are back" "${_dest}/foo.h")
 
+# ------------------------------------------------------------------
+# A source that is not there
+# ------------------------------------------------------------------
+
+qmtest_script_fails("a source directory that is not there is refused"
+    "source directory doesn't exist"
+    "qm_import(Preprocess)\nqm_sync_include(\"${QMTEST_WORK_DIR}/nothing_of_that_name\" \"${QMTEST_WORK_DIR}/nowhere\")")
+
 qmtest_report()

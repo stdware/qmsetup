@@ -43,6 +43,7 @@
 # ------------------------------------------------------------------
 
 set(_scripts
+    QMSetupAPI/test_import
     QMSetupAPI/test_version
     QMSetupAPI/test_values
     QMSetupAPI/test_subdirs
@@ -78,6 +79,8 @@ endif()
 
 set(_built_projects
     QMSetupAPI/test_basic_install
+    modules/Filesystem/test_copy_command
+    modules/Filesystem/test_future_configure_file
     modules/Deploy/test_deploy_directory
 )
 

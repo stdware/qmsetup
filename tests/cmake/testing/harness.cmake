@@ -194,6 +194,65 @@ function(qmtest_file_lacks _what _file _text)
 endfunction()
 
 #[[
+    The command is defined.
+
+    qmtest_command(<what> <name>)
+]] #
+function(qmtest_command _what _name)
+    if(COMMAND ${_name})
+        _qmtest_pass()
+        return()
+    endif()
+
+    _qmtest_fail("${_what}" "${_name} is not defined")
+endfunction()
+
+#[[
+    The code stops with an error, and says something about why.
+
+    qmtest_script_fails(<what> <expected> <code>)
+
+    Run in a CMake of its own, since an error stops whatever is running it and
+    there would be nothing left to report. \a expected is a regular expression
+    matched against everything the run said.
+]] #
+function(qmtest_script_fails _what _expected _code)
+    if(NOT DEFINED QMTEST_WORK_DIR)
+        _qmtest_fail("${_what}" "QMTEST_WORK_DIR is not set, so there is nowhere to write the script")
+        return()
+    endif()
+
+    get_property(_n GLOBAL PROPERTY QMTEST_SCRIPT_COUNT)
+    math(EXPR _n "${_n} + 1")
+    set_property(GLOBAL PROPERTY QMTEST_SCRIPT_COUNT ${_n})
+
+    set(_file "${QMTEST_WORK_DIR}/failing/script_${_n}.cmake")
+    file(WRITE "${_file}"
+        "include(\"${QMSETUP_API}\")\n"
+        "set(QMSETUP_CORECMD_EXECUTABLE \"${QMSETUP_CORECMD_EXECUTABLE}\")\n"
+        "${_code}\n"
+    )
+
+    execute_process(COMMAND ${CMAKE_COMMAND} -P "${_file}"
+        RESULT_VARIABLE _result
+        OUTPUT_VARIABLE _out
+        ERROR_VARIABLE _err
+    )
+
+    if(_result EQUAL 0)
+        _qmtest_fail("${_what}" "it finished rather than stopping\n${_out}${_err}")
+        return()
+    endif()
+
+    if(NOT "${_out}${_err}" MATCHES "${_expected}")
+        _qmtest_fail("${_what}" "it stopped, but said\n${_out}${_err}")
+        return()
+    endif()
+
+    _qmtest_pass()
+endfunction()
+
+#[[
     Says how it went, and fails the run if anything went wrong. Every test file
     ends with this.
 
