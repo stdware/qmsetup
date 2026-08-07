@@ -248,13 +248,6 @@ Use `qm_find_package` to find supported third-party packages.
 
 The CMake modules are documented in the comments above each function.
 
-## Contributors
-
-+ [SineStriker](https://github.com/SineStriker)
-+ [wangwenx190](https://github.com/wangwenx190)
-+ [RigoLigoRLC](https://github.com/RigoLigoRLC)
-+ [CrSjimo](https://github.com/CrSjimo)
-
 ## License
 
 QMSetup is licensed under the MIT License.
