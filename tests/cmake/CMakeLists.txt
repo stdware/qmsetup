@@ -86,6 +86,38 @@ set(_built_projects
 
 if(WIN32)
     list(APPEND _built_projects modules/Deploy/test_win_applocal_deps)
+
+    # qm_create_win_shortcut turns its script into a shortcut with cscript, and
+    # does it at build time, so a machine that will not run one cannot build the
+    # project at all and there would be nothing left to report on. Windows
+    # Script Host is a feature on demand now and policy can switch it off, so
+    # whether it works is asked here rather than assumed.
+    #
+    # Asked by doing the thing itself. That cscript is on the path says nothing
+    # about whether it is allowed to run, and being allowed to run says nothing
+    # about whether a shell link can be saved.
+    set(_probe_dir "${CMAKE_CURRENT_BINARY_DIR}/wsh_probe")
+    file(REMOVE_RECURSE "${_probe_dir}")
+    file(MAKE_DIRECTORY "${_probe_dir}")
+    file(WRITE "${_probe_dir}/probe.vbs"
+        "Set oWS = WScript.CreateObject(\"WScript.Shell\")\n"
+        "Set oLink = oWS.CreateShortcut(\"${_probe_dir}/probe.lnk\")\n"
+        "oLink.TargetPath = \"${CMAKE_COMMAND}\"\n"
+        "oLink.Save\n"
+    )
+    execute_process(COMMAND cscript //nologo "${_probe_dir}/probe.vbs"
+        RESULT_VARIABLE _probe_result
+        OUTPUT_QUIET
+        ERROR_QUIET
+    )
+
+    if(_probe_result EQUAL 0 AND EXISTS "${_probe_dir}/probe.lnk")
+        list(APPEND _built_projects QMSetupAPI/test_win_shortcut)
+    else()
+        message(STATUS
+            "qmsetup tests: cscript will not make a shortcut here, so "
+            "qm_create_win_shortcut is left untested")
+    endif()
 endif()
 
 # ------------------------------------------------------------------

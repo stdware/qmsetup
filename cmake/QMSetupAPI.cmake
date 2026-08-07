@@ -828,8 +828,16 @@ function(qm_create_win_shortcut _target _dir)
 
     qm_set_value(_output_name FUNC_OUTPUT_NAME $<TARGET_FILE_BASE_NAME:${_target}>)
 
+    # One script per configuration, since a shortcut to a debug build and one to
+    # a release build point at different files.
     set(_vbs_name ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut_$<CONFIG>.vbs)
-    set(_vbs_temp ${_vbs_name}.in)
+
+    # The one configure_file writes carries no generator expression in its name.
+    # Written as ${_vbs_name}.in it asked for a file called $<CONFIG>, which
+    # configure_file has no opinion about and Windows will not have at all,
+    # angle brackets being among the characters a name may not hold. So this
+    # stopped on the machines it is meant for and nowhere else.
+    set(_vbs_temp ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut.vbs.in)
 
     set(_lnk_path "${_dir}/${_output_name}.lnk")
 
@@ -846,10 +854,16 @@ function(qm_create_win_shortcut _target _dir)
     )
     file(GENERATE OUTPUT ${_vbs_name} INPUT ${_vbs_temp})
 
+    # No BYPRODUCTS. A byproduct takes only a restricted set of generator
+    # expressions and target dependent ones are not among them, so where
+    # OUTPUT_NAME was not given and the path still held
+    # $<TARGET_FILE_BASE_NAME:...> the generate step stopped, saying there was
+    # no such target. Nothing ever depends on a shortcut, so all that declaring
+    # it bought was having it removed by a clean, which is not worth a call that
+    # does not work at all.
     add_custom_command(
         TARGET ${_target} POST_BUILD
         COMMAND cscript ${_vbs_name} ${QMSETUP_IGNORE_STDOUT}
-        BYPRODUCTS ${_lnk_path}
         VERBATIM
     )
 endfunction()

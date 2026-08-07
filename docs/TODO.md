@@ -10,9 +10,8 @@ Both halves have a suite that runs from CTest on Windows, Linux and macOS: `test
 
 ## Not tested yet
 
-- `qm_create_win_shortcut`. It runs `cscript` after the build, which some machines refuse by policy, so the test would have to skip itself with a reason rather than fail.
-- The three scripts under `cmake/scripts`, on their own. `copy.cmake` is reached through `qm_add_copy_command` and `configure_file.cmake` through `qm_future_configure_file`, so what is left untested there is the refusal each makes when an argument it needs is missing. `xxd.cmake` is reached by nothing, `qm_add_binary_resource` being private.
-- The pass that strips a universal binary down to the architecture in use, which needs `lipo` and a binary built for two. The rest of the macOS framework path is covered by `tests/cli/test_deploy_framework.py`, against a real bundle built for the purpose.
+- The pass that strips a universal binary down to the architecture in use, which needs a binary built for two. `lipo` itself is on every machine with the command line tools, so what is missing is the fixture: building one means a second pass over the whole deploy tree with `CMAKE_OSX_ARCHITECTURES`, and it would test one function.
+- The scripts under `cmake/scripts`, called directly rather than through the function that wraps them. `copy.cmake` is reached through `qm_add_copy_command` and `configure_file.cmake` through `qm_future_configure_file`, both against a real build, so what a direct call would add is the refusal each makes when an argument is missing. `xxd.cmake` is reached only by `qm_add_binary_resource`, which is private.
 
 ## Unverified
 
