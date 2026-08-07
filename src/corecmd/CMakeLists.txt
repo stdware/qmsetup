@@ -1,7 +1,6 @@
 project(qmcorecmd VERSION ${QMSETUP_VERSION})
 
-string(TIMESTAMP _year "%Y")
-set(RC_COPYRIGHT "Copyright 2023-${_year} Stdware Collections")
+set(RC_COPYRIGHT "Copyright 2023-present Stdware Collections")
 set(RC_DESCRIPTION "QMSetup Core Utility Command")
 
 set(_src
