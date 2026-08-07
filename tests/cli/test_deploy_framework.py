@@ -69,6 +69,8 @@ class FrameworkTestCase(QmTestCase):
     the symlinks that make it one."""
 
     NAME = "qmtest_bundled"
+    DEEPER = "qmtest_deeper"
+    PLAIN = "qmtest_plainlib"
     NAMED = "qmtest_named"
     APP = "qmtest_bundleapp"
 
@@ -190,6 +192,74 @@ class TestNamesAreRewritten(FrameworkTestCase):
         built = str(self.built)
         for name in install_names(self.app):
             self.assertNotIn(built, name)
+
+
+class TestTheWalkGoesThroughABundle(FrameworkTestCase):
+    """Three levels, with a bundle in the middle.
+
+        bundleapp -> bundled.framework -> deeper.framework
+                                       -> plainlib
+
+    Nothing reaches deeper or plainlib without going into bundled for the
+    library inside it, reading what that names, and coming back out to a bundle
+    again. One level of framework asks for none of that, and one level is all
+    there was.
+    """
+
+    def deployed(self, name: str) -> Path:
+        return self.out / f"{name}.framework"
+
+    def test_a_framework_behind_a_framework_is_reached(self):
+        self.assertOk(self.deploy("-s"))
+        self.assertTrue(self.deployed(self.DEEPER).is_dir(), msg=f"tree: {self.tree()}")
+
+    def test_and_the_library_inside_that_one_comes_too(self):
+        self.assertOk(self.deploy("-s"))
+        self.assertTrue(
+            (self.deployed(self.DEEPER) / "Versions" / "A" / self.DEEPER).is_file(),
+            msg=f"tree: {self.tree()}",
+        )
+
+    def test_an_ordinary_library_behind_a_framework_is_reached(self):
+        """The walk leaves a bundle as well as entering one."""
+        self.assertOk(self.deploy("-s"))
+        self.assertTrue(
+            (self.out / f"lib{self.PLAIN}.dylib").is_file(), msg=f"tree: {self.tree()}"
+        )
+
+    def test_every_one_of_them_is_resolved_in_turn(self):
+        """Each thing found is then resolved itself, so there is a line for the
+        application and one for each of the three behind it."""
+        r = self.deploy("-s", "-d", "-V")
+        self.assertOk(r)
+        resolved = [line for line in r.out.splitlines() if line.startswith("Resolve:")]
+        self.assertEqual(len(resolved), 4, msg=str(r))
+
+    def test_the_one_in_the_middle_is_resolved_as_the_library_inside_it(self):
+        """A bundle has nothing to read. What the walk opens is the library."""
+        r = self.deploy("-s", "-d", "-V")
+        self.assertOk(r)
+        self.assertOut(r, f"{self.NAME}.framework/Versions/A/{self.NAME}")
+
+    def test_excluding_the_middle_one_hides_what_is_behind_it(self):
+        """It is never opened, so what only it asked for is never found."""
+        self.assertOk(self.deploy("-s", "-e", self.NAME))
+        self.assertFalse(self.deployed(self.NAME).exists(), msg=f"tree: {self.tree()}")
+        self.assertFalse(self.deployed(self.DEEPER).exists(), msg=f"tree: {self.tree()}")
+        self.assertFalse((self.out / f"lib{self.PLAIN}.dylib").exists())
+
+    def test_the_deeper_bundle_is_pointed_somewhere_of_its_own(self):
+        self.assertOk(self.deploy("-s"))
+        library = self.deployed(self.DEEPER) / "Versions" / "A" / self.DEEPER
+        self.assertIn("@loader_path", " ".join(rpaths(library)), msg=f"tree: {self.tree()}")
+
+    def test_the_middle_one_still_names_what_is_behind_it_by_rpath(self):
+        self.assertOk(self.deploy("-s"))
+        library = self.deployed_bundle / "Versions" / "A" / self.NAME
+        named = " ".join(install_names(library))
+        self.assertIn(f"{self.DEEPER}.framework", named)
+        self.assertIn("@rpath", named)
+        self.assertNotIn(str(self.built), named)
 
 
 class TestAFrameworkNothingLinks(FrameworkTestCase):

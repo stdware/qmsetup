@@ -152,17 +152,32 @@ qmtest_fixture(plugin2      plugin      "${_app_plugins}"    "${_app_plugins_rpa
 if(APPLE)
     set(_framework_dir "${_fixture_root}/frameworks")
 
+    # A bundle takes a fair amount of saying, so it is said once.
+    #
     # The header is a source as well as a PUBLIC_HEADER. Named only as the latter it is placed
     # when installing rather than when building, and the bundle comes out without a Headers
-    # directory at all.
-    add_library(qmtest_bundled SHARED bundled.c bundled.h)
-    set_target_properties(qmtest_bundled PROPERTIES
-        FRAMEWORK TRUE
-        FRAMEWORK_VERSION A
-        MACOSX_FRAMEWORK_IDENTIFIER org.stdware.qmtest.bundled
-        # A public header gives the bundle a Headers directory, which a deployment is meant to
-        # leave behind, and there is no checking that it did without one.
-        PUBLIC_HEADER bundled.h
+    # directory at all, which a deployment is meant to leave behind and cannot be seen to.
+    function(qmtest_framework name)
+        add_library(qmtest_${name} SHARED ${name}.c ${name}.h)
+        target_link_libraries(qmtest_${name} PRIVATE ${ARGN})
+        set_target_properties(qmtest_${name} PROPERTIES
+            FRAMEWORK TRUE
+            FRAMEWORK_VERSION A
+            MACOSX_FRAMEWORK_IDENTIFIER org.stdware.qmtest.${name}
+            PUBLIC_HEADER ${name}.h
+            LIBRARY_OUTPUT_DIRECTORY "${_framework_dir}"
+            DEBUG_POSTFIX ""
+            SKIP_BUILD_RPATH ON
+            BUILD_WITH_INSTALL_RPATH ON
+            INSTALL_NAME_DIR "@rpath"
+            INSTALL_RPATH "${_origin}/../../.."
+        )
+    endfunction()
+
+    # An ordinary shared library that a framework needs, so that the walk leaves a bundle as well
+    # as entering one.
+    add_library(qmtest_plainlib SHARED plainlib.c)
+    set_target_properties(qmtest_plainlib PROPERTIES
         LIBRARY_OUTPUT_DIRECTORY "${_framework_dir}"
         DEBUG_POSTFIX ""
         SKIP_BUILD_RPATH ON
@@ -170,21 +185,19 @@ if(APPLE)
         INSTALL_NAME_DIR "@rpath"
     )
 
-    # The same again, but linked by nothing. It is the framework equivalent of codec above: no
-    # amount of following the graph arrives at it, so the only way it is ever deployed is by
-    # being named with -c, and that is a different path through the deployment.
-    add_library(qmtest_named SHARED named.c named.h)
-    set_target_properties(qmtest_named PROPERTIES
-        FRAMEWORK TRUE
-        FRAMEWORK_VERSION A
-        MACOSX_FRAMEWORK_IDENTIFIER org.stdware.qmtest.named
-        PUBLIC_HEADER named.h
-        LIBRARY_OUTPUT_DIRECTORY "${_framework_dir}"
-        DEBUG_POSTFIX ""
-        SKIP_BUILD_RPATH ON
-        BUILD_WITH_INSTALL_RPATH ON
-        INSTALL_NAME_DIR "@rpath"
-    )
+    # bundleapp -> bundled.framework -> deeper.framework
+    #                                -> plainlib
+    #
+    # Three levels, and the middle one is a bundle. Reaching deeper or plainlib means going into
+    # bundled for the library inside it, reading what that names, and coming back out to a bundle
+    # again. One level of framework never asks for any of that.
+    qmtest_framework(deeper)
+    qmtest_framework(bundled qmtest_deeper qmtest_plainlib)
+
+    # Linked by nothing. It is the framework equivalent of codec above: no amount of following
+    # the graph arrives at it, so the only way it is ever deployed is by being named with -c,
+    # and that is a different path through the deployment.
+    qmtest_framework(named)
 
     add_executable(qmtest_bundleapp bundleapp.c)
     target_link_libraries(qmtest_bundleapp PRIVATE qmtest_bundled)
