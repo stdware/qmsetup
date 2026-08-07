@@ -240,7 +240,7 @@ Use `qm_find_package` to find supported third-party packages.
 
 ### Detailed Documentations
 
-+ [Core Command](docs/core-command.md)
++ [About qmcorecmd](docs/AboutCoreCMD.md)
 
 The CMake Modules documentations is provided in the comments.
 
