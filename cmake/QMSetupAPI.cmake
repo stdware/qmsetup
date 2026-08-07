@@ -929,7 +929,7 @@ endfunction()
         [DIRECTORY dir]
         [EXCLUDE names...]
         [REGEX_INCLUDE exps...]
-        [REGEX_EXLCUDE exps...]
+        [REGEX_EXCLUDE exps...]
         [RELATIVE path]
         [ABSOLUTE]
     )
@@ -942,7 +942,9 @@ endfunction()
 function(qm_get_subdirs _var)
     set(options ABSOLUTE)
     set(oneValueArgs DIRECTORY RELATIVE)
-    set(multiValueArgs EXCLUDE REGEX_EXLCUDE)
+    # REGEX_INCLUDE was never declared and REGEX_EXCLUDE was declared misspelt,
+    # so the body below, which spells both correctly, filtered on nothing.
+    set(multiValueArgs EXCLUDE REGEX_INCLUDE REGEX_EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(FUNC_DIRECTORY)

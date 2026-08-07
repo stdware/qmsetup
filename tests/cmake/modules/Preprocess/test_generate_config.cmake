@@ -4,7 +4,7 @@
 # This is the one place the CMake layer and qmcorecmd meet, so it runs the real
 # executable rather than standing in for it.
 
-include(${CMAKE_CURRENT_LIST_DIR}/harness.cmake)
+include(${QMTEST_HARNESS})
 
 qm_import(Preprocess)
 

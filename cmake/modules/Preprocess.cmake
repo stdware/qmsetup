@@ -39,7 +39,10 @@ include_guard(DIRECTORY)
     NO_STANDARD: Disable standard public-private pattern, enable it to override `QMSETUP_SYNC_INCLUDE_STANDARD`
 #]]
 function(qm_sync_include _src_dir _dest_dir)
-    set(options FORCE VERBOSE NO_STANDARD NO_ALL)
+    # STANDARD was never declared, though the body below asks for it. With the
+    # pattern on by default it went unnoticed, since the only time it has
+    # anything to say is when QMSETUP_SYNC_INCLUDE_STANDARD is off.
+    set(options FORCE VERBOSE STANDARD NO_STANDARD NO_ALL)
     set(oneValueArgs INSTALL_DIR)
     set(multiValueArgs INCLUDE EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})

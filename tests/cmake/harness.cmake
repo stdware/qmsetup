@@ -12,6 +12,8 @@
 #
 #   QMSETUP_API     the QMSetupAPI.cmake to test
 #   QMCORECMD       the executable the modules shell out to
+#   QMTEST_HARNESS  this file, which is how a test includes it whatever
+#                   directory it sits in
 #   QMTEST_WORK_DIR a directory of this test's own, emptied on the way in
 
 if(NOT DEFINED QMSETUP_API)
@@ -90,6 +92,30 @@ function(qmtest_false _what _value)
 endfunction()
 
 #[[
+    qmtest_exists(<what> <path>)
+]] #
+function(qmtest_exists _what _path)
+    if(EXISTS "${_path}")
+        _qmtest_pass()
+        return()
+    endif()
+
+    _qmtest_fail("${_what}" "${_path} is not there")
+endfunction()
+
+#[[
+    qmtest_not_exists(<what> <path>)
+]] #
+function(qmtest_not_exists _what _path)
+    if(EXISTS "${_path}")
+        _qmtest_fail("${_what}" "${_path} is there and should not be")
+        return()
+    endif()
+
+    _qmtest_pass()
+endfunction()
+
+#[[
     The file is there and holds the text.
 
     qmtest_file_contains(<what> <file> <text>)
@@ -108,6 +134,28 @@ function(qmtest_file_contains _what _file _text)
     endif()
 
     _qmtest_fail("${_what}" "${_file} does not match [${_text}]\n--- content ---\n${_content}")
+endfunction()
+
+#[[
+    The file is there and does not hold the text.
+
+    qmtest_file_lacks(<what> <file> <text>)
+]] #
+function(qmtest_file_lacks _what _file _text)
+    if(NOT EXISTS "${_file}")
+        _qmtest_fail("${_what}" "${_file} was not written")
+        return()
+    endif()
+
+    file(READ "${_file}" _content)
+
+    if("${_content}" MATCHES "${_text}")
+        _qmtest_fail("${_what}" "${_file} matches [${_text}] and should not"
+            "\n--- content ---\n${_content}")
+        return()
+    endif()
+
+    _qmtest_pass()
 endfunction()
 
 #[[

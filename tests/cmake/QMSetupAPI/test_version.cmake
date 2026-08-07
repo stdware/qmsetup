@@ -1,7 +1,7 @@
 # Version numbers, which every generated resource and config header is built
 # out of, so a wrong answer here shows up in a binary rather than in a message.
 
-include(${CMAKE_CURRENT_LIST_DIR}/harness.cmake)
+include(${QMTEST_HARNESS})
 
 # ------------------------------------------------------------------
 # qm_parse_version

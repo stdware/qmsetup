@@ -4,7 +4,7 @@
 # one a script can reach. The target, source and directory scopes need a project
 # to exist and are not covered.
 
-include(${CMAKE_CURRENT_LIST_DIR}/harness.cmake)
+include(${QMTEST_HARNESS})
 
 qm_import(Preprocess)
 

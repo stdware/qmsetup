@@ -3,7 +3,7 @@
 # every function works out its defaults, and qm_paths_equal is what stops a
 # deployment copying a file over itself.
 
-include(${CMAKE_CURRENT_LIST_DIR}/harness.cmake)
+include(${QMTEST_HARNESS})
 
 # ------------------------------------------------------------------
 # qm_set_value
@@ -57,13 +57,18 @@ qmtest_false("a directory is not its own parent" "${_p2}")
 
 # The point of the function. These name the same place and must be answered as
 # one, which is why it normalises rather than comparing the strings.
-qm_paths_equal(_p3 "${CMAKE_CURRENT_LIST_DIR}" "${CMAKE_CURRENT_LIST_DIR}/../cmake")
+#
+# Built out of where this file happens to sit rather than out of a name written
+# here, so that moving the file does not break the check.
+get_filename_component(_here "${CMAKE_CURRENT_LIST_DIR}" NAME)
+qm_paths_equal(_p3 "${CMAKE_CURRENT_LIST_DIR}" "${CMAKE_CURRENT_LIST_DIR}/../${_here}")
 qmtest_true("a path through its parent is the same place" "${_p3}")
 
 qm_paths_equal(_p4 "${CMAKE_CURRENT_LIST_DIR}/" "${CMAKE_CURRENT_LIST_DIR}")
 qmtest_true("a trailing separator makes no difference" "${_p4}")
 
-qm_paths_equal(_p5 "${CMAKE_CURRENT_LIST_DIR}/./harness.cmake" "${CMAKE_CURRENT_LIST_DIR}/harness.cmake")
+get_filename_component(_self "${CMAKE_CURRENT_LIST_FILE}" NAME)
+qm_paths_equal(_p5 "${CMAKE_CURRENT_LIST_DIR}/./${_self}" "${CMAKE_CURRENT_LIST_FILE}")
 qmtest_true("a dot component makes no difference" "${_p5}")
 
 qmtest_report()
