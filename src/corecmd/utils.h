@@ -41,13 +41,16 @@ namespace Utils {
 
     // OS Utils
 #ifdef _WIN32
-    std::wstring executeCommand(const std::wstring &command, const std::vector<std::wstring> &args);
-
     std::vector<std::wstring>
         resolveWinBinaryDependencies(const std::filesystem::path &path,
                                      const std::vector<std::filesystem::path> &searchingPaths,
                                      std::vector<std::string> *unparsed);
 #else
+    // Runs a program and answers with what it wrote, with its standard error folded in. Throws
+    // on anything other than a nought exit, carrying what the program said.
+    //
+    // Windows has no counterpart because nothing there needs one. Its dependencies are read out
+    // of the import table rather than by asking a tool.
     std::string executeCommand(const std::string &command, const std::vector<std::string> &args);
 
     void setFileRPaths(const std::string &file, const std::vector<std::string> &paths);

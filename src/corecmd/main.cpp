@@ -1,3 +1,7 @@
+#ifdef _WIN32
+#  include <stdcorelib/platform/windows/stdc_windows.h>
+#endif
+
 #include <iostream>
 #include <filesystem>
 #include <fstream>
@@ -65,8 +69,10 @@ static inline TString str2tstr(const std::string &str) {
 
 static std::string time2str(const std::chrono::system_clock::time_point &t) {
     std::time_t t2 = std::chrono::system_clock::to_time_t(t);
-    std::string s(30, '\0');
-    std::strftime(s.data(), s.size(), "%Y-%m-%d %H:%M:%S", std::localtime(&t2));
+    std::string s(32, '\0');
+    // Cut to what was written. Without this the string keeps the nulls it was made with and
+    // carries them wherever it is printed.
+    s.resize(std::strftime(s.data(), s.size(), "%Y-%m-%d %H:%M:%S", std::localtime(&t2)));
     return s;
 }
 
@@ -231,32 +237,22 @@ static inline bool isMSVCLibrary(const TString &fileName) {
 }
 
 static inline fs::path searchWindowsSystemPaths(const TString &fileName) {
-    static std::vector<const wchar_t *> searchPaths = []() -> std::vector<const wchar_t *> {
-        static const wchar_t sys[] = L"C:\\Windows";
-        static const wchar_t sys32[] = L"C:\\Windows\\System32";
-
-#  if defined(_WIN64) || defined(__x86_64__) || defined(__ppc64__)
-        return {
-            sys,
-            sys32,
-        };
-#  else
-        static const wchar_t syswow64[] = L"C:\\Windows\\SysWOW64";
-        if (fs::exists(syswow64)) {
-            return {
-                sys,
-                syswow64,
-            };
+    // Asked for rather than spelled out. Windows is not always on C:, and a 32 bit process on a
+    // 64 bit system is handed SysWOW64 here without anyone having to work out that it should be.
+    static const std::vector<fs::path> searchPaths = []() -> std::vector<fs::path> {
+        std::vector<fs::path> paths;
+        wchar_t buf[MAX_PATH];
+        if (UINT len = ::GetWindowsDirectoryW(buf, MAX_PATH); len > 0 && len < MAX_PATH) {
+            paths.emplace_back(std::wstring(buf, len));
         }
-        return {
-            sys,
-            sys32,
-        };
-#  endif
+        if (UINT len = ::GetSystemDirectoryW(buf, MAX_PATH); len > 0 && len < MAX_PATH) {
+            paths.emplace_back(std::wstring(buf, len));
+        }
+        return paths;
     }();
 
     for (const auto &path : std::as_const(searchPaths)) {
-        auto fullPath = fs::path(path) / fileName;
+        auto fullPath = path / fileName;
         if (fs::exists(fullPath)) {
             return fullPath;
         }

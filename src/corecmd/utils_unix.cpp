@@ -1,11 +1,8 @@
 #include "utils.h"
 
 #include <sys/stat.h>
-#include <sys/wait.h>
-#include <unistd.h>
 #include <utime.h>
 
-#include <cstring>
 #include <filesystem>
 #include <map>
 #include <regex>
@@ -15,123 +12,53 @@
 #include <stdcorelib/path.h>
 #include <stdcorelib/str.h>
 #include <stdcorelib/stlextra/algorithms.h>
+#include <stdcorelib/support/popen.h>
 
 namespace fs = std::filesystem;
 
 namespace Utils {
 
     std::string executeCommand(const std::string &command, const std::vector<std::string> &args) {
-        // printf("Executing command: %s", command.data());
-        // for (const auto &arg : args) {
-        //     printf(" %s", arg.data());
-        // }
-        // printf("\n");
+        // A generous cap rather than none at all. Everything run here is a quick tool, and a
+        // build with one of them wedged should say so rather than wait for somebody to notice.
+        constexpr int timeout = 120 * 1000;
 
-        static const auto &dupStr = [](char *&dest, const char *src, size_t size) {
-            dest = new char[size + 1];
-            memcpy(dest, src, size);
-            dest[size] = '\0';
-        };
+        std::vector<std::string> argv;
+        argv.reserve(args.size() + 1);
+        argv.push_back(command);
+        argv.insert(argv.end(), args.begin(), args.end());
 
-        enum PipeNum {
-            PN_Read,
-            PN_Write,
-        };
+        stdc::Popen proc;
+        proc.args(argv)
+            .stdin_(stdc::Popen::DEVNULL)
+            .stdout_(stdc::Popen::PIPE)
+            // Folded together. What a tool says when it fails is what the error below carries,
+            // and some of them say it on one stream and some on the other.
+            .stderr_(stdc::Popen::STDOUT);
 
-        // Create pipe
-        int pipefd[2];
-        if (pipe(pipefd) == -1) {
-            throw std::runtime_error("failed to call \"pipe\"");
+        std::string message;
+        if (!proc.start(&message)) {
+            throw std::runtime_error("failed to run \"" + command + "\": " + message);
         }
 
-        pid_t pid = fork();
-        if (pid < 0) {
-            // Close pipes right away
-            close(pipefd[PN_Read]);
-            close(pipefd[PN_Write]);
-            throw std::runtime_error("failed to call \"fork\"");
+        std::string output = std::get<0>(proc.communicate({}, timeout));
+        if (const auto ec = proc.error_code()) {
+            throw std::runtime_error("failed to run \"" + command + "\": " + ec.message());
         }
 
-        if (pid == 0) {
-            // --------
-            // Child process
-            // --------
-
-            // Close read pipe
-            close(pipefd[PN_Read]);
-
-            // Redirect "stdout" and "stderr" to write pipe
-            dup2(pipefd[PN_Write], STDOUT_FILENO);
-            dup2(pipefd[PN_Write], STDERR_FILENO);
-
-            // Prepare arguments
-            auto argv = new char *[args.size() + 2]; // +2 for command and nullptr
-            dupStr(argv[0], command.data(), command.size());
-            for (size_t i = 0; i < args.size(); ++i) {
-                dupStr(argv[i + 1], args[i].data(), args[i].size());
-            }
-            argv[args.size() + 1] = nullptr;
-
-            // Call "exec"
-            execvp(argv[0], argv);
-
-            // If the control flow reaches here, there must be a mistake
-
-            // Clean allocated memory
-            for (size_t i = 0; i < args.size() + 2; ++i) {
-                delete[] argv[i];
-            }
-            delete[] argv;
-
-            // Fail
-            printf("exec \"%s\" failed: %s\n", command.data(), strerror(errno));
-
-            // No need to close write pipe, let the System handle everything
-            // Simply exit
-            exit(EXIT_FAILURE);
+        const auto code = proc.returncode();
+        if (!code) {
+            throw std::runtime_error("command \"" + command + "\" did not finish");
         }
-
-        // --------
-        // Parent process
-        // --------
-
-        // Close write pipe
-        close(pipefd[PN_Write]);
-
-        // Read child process output
-        char buffer[256];
-        std::string output;
-        ssize_t bytesRead;
-        while ((bytesRead = read(pipefd[0], buffer, sizeof(buffer) - 1)) > 0) {
-            buffer[bytesRead] = '\0';
-            output += buffer;
+        if (*code == 0) {
+            return output;
         }
-
-        // Close read pipe
-        close(pipefd[PN_Read]);
-
-        // Wait for child process to terminate
-        int status;
-        waitpid(pid, &status, 0);
-
-        // Check exit status
-        if (WIFEXITED(status)) {
-            auto exitCode = WEXITSTATUS(status);
-            if (exitCode == 0)
-                return output;
-
-            // Throw error
-            throw std::runtime_error(stdc::str::trim(std::move(output)));
-        }
-
-        if (WIFSIGNALED(status)) {
-            auto sig = WTERMSIG(status);
+        // A child that a signal ended comes back as the negated signal number.
+        if (*code < 0) {
             throw std::runtime_error("command \"" + command + "\" was terminated by signal " +
-                                     std::to_string(sig));
+                                     std::to_string(-*code));
         }
-
-        throw std::runtime_error("command \"" + command + "\" terminated abnormally with status " +
-                                 std::to_string(status));
+        throw std::runtime_error(std::string(stdc::str::trim(output)));
     }
 
     FileTime fileTime(const fs::path &path) {
