@@ -1,9 +1,9 @@
 # Runs a project through configure, as a test.
 #
-# The functions below this line work on targets, and a target needs a project to
-# live in, so these cannot be checked the way the rest are. The assertions are
-# inside the project itself, which means a configure that finishes is a test
-# that passed and one that stops is a test that failed.
+# For the functions that work on targets. A target needs a project to live in,
+# so these cannot be checked the way a script can. The assertions are inside the
+# project itself, which means a configure that finishes is a test that passed
+# and one that stops is a test that failed.
 #
 # The build directory is emptied first. A cache left by an earlier run would let
 # a check pass on what that run decided rather than on what this one did.
