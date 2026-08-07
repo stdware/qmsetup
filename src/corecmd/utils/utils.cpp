@@ -93,6 +93,14 @@ namespace Utils {
                        const std::function<bool(const fs::path &)> &ignore) {
         fs::create_directories(destDir); // Ensure the destination directory exists
 
+        // canonical() resolves every link on the way, so what it answers has to be compared with
+        // a root that has been through the same thing. On macOS /var is a link to /private/var,
+        // so a bundle under a temporary directory failed the test below and had its internal
+        // links copied as directories.
+        std::error_code ec;
+        const auto canonicalRoot = fs::weakly_canonical(srcRootDir, ec);
+        const auto &root = ec ? srcRootDir : canonicalRoot;
+
         for (const auto &entry : fs::directory_iterator(srcDir)) {
             const auto &entryPath = entry.path();
             if (ignore && ignore(entryPath))
@@ -111,7 +119,7 @@ namespace Utils {
 
                 // Copy if symlink points inside the source directory
                 copyFile(entryPath, destDir,
-                         stdc::str::starts_with(linkPath.string(), srcRootDir.string())
+                         stdc::str::starts_with(linkPath.string(), root.string())
                              ? fs::relative(linkPath, fs::canonical(entryPath.parent_path())).string()
                              : std::string(),
                          force, verbose);

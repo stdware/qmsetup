@@ -142,5 +142,62 @@ qmtest_fixture(app          application "${_app_bin}"        "${_app_bin_rpath}"
 qmtest_fixture(plugin1      plugin      "${_app_plugins}"    "${_app_plugins_rpath}"   qmtest_core)
 qmtest_fixture(plugin2      plugin      "${_app_plugins}"    "${_app_plugins_rpath}"   qmtest_audio)
 
+# A real framework bundle, which is a shape only macOS has.
+#
+# Deploying one is not deploying a file. The bundle is a directory, the library is inside it
+# under Versions/A, and what a binary names is @rpath/Name.framework/Versions/A/Name. A whole
+# body of code in the deployment exists for that, and nothing above reaches any of it, so this
+# tree is here on its own rather than being worked into the graph above. Nothing links it but
+# the one application beside it, and no declared scenario mentions it.
+if(APPLE)
+    set(_framework_dir "${_fixture_root}/frameworks")
+
+    # The header is a source as well as a PUBLIC_HEADER. Named only as the latter it is placed
+    # when installing rather than when building, and the bundle comes out without a Headers
+    # directory at all.
+    add_library(qmtest_bundled SHARED bundled.c bundled.h)
+    set_target_properties(qmtest_bundled PROPERTIES
+        FRAMEWORK TRUE
+        FRAMEWORK_VERSION A
+        MACOSX_FRAMEWORK_IDENTIFIER org.stdware.qmtest.bundled
+        # A public header gives the bundle a Headers directory, which a deployment is meant to
+        # leave behind, and there is no checking that it did without one.
+        PUBLIC_HEADER bundled.h
+        LIBRARY_OUTPUT_DIRECTORY "${_framework_dir}"
+        DEBUG_POSTFIX ""
+        SKIP_BUILD_RPATH ON
+        BUILD_WITH_INSTALL_RPATH ON
+        INSTALL_NAME_DIR "@rpath"
+    )
+
+    # The same again, but linked by nothing. It is the framework equivalent of codec above: no
+    # amount of following the graph arrives at it, so the only way it is ever deployed is by
+    # being named with -c, and that is a different path through the deployment.
+    add_library(qmtest_named SHARED named.c named.h)
+    set_target_properties(qmtest_named PROPERTIES
+        FRAMEWORK TRUE
+        FRAMEWORK_VERSION A
+        MACOSX_FRAMEWORK_IDENTIFIER org.stdware.qmtest.named
+        PUBLIC_HEADER named.h
+        LIBRARY_OUTPUT_DIRECTORY "${_framework_dir}"
+        DEBUG_POSTFIX ""
+        SKIP_BUILD_RPATH ON
+        BUILD_WITH_INSTALL_RPATH ON
+        INSTALL_NAME_DIR "@rpath"
+    )
+
+    add_executable(qmtest_bundleapp bundleapp.c)
+    target_link_libraries(qmtest_bundleapp PRIVATE qmtest_bundled)
+    set_target_properties(qmtest_bundleapp PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${_framework_dir}"
+        DEBUG_POSTFIX ""
+        SKIP_BUILD_RPATH ON
+        BUILD_WITH_INSTALL_RPATH ON
+        INSTALL_RPATH "${_origin}"
+    )
+
+    set(QMSETUP_TEST_FRAMEWORK_DIR "${_framework_dir}" PARENT_SCOPE)
+endif()
+
 # The tests are told where the tree ended up, whatever the generator decided.
 set(QMSETUP_TEST_FIXTURE_DIR "${_fixture_root}" PARENT_SCOPE)

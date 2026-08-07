@@ -44,6 +44,12 @@ set(_modules
     test_deploy_rpath
 )
 
+# Registered only where a framework is a thing that exists, rather than running a module whose
+# every case skips itself.
+if(APPLE)
+    list(APPEND _modules test_deploy_framework)
+endif()
+
 foreach(_module IN LISTS _modules)
     add_test(NAME qmcorecmd.${_module}
         COMMAND ${Python3_EXECUTABLE} -m unittest -v ${_module}
@@ -52,7 +58,7 @@ foreach(_module IN LISTS _modules)
     # Nothing in the Python goes looking for any of this. It is all named here.
     set_tests_properties(qmcorecmd.${_module} PROPERTIES
         ENVIRONMENT
-            "QMCORECMD=$<TARGET_FILE:qmcorecmd>;QMTEST_FIXTURES=${QMSETUP_TEST_FIXTURE_DIR};QMTEST_SCENARIOS=${_scenario_file};PYTHONDONTWRITEBYTECODE=1"
+            "QMCORECMD=$<TARGET_FILE:qmcorecmd>;QMTEST_FIXTURES=${QMSETUP_TEST_FIXTURE_DIR};QMTEST_FRAMEWORKS=${QMSETUP_TEST_FRAMEWORK_DIR};QMTEST_SCENARIOS=${_scenario_file};PYTHONDONTWRITEBYTECODE=1"
         LABELS qmcorecmd
         TIMEOUT 300
     )
