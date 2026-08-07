@@ -161,12 +161,24 @@ namespace Utils {
     // Mac
     // Use `otool` and `install_name_tool`
 
+    // `otool` answers a file that is not a Mach-O binary by saying so and
+    // exiting nought all the same, so the only way to tell is to read what it
+    // said. Left unnoticed, a file that is not a binary at all would be
+    // deployed as one with no dependencies rather than being turned down.
+    static std::string readOtoolOutput(const std::string &flag, const std::string &path) {
+        std::string output = executeCommand("otool", {flag, path});
+        if (output.find("is not an object file") != std::string::npos) {
+            throw std::runtime_error(path + " is not a Mach-O binary");
+        }
+        return output;
+    }
+
     static std::vector<std::string> readMacBinaryRPaths(const std::string &path) {
         std::vector<std::string> rpaths;
         std::string output;
 
         try {
-            output = executeCommand("otool", {"-l", path});
+            output = readOtoolOutput("-l", path);
         } catch (const std::exception &e) {
             throw std::runtime_error("Failed to get RPATHs: " + std::string(e.what()));
         }
@@ -196,7 +208,7 @@ namespace Utils {
 
         // Get dependencies
         try {
-            output = executeCommand("otool", {"-L", path});
+            output = readOtoolOutput("-L", path);
         } catch (const std::exception &e) {
             throw std::runtime_error("Failed to get dependencies: " + std::string(e.what()));
         }

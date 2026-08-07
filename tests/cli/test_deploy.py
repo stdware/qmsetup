@@ -345,6 +345,13 @@ class TestResolutionDetails(DeployTestCase):
         self.assertResolved(r, "core")
 
     def test_force_overwrites_what_is_already_there(self):
+        """What was in the way is gone, and a binary of the same kind is there.
+
+        Not compared with the library it came from. A Unix deployment rewrites
+        the copy's rpath so that it can find its new neighbours, so the two are
+        no longer the same file by the time anyone could look. What survives
+        that is the format, which the first bytes name.
+        """
         stale = self.path(f"out/{self.layout.name('audio')}")
         stale.parent.mkdir(parents=True, exist_ok=True)
         stale.write_bytes(b"stale")
@@ -352,8 +359,10 @@ class TestResolutionDetails(DeployTestCase):
             "deploy", self.layout.path("app"), *self.search_paths(), "-o", "out", "-f", "-s"
         )
         self.assertOk(r)
+        written = stale.read_bytes()
+        self.assertNotEqual(written, b"stale")
         self.assertEqual(
-            stale.read_bytes(), self.path(self.layout.path("audio")).read_bytes()
+            written[:4], self.path(self.layout.path("audio")).read_bytes()[:4]
         )
 
     def test_verbose_names_what_it_copied(self):
