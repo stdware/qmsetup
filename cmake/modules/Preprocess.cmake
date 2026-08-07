@@ -153,7 +153,7 @@ endfunction()
     CLASSICAL: Use classical definition, enable it to override `QMSETUP_DEFINITION_NUMERICAL`
 ]] #
 function(qm_add_definition _first)
-    set(options STRING_LITERAL NO_KEYWORD NUMERICAL CLASSICAL)
+    set(options GLOBAL STRING_LITERAL NO_KEYWORD NUMERICAL CLASSICAL)
     set(oneValueArgs TARGET SOURCE DIRECTORY PROPERTY)
     set(multiValueArgs CONDITION)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -183,6 +183,12 @@ function(qm_add_definition _first)
     if(_len EQUAL 1)
         set(_result ${_list})
         set(_defined on)
+
+        # A key given as key=value in one argument carries a value just as much
+        # as one given as two, and has nothing to say numerically either way.
+        if(_result MATCHES "=")
+            set(_is_pair on)
+        endif()
 
         if(NOT _cond)
             set(_defined off)
@@ -249,21 +255,24 @@ endfunction()
     )
 ]] #
 function(qm_remove_definition _key)
-    set(options)
-    set(oneValueArgs TARGET PROPERTY)
+    set(options GLOBAL)
+    set(oneValueArgs TARGET SOURCE DIRECTORY PROPERTY)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    if(FUNC_TARGET)
-        get_target_property(_definitions ${FUNC_TARGET} ${_prop})
-    else()
-        get_property(_definitions GLOBAL PROPERTY ${_prop})
+    # Which property, before reading it. Working the scope out afterwards left
+    # the read with no property name at all, and the write that followed put an
+    # empty list where the definitions had been.
+    _qm_calc_property_scope_helper(_scope _prop)
+    get_property(_definitions ${_scope} PROPERTY ${_prop})
+
+    if(NOT _definitions)
+        set(_definitions) # May be _-NOTFOUND
     endif()
 
     # Filter
     list(FILTER _definitions EXCLUDE REGEX "^${_key}(=.*)?$")
 
-    _qm_calc_property_scope_helper(_scope _prop)
     set_property(${_scope} PROPERTY ${_prop} "${_definitions}")
 endfunction()
 
@@ -282,8 +291,8 @@ endfunction()
     )
 ]] #
 function(qm_generate_config _file)
-    set(options NO_WARNING NO_HASH)
-    set(oneValueArgs TARGET PROPERTY PROJECT_NAME WARNING_FILE)
+    set(options GLOBAL NO_WARNING NO_HASH)
+    set(oneValueArgs TARGET SOURCE DIRECTORY PROPERTY PROJECT_NAME WARNING_FILE)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -489,7 +498,7 @@ function(_qm_calc_property_scope_helper _scope _prop)
     if(FUNC_TARGET)
         set(_scope TARGET ${FUNC_TARGET})
     elseif(FUNC_SOURCE)
-        set(_scope SOURCE ${FUNC__SOURCE})
+        set(_scope SOURCE ${FUNC_SOURCE})
     elseif(FUNC_DIRECTORY)
         set(_scope DIRECTORY ${FUNC_DIRECTORY})
     elseif(FUNC_GLOBAL)
