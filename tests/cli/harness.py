@@ -137,6 +137,18 @@ class QmTestCase(unittest.TestCase):
         if result.ok:
             self.fail(f"expected a non-zero exit, got success{result}")
 
+    def assertRefused(self, result: Result):
+        """The command line was turned down, and something was said about it.
+
+        How the refusal is worded is the command line library's business, not
+        this tool's, so nothing here looks at the wording. What this tool owes
+        its caller is a non-zero exit and a diagnostic rather than silence.
+        """
+        if result.ok:
+            self.fail(f"expected a non-zero exit, got success{result}")
+        if not result.out.strip():
+            self.fail(f"exited {result.code} without saying why{result}")
+
     def assertOut(self, result: Result, needle: str):
         if needle not in result.out:
             self.fail(f"output does not contain {needle!r}{result}")

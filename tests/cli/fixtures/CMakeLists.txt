@@ -1,118 +1,146 @@
-# A small application with a dependency graph worth resolving.
+# The binaries the deploy tests run against.
 #
-#   base                     a leaf, depended on from two directions
-#   util     -> base
-#   render   -> util         so render reaches base only through util
-#   audio    -> base
-#   app      -> render       the app names render alone, so util and base are
-#                            reached only by following render
-#   plugin_a -> render       a plugin over what the app already has
-#   plugin_b -> audio        a plugin that brings a branch of its own
+# `qmcorecmd deploy` finds what shared libraries a binary needs and copies them
+# somewhere. Testing that needs real binaries, so this builds nine of them.
+# They do nothing at all. What matters is who links whom, and where each one
+# sits, because that is what a deployment has to work out.
 #
-# Everything is built into one directory. The tests copy the pieces out of it
-# and scatter them, so that nothing sits beside anything it depends on and the
-# tool has to be told where to look:
+# The shape is the one a program has after it is installed alongside a
+# framework it uses. Read `audio` as Qt and it is the familiar case: an
+# application that links a framework has to carry the framework's libraries and
+# its plugins, and the plugins are not linked by anything, so nothing finds
+# them by following the graph. They are named on the command line instead.
 #
-#   app/
-#       qmtest_app                the executable, on its own
-#   libs/core/
-#       qmtest_base
-#       qmtest_util
-#   libs/media/
-#       qmtest_render
-#       qmtest_audio              wanted by plugin_b alone
-#   plugins/
-#       qmtest_plugin_a
-#       qmtest_plugin_b
+# Mine, under myapp/:
 #
-# Deploying the application together with plugin_b --
+#   bin/                qmtest_app          links core
+#                       qmtest_core         links util and audio
+#                       qmtest_util         a leaf
+#   lib/app/plugins/    qmtest_plugin1      links core
+#                       qmtest_plugin2      links audio, so a plugin of mine
+#                                           reaches into the framework directly
 #
-#   qmcorecmd deploy app/qmtest_app -c plugins/qmtest_plugin_b out/plugins \
-#             -L libs/core -L libs/media -o out
+# Theirs, under thirdparty/, which stands in for an installed framework:
 #
-# should leave everything above where it was and add this:
+#   bin/                qmtest_audio        links render
+#                       qmtest_render       a leaf
+#                       qmtest_codec        a leaf nothing of mine reaches
+#   lib/audio/plugins/  qmtest_audioplugin1 links audio
+#                       qmtest_audioplugin2 links codec
 #
-#   out/
-#       qmtest_render             app     -> render
-#       qmtest_util               render  -> util
-#       qmtest_base               util    -> base
-#       qmtest_audio              plugin_b -> audio
-#       plugins/
-#           qmtest_plugin_b       brought by --copy, to the directory it named
+# So the application links core and nothing else. util, audio and render are
+# reached only by following core, and then by following audio. A resolver that
+# reads one level deep finds core and stops.
 #
-# plugin_a is not in it, because it was not named. Audio would not be either,
-# had plugin_b not been. Deploying the application alone gives out/ exactly
-# render, util and base.
+# codec is the one nothing links. No amount of following the graph from the
+# application arrives at it, and it is there only because audioplugin2 wants
+# it. That is the case plugin deployment exists for: naming the plugin has to
+# bring a library along that nothing else asked for.
 #
-# The names above are what Windows produces. Elsewhere the platform decorates
-# them its own way, as libqmtest_render.so or libqmtest_render.dylib, which is
-# why the tests name artifacts rather than files.
+# What a build leaves behind is that tree, laid out under this file's build
+# directory rather than flattened into one place:
 #
-# The layout, and what each command line should leave behind, are declared in
-# ../deploy_scenarios.json. This file only builds the pieces.
+#   myapp/bin/                    qmtest_app.exe qmtest_core.dll qmtest_util.dll
+#   myapp/lib/app/plugins/        qmtest_plugin1.dll qmtest_plugin2.dll
+#   thirdparty/bin/               qmtest_audio.dll qmtest_render.dll qmtest_codec.dll
+#   thirdparty/lib/audio/plugins/ qmtest_audioplugin1.dll qmtest_audioplugin2.dll
+#
+# Those are the names Windows produces. Elsewhere the platform decorates them
+# its own way, as qmtest_app and libqmtest_core.so, or libqmtest_core.dylib on
+# macOS. That is why the tests name artifacts rather than files, and why
+# nothing here carries a debug postfix. The qmtest_ prefix is there so that no
+# fixture is ever named like something in C:\Windows\System32, which a
+# deployment filters out on sight and would turn into a failure on one machine
+# and not another.
+#
+# A test copies both trees into a sandbox of its own, keeping the structure. It
+# does not rearrange them, because the arrangement is the point. Which command
+# lines are run against it, and what each should leave behind, are declared in
+# ../deploy_scenarios.json, and the directory names there have to agree with
+# the ones set below.
 
 # Symbols are exported by hand in fixture.h rather than wholesale, because
 # CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS does not cover MODULE libraries, and a
-# plugin entry point with no caller and no export is dropped by the linker --
+# plugin entry point with no caller and no export is dropped by the linker,
 # taking with it the very import that makes the plugin worth deploying.
 
-function(qmtest_fixture_library name)
-    add_library(qmtest_${name} SHARED ${name}.c)
+set(_fixture_root ${CMAKE_CURRENT_BINARY_DIR})
+
+# Where a binary goes, and what it has to be able to find from there.
+#
+# On Unix a binary carries its own search path, and CMake would write the build
+# tree's absolute directories into it. That would let every fixture find every
+# other one wherever it was copied to, which is exactly what these tests must
+# not have. Each one is given a relative path instead, worked out from where it
+# sits in the tree above, so that resolving depends on the layout rather than
+# on where the build happened.
+if(APPLE)
+    set(_origin "@loader_path")
+else()
+    set(_origin "$ORIGIN")
+endif()
+
+set(_app_bin              myapp/bin)
+set(_app_plugins          myapp/lib/app/plugins)
+set(_third_bin            thirdparty/bin)
+set(_third_plugins        thirdparty/lib/audio/plugins)
+
+# myapp/bin reaches thirdparty/bin by going up two and across.
+set(_app_bin_rpath        "${_origin};${_origin}/../../thirdparty/bin")
+# myapp/lib/app/plugins goes up three to myapp, and four to the root.
+set(_app_plugins_rpath    "${_origin};${_origin}/../../../bin;${_origin}/../../../../thirdparty/bin")
+set(_third_bin_rpath      "${_origin}")
+# thirdparty/lib/audio/plugins goes up three to thirdparty.
+set(_third_plugins_rpath  "${_origin};${_origin}/../../../bin")
+
+# name, kind, output directory, rpath
+function(qmtest_fixture name kind directory rpath)
+    if(kind STREQUAL "application")
+        add_executable(qmtest_${name} ${name}.c)
+    elseif(kind STREQUAL "plugin")
+        add_library(qmtest_${name} MODULE ${name}.c)
+    else()
+        add_library(qmtest_${name} SHARED ${name}.c)
+    endif()
+
     target_link_libraries(qmtest_${name} PRIVATE ${ARGN})
-    list(APPEND _fixtures qmtest_${name})
-    set(_fixtures ${_fixtures} PARENT_SCOPE)
-endfunction()
 
-function(qmtest_fixture_plugin name)
-    add_library(qmtest_${name} MODULE ${name}.c)
-    target_link_libraries(qmtest_${name} PRIVATE ${ARGN})
-    list(APPEND _fixtures qmtest_${name})
-    set(_fixtures ${_fixtures} PARENT_SCOPE)
-endfunction()
-
-qmtest_fixture_library(base)
-qmtest_fixture_library(util qmtest_base)
-qmtest_fixture_library(render qmtest_util)
-qmtest_fixture_library(audio qmtest_base)
-
-qmtest_fixture_plugin(plugin_a qmtest_render)
-qmtest_fixture_plugin(plugin_b qmtest_audio)
-
-add_executable(qmtest_app app.c)
-target_link_libraries(qmtest_app PRIVATE qmtest_render)
-list(APPEND _fixtures qmtest_app)
-
-set(_fixture_dir ${CMAKE_CURRENT_BINARY_DIR}/artifacts)
-
-foreach(_target IN LISTS _fixtures)
-    set_target_properties(${_target} PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${_fixture_dir}
-        LIBRARY_OUTPUT_DIRECTORY ${_fixture_dir}
-        # Import libraries and the like stay out of the way, so that the
-        # directory holds the binaries and nothing else.
-        ARCHIVE_OUTPUT_DIRECTORY ${_fixture_dir}/link
-        # No versioned names, so that one file answers to one name.
-        PREFIX "${CMAKE_SHARED_LIBRARY_PREFIX}"
-        # The tests move these around, so a build-tree rpath would be a lie.
+    set_target_properties(qmtest_${name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${_fixture_root}/${directory}"
+        LIBRARY_OUTPUT_DIRECTORY "${_fixture_root}/${directory}"
+        # No configuration in the name. The tests look these up by what they
+        # are, and a debug postfix would make that depend on how the project
+        # was configured.
+        DEBUG_POSTFIX ""
         SKIP_BUILD_RPATH ON
         BUILD_WITH_INSTALL_RPATH ON
-        INSTALL_RPATH "$ORIGIN"
+        INSTALL_RPATH "${rpath}"
     )
     if(APPLE)
-        set_target_properties(${_target} PROPERTIES
-            INSTALL_RPATH "@loader_path"
-            INSTALL_NAME_DIR "@rpath"
-        )
+        set_target_properties(qmtest_${name} PROPERTIES INSTALL_NAME_DIR "@rpath")
     endif()
     if(MSVC)
         # A static runtime keeps the import tables down to what these actually
         # depend on, so that what a test sees does not turn on which C runtime
         # the machine happens to have.
-        set_target_properties(${_target} PROPERTIES
+        set_target_properties(qmtest_${name} PROPERTIES
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
         )
     endif()
-endforeach()
+endfunction()
 
-# The tests are told where these ended up, whatever the generator decided.
-set(QMSETUP_TEST_FIXTURE_DIR "$<TARGET_FILE_DIR:qmtest_app>" PARENT_SCOPE)
+# Theirs first, since mine link it.
+qmtest_fixture(render       library     "${_third_bin}"      "${_third_bin_rpath}")
+qmtest_fixture(codec        library     "${_third_bin}"      "${_third_bin_rpath}")
+qmtest_fixture(audio        library     "${_third_bin}"      "${_third_bin_rpath}"     qmtest_render)
+qmtest_fixture(audioplugin1 plugin      "${_third_plugins}"  "${_third_plugins_rpath}" qmtest_audio)
+qmtest_fixture(audioplugin2 plugin      "${_third_plugins}"  "${_third_plugins_rpath}" qmtest_codec)
+
+qmtest_fixture(util         library     "${_app_bin}"        "${_app_bin_rpath}")
+qmtest_fixture(core         library     "${_app_bin}"        "${_app_bin_rpath}"       qmtest_util qmtest_audio)
+qmtest_fixture(app          application "${_app_bin}"        "${_app_bin_rpath}"       qmtest_core)
+qmtest_fixture(plugin1      plugin      "${_app_plugins}"    "${_app_plugins_rpath}"   qmtest_core)
+qmtest_fixture(plugin2      plugin      "${_app_plugins}"    "${_app_plugins_rpath}"   qmtest_audio)
+
+# The tests are told where the tree ended up, whatever the generator decided.
+set(QMSETUP_TEST_FIXTURE_DIR "${_fixture_root}" PARENT_SCOPE)

@@ -1,8 +1,6 @@
-/* Depends on util, and so on base only through it. */
+/* Third party. A leaf of theirs. */
 #include "fixture.h"
 
-int qmtest_util_value(void);
-
 QMTEST_EXPORT int qmtest_render_value(void) {
-    return qmtest_util_value() + 1;
+    return 10;
 }

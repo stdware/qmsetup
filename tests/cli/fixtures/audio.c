@@ -1,9 +1,8 @@
-/* Depends on base, and on nothing else. Deploying the application alone must
-   not bring this one along. */
+/* Third party. Their main library, the one my code links. */
 #include "fixture.h"
 
-int qmtest_base_value(void);
+int qmtest_render_value(void);
 
 QMTEST_EXPORT int qmtest_audio_value(void) {
-    return qmtest_base_value() + 10;
+    return qmtest_render_value() + 1;
 }

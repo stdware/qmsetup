@@ -1,9 +1,13 @@
-"""Finding the fixture binaries, and laying them out for a test to deploy.
+"""Finding the fixture binaries and putting them where a test can work on them.
 
-The binaries are built by ``fixtures/CMakeLists.txt`` into one directory. What
-makes them worth deploying is where they are put, and that is declared in
-``deploy_scenarios.json`` rather than here, so that the layout and the
-expectations that depend on it stay in one file.
+The binaries are built by ``fixtures/CMakeLists.txt`` into two trees, one for
+the application and one for the framework it uses. The trees are the point, so
+a test copies them across whole rather than rearranging anything.
+
+Which directories those are, and which artifact lives in which, is declared in
+``deploy_scenarios.json`` and checked here against what the build produced. A
+directory renamed in one file and not the other fails at once, with both names
+in the message, rather than as a test that quietly skips.
 """
 
 from __future__ import annotations
@@ -15,6 +19,12 @@ from pathlib import Path
 
 LIBRARY_SUFFIXES = (".dll", ".so", ".dylib")
 EXECUTABLE_SUFFIXES = (".exe", "")
+
+#: What a sandbox is allowed to hold. A build leaves more beside a binary than
+#: an installed tree ever does, a debug build on Windows most of all, and a test
+#: checks a deployment's output directory for exactly what should be in it. So
+#: the copy takes the binaries and nothing else.
+BINARY_SUFFIXES = frozenset(LIBRARY_SUFFIXES + EXECUTABLE_SUFFIXES)
 
 
 def scenario_file() -> Path:
@@ -43,6 +53,8 @@ def load_declaration() -> dict:
 
 def _find(directory: Path, stem: str, suffixes: tuple[str, ...]) -> Path | None:
     """The one artifact named ``stem``, whatever the platform decorates it with."""
+    if not directory.is_dir():
+        return None
     wanted = {stem, "lib" + stem}
     for entry in sorted(directory.iterdir()):
         if entry.is_file() and entry.stem in wanted and entry.suffix in suffixes:
@@ -50,8 +62,19 @@ def _find(directory: Path, stem: str, suffixes: tuple[str, ...]) -> Path | None:
     return None
 
 
+def _not_binaries(directory: str, entries: list[str]) -> list[str]:
+    """What a copy of a tree should leave behind, for ``shutil.copytree``."""
+    here = Path(directory)
+    return [
+        entry
+        for entry in entries
+        if not (here / entry).is_dir()
+        and (here / entry).suffix.lower() not in BINARY_SUFFIXES
+    ]
+
+
 class Layout:
-    """Where each artifact went, as paths relative to the sandbox."""
+    """Where each artifact is, as paths relative to the sandbox."""
 
     def __init__(self, sandbox: Path, directories: dict, placed: dict):
         self.sandbox = sandbox
@@ -81,11 +104,12 @@ class Layout:
 
 
 class Fixtures:
-    """The built fixture binaries, and the layout they are put into."""
+    """The built fixture trees."""
 
     def __init__(self, directory: Path, declaration: dict | None = None):
         self.directory = directory
         self.declaration = declaration or load_declaration()
+        self.trees = self.declaration["trees"]
         self.directories = self.declaration["directories"]
         self.artifacts = self.declaration["artifacts"]
 
@@ -96,27 +120,41 @@ class Fixtures:
                 if spec["kind"] == "application"
                 else LIBRARY_SUFFIXES
             )
-            self.files[artifact] = _find(directory, f"qmtest_{artifact}", suffixes)
+            where = directory / self.directories[spec["directory"]]
+            self.files[artifact] = _find(where, f"qmtest_{artifact}", suffixes)
 
     @property
     def missing(self) -> list[str]:
-        return [artifact for artifact, path in self.files.items() if path is None]
+        return [
+            f"{artifact} in {self.directories[self.artifacts[artifact]['directory']]}"
+            for artifact, path in self.files.items()
+            if path is None
+        ]
 
-    def scatter(self, sandbox: Path) -> Layout:
-        """Copies every artifact into the place the declaration gives it."""
+    def copy_into(self, sandbox: Path) -> Layout:
+        """Copies the binaries of both trees into the sandbox, structure and all."""
+        for tree in self.trees:
+            shutil.copytree(
+                self.directory / tree,
+                sandbox / tree,
+                dirs_exist_ok=True,
+                ignore=_not_binaries,
+            )
+
         placed = {}
         for artifact, spec in self.artifacts.items():
-            source = self.files[artifact]
             directory = self.directories[spec["directory"]]
-            target_dir = sandbox / directory
-            target_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target_dir / source.name)
-            placed[artifact] = f"{directory}/{source.name}"
+            placed[artifact] = f"{directory}/{self.files[artifact].name}"
         return Layout(sandbox, dict(self.directories), placed)
 
 
 def load() -> Fixtures | None:
-    """The fixtures, or None when they were not built."""
+    """The fixtures, or None when they were not built.
+
+    A directory that is there but holds the wrong thing is a mistake in the
+    setup rather than a reason to pass over the tests quietly, so that case
+    says what it found instead of answering None.
+    """
     raw = os.environ.get("QMTEST_FIXTURES")
     if not raw:
         return None
@@ -124,4 +162,15 @@ def load() -> Fixtures | None:
     if not directory.is_dir():
         return None
     fixtures = Fixtures(directory)
-    return None if fixtures.missing else fixtures
+    if fixtures.missing:
+        present = sorted(
+            str(p.relative_to(directory))
+            for p in directory.rglob("*")
+            if p.is_file()
+        )
+        raise SystemExit(
+            f"QMTEST_FIXTURES points at {directory}, which does not hold "
+            f"{'; '.join(fixtures.missing)}.\n"
+            f"What is there: {present or 'nothing'}"
+        )
+    return fixtures

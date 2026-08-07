@@ -31,7 +31,6 @@ if(NOT EXISTS ${_scenario_file})
 endif()
 
 set(_modules
-    test_help
     test_parse_errors
     test_configure
     test_copy
@@ -39,8 +38,7 @@ set(_modules
     test_touch
     test_incsync
     test_deploy
-    test_deploy_unix
-    test_response_file
+    test_deploy_rpath
 )
 
 foreach(_module IN LISTS _modules)

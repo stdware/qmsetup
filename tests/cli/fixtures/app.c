@@ -1,7 +1,8 @@
-/* Names render alone. util and base are reached only by following it. */
+/* Mine. Links core alone, so util, audio and render are reached only by
+   following it. */
 
-int qmtest_render_value(void);
+int qmtest_core_value(void);
 
 int main(void) {
-    return qmtest_render_value() == 3 ? 0 : 1;
+    return qmtest_core_value() > 0 ? 0 : 1;
 }

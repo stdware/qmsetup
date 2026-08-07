@@ -1,22 +1,25 @@
 """`deploy` resolves a binary's shared library dependencies and copies them.
 
-The tests run against a real application built for the purpose: an executable,
-four libraries scattered across two directories, and two plugins. The graph is
-arranged so that following it matters.
+The tests run against a program built for the purpose, installed beside a
+framework it uses. Read the framework as Qt and it is the familiar job: the
+program's binaries stay where they are, what they need is gathered next to
+them, and the framework's plugins have to be named by hand because nothing
+links them.
 
-    app      -> render -> util -> base
-    plugin_a -> render
-    plugin_b -> audio  -> base
-
-The app names render alone, so util and base can only be reached by following
-render, and audio only by naming a plugin that wants it. Nothing sits beside
-anything it depends on, so the tool has to be told where to look.
+    myapp/       app -> core -> util
+                             -> audio
+                 plugin1 -> core
+                 plugin2 -> audio
+    thirdparty/  audio -> render
+                 codec                     linked by nothing of the program's
+                 audioplugin1 -> audio
+                 audioplugin2 -> codec
 
 What each command line should leave behind is declared in
 ``deploy_scenarios.json``, not written out here, and one test is generated per
 scenario. What is left in code is the part that is not about the resulting
-directory structure: option spellings, refusals, and the handful of cases that
-have to rearrange the sandbox first.
+directory structure: option spellings, refusals, and the cases that have to
+rearrange the sandbox first.
 
 How a dependency is discovered differs on every platform. It is an import table
 on Windows, ``@rpath`` on macOS, ``ldd`` on Linux. So the tests that need one to
@@ -50,12 +53,11 @@ def resolution_problem(executable: str, fixture_dir: str) -> str:
 
     with tempfile.TemporaryDirectory(prefix="qmcorecmd-probe-") as tmp:
         sandbox = Path(tmp)
-        layout = fixtures.scatter(sandbox)
+        layout = fixtures.copy_into(sandbox)
         completed = subprocess.run(
             [
                 executable, "deploy", layout.path("app"),
-                "-L", layout.directory("core"),
-                "-L", layout.directory("media"),
+                "-L", layout.directory("audiobin"),
                 "-d", "-V",
             ],
             cwd=sandbox,
@@ -67,15 +69,15 @@ def resolution_problem(executable: str, fixture_dir: str) -> str:
         if completed.returncode != 0:
             return f"deploy could not run here: {out.strip()[:300]}"
         for line in out.splitlines():
-            if layout.name("render") in line:
+            if layout.name("audio") in line:
                 if "[Not Found]" in line:
                     return "the resolver saw the dependency but could not place it"
                 return ""
-        return "the resolver did not report the application's own dependency"
+        return "the resolver did not reach the framework the program links"
 
 
 class DeployTestCase(QmTestCase):
-    """Gives each test the scattered application to work on."""
+    """Gives each test the two trees to work on, laid out as they were built."""
 
     needs_resolution = False
 
@@ -90,7 +92,15 @@ class DeployTestCase(QmTestCase):
             )
             if problem:
                 self.skipTest(problem)
-        self.layout = self.fixtures.scatter(self.sandbox)
+        self.layout = self.fixtures.copy_into(self.sandbox)
+
+    def search_paths(self) -> list[str]:
+        """Where the framework is, which is what Windows needs told."""
+        return ["-L", self.layout.directory("audiobin")]
+
+    def program(self) -> list[str]:
+        """The program's own binaries, which stay where they are."""
+        return [self.layout.path(a) for a in ("app", "core", "util", "plugin1", "plugin2")]
 
     # Reading the declaration
 
@@ -119,6 +129,10 @@ class DeployTestCase(QmTestCase):
         if not target.is_dir():
             return set()
         return {p.name for p in target.iterdir() if p.is_file()}
+
+    def deployed(self, directory: str = "out") -> set[str]:
+        """The file names a deployment left in its output directory."""
+        return self.files_in(directory)
 
     def snapshot(self) -> dict[str, int]:
         return {
@@ -237,44 +251,34 @@ _install_scenarios()
 
 
 class TestDeployCommandLine(DeployTestCase):
-    def search_paths(self) -> list[str]:
-        return ["-L", self.layout.directory("core"), "-L", self.layout.directory("media")]
-
     def test_nothing_on_the_line_shows_the_help(self):
         r = self.run_cmd("deploy")
         self.assertOk(r)
-        self.assertOut(r, "qmcorecmd deploy")
+        self.assertOut(r, "deploy")
 
     def test_an_option_without_a_file_is_refused(self):
-        r = self.run_cmd("deploy", "-d")
-        self.assertFails(r)
-        self.assertOut(r, "Error:")
+        self.assertRefused(self.run_cmd("deploy", "-d"))
 
     def test_an_unknown_option_is_refused(self):
-        r = self.run_cmd("deploy", self.layout.path("app"), "--nosuchoption")
-        self.assertFails(r)
-        self.assertOut(r, "Error:")
+        self.assertRefused(
+            self.run_cmd("deploy", self.layout.path("app"), "--nosuchoption")
+        )
 
     def test_a_file_that_is_not_a_binary_is_refused(self):
         self.write("notabinary.txt", "not a binary at all")
-        r = self.run_cmd("deploy", "notabinary.txt", "-d")
-        self.assertFails(r)
-        self.assertOut(r, "Error:")
+        self.assertRefused(self.run_cmd("deploy", "notabinary.txt", "-d"))
 
     def test_a_copy_source_that_is_not_a_binary_is_refused(self):
         self.write("notabinary.txt", "not a binary at all")
-        r = self.run_cmd(
-            "deploy", self.layout.path("app"), "-c", "notabinary.txt", "out", "-d"
+        self.assertRefused(
+            self.run_cmd("deploy", self.layout.path("app"), "-c", "notabinary.txt", "out", "-d")
         )
-        self.assertFails(r)
-        self.assertOut(r, "Error:")
 
     def test_a_search_path_may_be_joined_to_its_option(self):
         """-L takes a single-character short match, as a linker's -L does."""
         joined = self.run_cmd(
             "deploy", self.layout.path("app"),
-            f"-L{self.layout.directory('core')}",
-            f"-L{self.layout.directory('media')}",
+            f"-L{self.layout.directory('audiobin')}",
             "-d", "-V",
         )
         separate = self.run_cmd(
@@ -284,7 +288,7 @@ class TestDeployCommandLine(DeployTestCase):
         self.assertEqual(joined.out, separate.out)
 
     def test_a_quoted_line_in_a_list_file_keeps_its_spaces(self):
-        self.write("linkdirs.txt", f'"{self.path(self.layout.directory("core"))}"\n')
+        self.write("linkdirs.txt", f'"{self.path(self.layout.directory("audiobin"))}"\n')
         r = self.run_cmd(
             "deploy", self.layout.path("app"), "--linkdirs-file", "linkdirs.txt", "-d", "-V"
         )
@@ -304,8 +308,7 @@ class TestDeployCommandLine(DeployTestCase):
 
     def test_several_binaries_may_be_named_at_once(self):
         r = self.run_cmd(
-            "deploy", self.layout.path("app"), self.layout.path("plugin_a"),
-            *self.search_paths(), "-d", "-V",
+            "deploy", *self.program(), *self.search_paths(), "-d", "-V"
         )
         self.assertOk(r)
         self.assertOut(r, "Resolve:")
@@ -319,44 +322,44 @@ class TestDeployCommandLine(DeployTestCase):
 class TestResolutionDetails(DeployTestCase):
     needs_resolution = True
 
-    def search_paths(self) -> list[str]:
-        return ["-L", self.layout.directory("core"), "-L", self.layout.directory("media")]
-
     def test_each_library_is_resolved_in_turn(self):
         """Every dependency found is then resolved itself, so the report has a
-        line of its own for the application and for each library behind it."""
+        line of its own for the application and for each library behind it.
+
+        With --standard, so that the count is the fixtures and nothing the
+        platform happens to have resolved alongside them.
+        """
         r = self.run_cmd(
-            "deploy", self.layout.path("app"), *self.search_paths(), "-d", "-V"
+            "deploy", self.layout.path("app"), *self.search_paths(), "-s", "-d", "-V"
         )
         self.assertOk(r)
         resolved = [line for line in r.out.splitlines() if line.startswith("Resolve:")]
-        self.assertEqual(len(resolved), 4, msg=str(r))  # app, render, util, base
+        # app, core, util, audio, render
+        self.assertEqual(len(resolved), 5, msg=str(r))
 
     def test_a_library_beside_the_binary_needs_no_search_path(self):
-        """The directory a named binary sits in is searched without being asked."""
-        for artifact in ("render", "util", "base"):
-            source = self.path(self.layout.path(artifact))
-            source.replace(self.path(self.layout.directory("app")) / source.name)
+        """The directory a named binary sits in is searched without being asked,
+        which is why the program's own libraries need no -L."""
         r = self.run_cmd("deploy", self.layout.path("app"), "-d", "-V")
         self.assertOk(r)
-        self.assertResolved(r, "render")
+        self.assertResolved(r, "core")
 
     def test_force_overwrites_what_is_already_there(self):
-        stale = self.path(f"out/{self.layout.name('render')}")
+        stale = self.path(f"out/{self.layout.name('audio')}")
         stale.parent.mkdir(parents=True, exist_ok=True)
         stale.write_bytes(b"stale")
         r = self.run_cmd(
-            "deploy", self.layout.path("app"), *self.search_paths(), "-o", "out", "-f"
+            "deploy", self.layout.path("app"), *self.search_paths(), "-o", "out", "-f", "-s"
         )
         self.assertOk(r)
         self.assertEqual(
-            stale.read_bytes(), self.path(self.layout.path("render")).read_bytes()
+            stale.read_bytes(), self.path(self.layout.path("audio")).read_bytes()
         )
 
     def test_verbose_names_what_it_copied(self):
         r = self.run_cmd(
-            "deploy", self.layout.path("app"), *self.search_paths(), "-o", "out", "-V"
+            "deploy", self.layout.path("app"), *self.search_paths(), "-o", "out", "-s", "-V"
         )
         self.assertOk(r)
         self.assertOut(r, "Copy: from")
-        self.assertOut(r, self.layout.name("render"))
+        self.assertOut(r, self.layout.name("audio"))
