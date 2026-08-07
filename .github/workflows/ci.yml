@@ -120,10 +120,11 @@ jobs:
           cmake -S . -B build -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/prefix"
           grep -q "define CONSUMED" build/config.h
 
-  # MinGW builds but does not test. What is worth knowing here is that the Windows sources
-  # compile and link against something other than the Microsoft toolchain, and the tests bring in
-  # a second toolchain question of their own, since the CMake ones configure projects of their
-  # own with whatever compiler they were given.
+  # MinGW is a job of its own because it wants msys2 rather than the toolchain the matrix above
+  # sets up with an environment variable. It is worth having because it is the one Windows
+  # compiler that names a shared library the way Unix does, and a test that spelt out
+  # qmtest_extra_lib.dll rather than asking the build what it had called things passed under
+  # MSVC and failed here.
   mingw:
     name: windows-mingw
     runs-on: windows-latest
@@ -140,9 +141,20 @@ jobs:
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-python
+
+      - name: Configure
+        shell: msys2 {0}
+        run: |
+          cmake -G Ninja -S . -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DQMSETUP_BUILD_TESTS=ON \
+            -DQMSETUP_STATIC_RUNTIME=OFF
 
       - name: Build
         shell: msys2 {0}
-        run: |
-          cmake -G Ninja -S . -B build -DCMAKE_BUILD_TYPE=Debug -DQMSETUP_BUILD_TESTS=OFF
-          cmake --build build
+        run: cmake --build build
+
+      - name: Test
+        shell: msys2 {0}
+        run: ctest --test-dir build --output-on-failure --no-tests=error

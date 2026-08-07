@@ -6,15 +6,17 @@
 # The application was installed without the library it links, so a deployment
 # that did nothing would leave it unable to start.
 
+# The file names the build settled on, written out by the project. Read rather
+# than spelt out here, since a shared library is named differently by every
+# platform and, on Windows, by every compiler.
+include("${_build}/built_names.cmake")
+
+# Where it goes is the deployment's decision rather than the compiler's. A
+# Windows library belongs beside the binaries and everywhere else it does not.
 if(WIN32)
     set(_library_dir "${_prefix}/bin")
-    set(_extra_name "qmtest_extra_lib.dll")
-elseif(APPLE)
-    set(_library_dir "${_prefix}/lib")
-    set(_extra_name "libqmtest_extra_lib.dylib")
 else()
     set(_library_dir "${_prefix}/lib")
-    set(_extra_name "libqmtest_extra_lib.so")
 endif()
 
 qmtest_exists("the library the application needs was brought along" "${_library_dir}/${_extra_name}")

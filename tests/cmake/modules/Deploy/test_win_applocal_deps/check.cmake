@@ -3,12 +3,15 @@
 # Included by testing/build.cmake. `_build` is the build directory. Nothing is
 # installed here, so `_prefix` has nothing in it.
 
-set(_dll "qmtest_extra_lib.dll")
+# The file names the build settled on, written out by the project. Read rather
+# than spelt out here, since MSVC writes qmtest_extra_lib.dll where MinGW writes
+# libqmtest_extra_lib.dll, and both are Windows.
+include("${_build}/built_names.cmake")
 
 # The library was built into elsewhere/, so anything found beside an executable
 # was put there by the deployment.
 qmtest_exists("what the executable needs is beside it" "${_build}/beside/${_dll}")
-qmtest_exists("and the executable is still where it was built" "${_build}/beside/qmtest_beside_app.exe")
+qmtest_exists("and the executable is still where it was built" "${_build}/beside/${_beside_app}")
 
 qmtest_exists("OUTPUT_DIR is where it goes instead" "${_build}/gathered/${_dll}")
 qmtest_not_exists("rather than beside the executable" "${_build}/apps/${_dll}")

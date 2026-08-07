@@ -65,3 +65,12 @@ qm_win_applocal_deps(qmtest_excluded_app
     EXCLUDE "qmtest_extra_lib"
     VERBOSE
 )
+
+# What the platform decided to call these, for check.cmake to read rather than
+# guess at. Windows is not one naming scheme: MSVC writes qmtest_extra_lib.dll
+# and MinGW writes libqmtest_extra_lib.dll, so a name spelt out in the checks
+# was right for whichever compiler happened to be at hand.
+file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/built_names.cmake" CONTENT
+[[set(_dll "$<TARGET_FILE_NAME:qmtest_extra_lib>")
+set(_beside_app "$<TARGET_FILE_NAME:qmtest_beside_app>")
+]])

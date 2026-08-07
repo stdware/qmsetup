@@ -44,3 +44,11 @@ qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
     VERBOSE
     COMMENT "Deploying what the installed binaries need"
 )
+
+# What the platform decided to call these, for check.cmake to read rather than
+# guess at. Windows is not one naming scheme: MSVC writes qmtest_extra_lib.dll
+# and MinGW writes libqmtest_extra_lib.dll, so a name spelt out in the checks
+# was right for whichever compiler happened to be at hand.
+file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/built_names.cmake" CONTENT
+[[set(_extra_name "$<TARGET_FILE_NAME:qmtest_extra_lib>")
+]])
