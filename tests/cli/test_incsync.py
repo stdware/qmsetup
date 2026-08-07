@@ -2,7 +2,33 @@
 either by copying them or by leaving a one-line stub that includes the real one.
 """
 
+import os
+import shutil
+import tempfile
+from pathlib import Path
+
 from testing.harness import QmTestCase
+
+
+def directory_on_another_drive(besides: Path):
+    """A temporary directory on some drive other than the one ``besides`` is on.
+
+    Answers None where there is no second drive to write to. Windows only,
+    since everywhere else there is one root and so no such thing as two paths
+    with nothing in common.
+    """
+    if os.name != "nt":
+        return None
+
+    here = besides.drive.upper()
+    for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        if f"{letter}:" == here or not os.path.isdir(f"{letter}:\\"):
+            continue
+        try:
+            return Path(tempfile.mkdtemp(prefix="qmcorecmd-test-", dir=f"{letter}:\\"))
+        except OSError:
+            continue  # Not writable, which is ordinary for a disc or a share
+    return None
 
 
 class IncsyncTestCase(QmTestCase):
@@ -106,6 +132,60 @@ class TestExcluding(IncsyncTestCase):
         self.assertOk(self.run_cmd("incsync", "src", "include", "-e", "/sub/"))
         self.assertFile("include/foo.h")
         self.assertNoFile("include/baz.h")
+
+
+class TestAcrossDrives(IncsyncTestCase):
+    """A source tree on one drive and an include directory on another.
+
+    Only Windows has two paths with no root in common. Asked for a relative path
+    between them, the standard library answers an empty one rather than treating
+    it as an error, so nothing was there to be caught and the stub was written
+    out as an include of nothing at all.
+
+    Reported as https://github.com/stdware/qmsetup/issues/16.
+    """
+
+    def setUp(self):
+        super().setUp()
+        if os.name != "nt":
+            self.skipTest("only Windows has paths with no root in common")
+
+        self.elsewhere = directory_on_another_drive(self.sandbox)
+        if self.elsewhere is None:
+            self.skipTest("no second drive here to sync to")
+        self.addCleanup(shutil.rmtree, self.elsewhere, ignore_errors=True)
+
+        self.include = self.elsewhere / "include"
+
+    def stub(self, name: str) -> str:
+        return (self.include / name).read_text(encoding="utf-8")
+
+    def test_the_headers_still_arrive(self):
+        self.assertOk(self.run_cmd("incsync", "src", str(self.include)))
+        self.assertTrue((self.include / "foo.h").is_file())
+
+    def test_the_stub_includes_something(self):
+        self.assertOk(self.run_cmd("incsync", "src", str(self.include)))
+        self.assertNotIn('#include ""', self.stub("foo.h"))
+
+    def test_and_what_it_includes_is_the_header(self):
+        self.assertOk(self.run_cmd("incsync", "src", str(self.include)))
+        self.assertIn("foo.h", self.stub("foo.h"))
+
+    def test_it_falls_back_to_the_whole_path(self):
+        """There is no relative form, so the absolute one is what is left."""
+        self.assertOk(self.run_cmd("incsync", "src", str(self.include)))
+        self.assertIn(self.sandbox.drive.lower(), self.stub("foo.h").lower())
+
+    def test_which_is_still_written_with_forward_slashes(self):
+        self.assertOk(self.run_cmd("incsync", "src", str(self.include)))
+        self.assertNotIn("\\", self.stub("foo.h"))
+
+    def test_copying_across_drives_was_never_the_broken_one(self):
+        """Only the stub goes through a relative path, so this held throughout
+        and is here to say which half of the command the fault was in."""
+        self.assertOk(self.run_cmd("incsync", "src", str(self.include), "-c"))
+        self.assertIn("// foo", self.stub("foo.h"))
 
 
 class TestDryRunForceAndVerbosity(IncsyncTestCase):

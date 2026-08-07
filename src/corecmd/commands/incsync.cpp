@@ -121,7 +121,14 @@ int cmd_incsync(const cli::ParseResult &result) {
                 fs::copy(path, targetPath, fs::copy_options::overwrite_existing);
             } else {
                 // Make relative reference
-                std::string rel = tstr2str(fs::relative(path, targetDir));
+                //
+                // `relative` answers an empty path where the two have no root in common
+                // rather than treating it as an error, which on Windows is a source
+                // directory on one drive and a build directory on another. Writing that
+                // out gave `#include ""`. There is no relative path to be had in that
+                // case, so the absolute one is written instead.
+                const auto relPath = fs::relative(path, targetDir);
+                std::string rel = tstr2str(relPath.empty() ? path : relPath);
 
 #ifdef _WIN32
                 // Replace separator
