@@ -281,13 +281,14 @@ function(_qm_add_lupdate_target _target)
 
         get_directory_property(_inc_DIRS INCLUDE_DIRECTORIES)
 
-        # The absolute form, since lupdate runs from the source directory and a
-        # relative include directory is relative to whichever directory declared
-        # it. It was worked out and then not used, the line below naming the
-        # path as it stood.
+        # As they stand. CMake stores an include directory absolute whatever it
+        # was written as, so there was nothing for the get_filename_component
+        # that used to be here to do, and its answer was never read anyway.
+        # Putting it to use would have been worse than dropping it: what can be
+        # in this property and is not a path is a generator expression, and
+        # making one of those absolute prepends the source directory to it.
         foreach(_pro_include IN LISTS _inc_DIRS)
-            get_filename_component(_abs_include "${_pro_include}" ABSOLUTE)
-            set(_lst_file_srcs "-I${_abs_include}\n${_lst_file_srcs}")
+            set(_lst_file_srcs "-I${_pro_include}\n${_lst_file_srcs}")
         endforeach()
 
         file(WRITE ${_ts_lst_file} "${_lst_file_srcs}")

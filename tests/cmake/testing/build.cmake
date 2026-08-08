@@ -50,6 +50,15 @@ if(QMTEST_C_COMPILER)
     list(APPEND _configure_args "-DCMAKE_C_COMPILER=${QMTEST_C_COMPILER}")
 endif()
 
+if(QMTEST_CXX_COMPILER)
+    list(APPEND _configure_args "-DCMAKE_CXX_COMPILER=${QMTEST_CXX_COMPILER}")
+endif()
+
+# Where a project is to look for anything it needs found, Qt above all.
+if(QMTEST_PREFIX_PATH)
+    list(APPEND _configure_args "-DCMAKE_PREFIX_PATH=${QMTEST_PREFIX_PATH}")
+endif()
+
 step("configuring" ${CMAKE_COMMAND} ${_configure_args})
 step("building" ${CMAKE_COMMAND} --build "${QMTEST_PROJECT_BUILD}" --config Release)
 step("installing" ${CMAKE_COMMAND} --install "${QMTEST_PROJECT_BUILD}" --config Release)

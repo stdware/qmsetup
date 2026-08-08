@@ -121,6 +121,29 @@ if(WIN32)
 endif()
 
 # ------------------------------------------------------------------
+# The ones that want Qt
+# ------------------------------------------------------------------
+
+# Asked once, here, so that a machine without Qt registers nothing rather than
+# registering tests that pass themselves over. Point CMake at an installation
+# the ordinary way, with -DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler>,
+# and the same search path is handed to every project below.
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Core QUIET)
+
+if(QT_FOUND)
+    message(STATUS "qmsetup tests: Qt${QT_VERSION_MAJOR} ${QT_VERSION} at ${QT_DIR}")
+    list(APPEND _configured_projects QMSetupAPI/test_qt_targets)
+    list(APPEND _built_projects modules/Translate/test_translation)
+else()
+    message(STATUS "qmsetup tests: no Qt found, so the functions that want one are left untested. "
+        "Pass -DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler> to have them run.")
+endif()
+
+# Escaped, since this travels as one argument of a test command and a search
+# path may name more than one place.
+string(REPLACE ";" "\\;" _qmtest_prefix_path "${CMAKE_PREFIX_PATH}")
+
+# ------------------------------------------------------------------
 # Registration
 # ------------------------------------------------------------------
 
@@ -141,6 +164,8 @@ function(qmtest_cmake_add _module _driver)
             -DQMTEST_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/${_module}/prefix
             -DQMTEST_GENERATOR=${CMAKE_GENERATOR}
             -DQMTEST_C_COMPILER=${CMAKE_C_COMPILER}
+            -DQMTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -DQMTEST_PREFIX_PATH=${_qmtest_prefix_path}
             -P ${_driver}
     )
     set_tests_properties(cmake.${_name} PROPERTIES

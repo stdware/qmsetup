@@ -1,4 +1,4 @@
-project(qmcorecmd VERSION ${QMSETUP_VERSION})
+project(qmcorecmd VERSION ${QMSETUP_VERSION} LANGUAGES CXX)
 
 set(RC_COPYRIGHT "Copyright 2023-present Stdware Collections")
 set(RC_DESCRIPTION "QMSetup Core Utility Command")

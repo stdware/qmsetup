@@ -34,6 +34,16 @@ if(QMTEST_C_COMPILER)
     list(APPEND _args "-DCMAKE_C_COMPILER=${QMTEST_C_COMPILER}")
 endif()
 
+if(QMTEST_CXX_COMPILER)
+    list(APPEND _args "-DCMAKE_CXX_COMPILER=${QMTEST_CXX_COMPILER}")
+endif()
+
+# Where a project is to look for anything it needs found, Qt above all. Left as
+# it arrives, so that a project asks for Qt the way any project would.
+if(QMTEST_PREFIX_PATH)
+    list(APPEND _args "-DCMAKE_PREFIX_PATH=${QMTEST_PREFIX_PATH}")
+endif()
+
 execute_process(COMMAND ${CMAKE_COMMAND} ${_args} RESULT_VARIABLE _code)
 
 if(NOT _code EQUAL 0)

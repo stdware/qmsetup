@@ -20,8 +20,9 @@ endif()
 message(STATUS "qmcorecmd tests: using ${Python3_EXECUTABLE} (${Python3_VERSION})")
 
 # A real application, real shared libraries and real plugins, for the deploy
-# tests to resolve. Without them those tests skip themselves.
-enable_language(C)
+# tests to resolve. Without them those tests skip themselves. C is enabled a
+# directory up, so that it is on whichever of the two test directories is read
+# first.
 add_subdirectory(fixtures)
 
 # What the deploy tests expect, as data. The layout the fixtures are scattered
