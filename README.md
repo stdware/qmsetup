@@ -245,6 +245,7 @@ Use `qm_find_package` to find supported third-party packages.
 ### Detailed Documentation
 
 + [About qmcorecmd](docs/AboutCoreCMD.md)
++ [Changelog](CHANGELOG.md)
 
 The CMake modules are documented in the comments above each function.
 
