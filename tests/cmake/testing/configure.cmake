@@ -38,10 +38,15 @@ if(QMTEST_CXX_COMPILER)
     list(APPEND _args "-DCMAKE_CXX_COMPILER=${QMTEST_CXX_COMPILER}")
 endif()
 
-# Where a project is to look for anything it needs found, Qt above all. Left as
-# it arrives, so that a project asks for Qt the way any project would.
+# Where a project is to look for anything it needs found, Qt and protobuf above
+# all.
+#
+# Escaped, since the list below is expanded without quotes when the command is
+# run and a search path naming two places would be split again at the semicolon,
+# the second turning into an argument of its own.
 if(QMTEST_PREFIX_PATH)
-    list(APPEND _args "-DCMAKE_PREFIX_PATH=${QMTEST_PREFIX_PATH}")
+    string(REPLACE ";" "\\;" _escaped_prefix_path "${QMTEST_PREFIX_PATH}")
+    list(APPEND _args "-DCMAKE_PREFIX_PATH=${_escaped_prefix_path}")
 endif()
 
 execute_process(COMMAND ${CMAKE_COMMAND} ${_args} RESULT_VARIABLE _code)

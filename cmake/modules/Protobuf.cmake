@@ -130,11 +130,17 @@ function(qm_create_protobuf _out)
     endforeach()
 
     if(FUNC_TARGET)
-        if(NOT TARGET ${FUNC_TARGET})
-            add_custom_target(${FUNC_TARGET})
+        # The files go on the target as it is made. add_dependencies takes the
+        # names of targets and nothing else, so a target that is already there
+        # cannot be handed them afterwards, and saying so here beats the four
+        # errors the generate step would otherwise give, one per file.
+        if(TARGET ${FUNC_TARGET})
+            message(FATAL_ERROR "qm_create_protobuf: TARGET \"${FUNC_TARGET}\" already exists. "
+                "Name one that does not, or leave TARGET out and add the generated files to a "
+                "target of your own as sources.")
         endif()
 
-        add_dependencies(${FUNC_TARGET} ${_out_files})
+        add_custom_target(${FUNC_TARGET} DEPENDS ${_out_files})
     endif()
 
     set(${_out} ${_out_files} PARENT_SCOPE)

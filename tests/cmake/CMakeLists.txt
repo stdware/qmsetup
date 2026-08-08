@@ -43,6 +43,7 @@
 # ------------------------------------------------------------------
 
 set(_scripts
+    test_argument_keywords
     QMSetupAPI/test_import
     QMSetupAPI/test_version
     QMSetupAPI/test_values
@@ -149,6 +150,22 @@ if(QT_FOUND)
 else()
     message(STATUS "qmsetup tests: no Qt found, so the functions that want one are left untested. "
         "Pass -DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler> to have them run.")
+endif()
+
+# ------------------------------------------------------------------
+# The one that wants protobuf
+# ------------------------------------------------------------------
+
+# CONFIG, since module mode gives the libraries and not protobuf::protoc, which
+# is the target qm_create_protobuf asks for.
+find_package(Protobuf CONFIG QUIET)
+
+if(TARGET protobuf::protoc)
+    message(STATUS "qmsetup tests: protobuf ${Protobuf_VERSION} at ${Protobuf_DIR}")
+    list(APPEND _built_projects modules/Protobuf/test_create_protobuf)
+else()
+    message(STATUS "qmsetup tests: no protobuf compiler found, so qm_create_protobuf is left "
+        "untested. Name an installation in CMAKE_PREFIX_PATH to have it run.")
 endif()
 
 # Escaped, since this travels as one argument of a test command and a search

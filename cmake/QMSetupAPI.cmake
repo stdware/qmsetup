@@ -243,6 +243,7 @@ endfunction()
     ##FIXME had.
 #]]
 macro(qm_find_qt)
+    # unread-keyword: EXACT
     set(options QUIET REQUIRED EXACT)
     set(oneValueArgs)
     set(multiValueArgs)

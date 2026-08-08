@@ -54,12 +54,30 @@ if(QMTEST_CXX_COMPILER)
     list(APPEND _configure_args "-DCMAKE_CXX_COMPILER=${QMTEST_CXX_COMPILER}")
 endif()
 
-# Where a project is to look for anything it needs found, Qt above all.
+# Where a project is to look for anything it needs found, Qt and protobuf above
+# all.
+#
+# Escaped, since the list below is expanded without quotes when the command is
+# run and a search path naming two places would be split again at the semicolon,
+# the second turning into an argument of its own.
 if(QMTEST_PREFIX_PATH)
-    list(APPEND _configure_args "-DCMAKE_PREFIX_PATH=${QMTEST_PREFIX_PATH}")
+    string(REPLACE ";" "\\;" _escaped_prefix_path "${QMTEST_PREFIX_PATH}")
+    list(APPEND _configure_args "-DCMAKE_PREFIX_PATH=${_escaped_prefix_path}")
 endif()
 
-step("configuring" ${CMAKE_COMMAND} ${_configure_args})
+# Not through step(), which takes its command as arguments and so expands the
+# list a second time. An escaped semicolon survives one round of that and not
+# two, and a search path naming two places is exactly one such element. The
+# other two steps have no argument of that shape.
+execute_process(COMMAND ${CMAKE_COMMAND} ${_configure_args}
+    RESULT_VARIABLE _code
+    OUTPUT_VARIABLE _out
+    ERROR_VARIABLE _out
+)
+
+if(NOT _code EQUAL 0)
+    message(FATAL_ERROR "configuring failed:\n${_out}")
+endif()
 step("building" ${CMAKE_COMMAND} --build "${QMTEST_PROJECT_BUILD}" --config Release)
 step("installing" ${CMAKE_COMMAND} --install "${QMTEST_PROJECT_BUILD}" --config Release)
 
