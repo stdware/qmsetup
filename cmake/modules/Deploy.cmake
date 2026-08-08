@@ -44,9 +44,6 @@ function(qm_win_applocal_deps _target)
     endif()
 
     set(options FORCE VERBOSE)
-    # No TARGET. Nothing reads it and nothing documents it, and declaring a
-    # keyword is not free: the word was taken out of whatever list it landed in,
-    # so an EXCLUDE pattern spelt TARGET went missing rather than being matched.
     set(oneValueArgs CUSTOM_TARGET OUTPUT_DIR)
     set(multiValueArgs EXTRA_SEARCHING_PATHS EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -247,18 +244,24 @@ function(qm_deploy_directory _install_dir)
     endforeach()
 
     if(WIN32)
-        set(_script_quoted "cmd /c \"${QMSETUP_MODULES_DIR}/scripts/windeps.bat\"")
+        set(_script cmd /c "${QMSETUP_MODULES_DIR}/scripts/windeps.bat")
     else()
-        set(_script_quoted "bash \"${QMSETUP_MODULES_DIR}/scripts/unixdeps.sh\"")
+        set(_script bash "${QMSETUP_MODULES_DIR}/scripts/unixdeps.sh")
     endif()
 
     # Add extra libraries
-    foreach(_item IN LISTS _searching_paths)
-        foreach(_lib IN LISTS FUNC_EXTRA_LIBRARIES)
+    #
+    # One copy per library rather than per place it was found in. The search
+    # paths are in the order they are to be searched, so the first that has it
+    # is the one meant, and the rest are shadowed the way a loader would shadow
+    # them.
+    foreach(_lib IN LISTS FUNC_EXTRA_LIBRARIES)
+        foreach(_item IN LISTS _searching_paths)
             set(_path "${_item}/${_lib}")
 
             if((EXISTS ${_path}) AND(NOT IS_DIRECTORY ${_path}))
                 list(APPEND _args --copy ${_path} ${_lib_dir})
+                break()
             endif()
         endforeach()
     endforeach()
@@ -276,24 +279,28 @@ function(qm_deploy_directory _install_dir)
         list(APPEND _args "-V")
     endif()
 
-    set(_args_quoted)
-
-    foreach(_item IN LISTS _args)
-        set(_args_quoted "${_args_quoted}\"${_item}\" ")
-    endforeach()
-
     set(_comment_code)
 
     if(FUNC_COMMENT)
-        set(_comment_code "message(STATUS \"${FUNC_COMMENT}\")")
+        set(_comment_code "message(STATUS [==[${FUNC_COMMENT}]==])")
     endif()
 
     # Add install command
+    #
+    # The command is carried over as a list and rebuilt on the other side, so
+    # that a path with a space or a quote in it is one argument there as it is
+    # one here. Written by pasting each argument into a string between quotes,
+    # anything holding a quote of its own ended the argument early.
+    #
+    # Bracket arguments, since what goes between them is text and nothing in it
+    # is a variable reference or an escape. The list itself is expanded on the
+    # way in, being what varies.
     install(CODE "
         ${_comment_code}
+        set(_command [==[${_script};${_args}]==])
         execute_process(
-            COMMAND ${_script_quoted} ${_args_quoted}
-            WORKING_DIRECTORY \"${_install_dir}\"
+            COMMAND \${_command}
+            WORKING_DIRECTORY [==[${_install_dir}]==]
             COMMAND_ERROR_IS_FATAL ANY
         )
     ")

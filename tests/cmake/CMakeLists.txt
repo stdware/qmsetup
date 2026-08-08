@@ -81,6 +81,7 @@ set(_built_projects
     QMSetupAPI/test_basic_install
     modules/Filesystem/test_copy_command
     modules/Filesystem/test_future_configure_file
+    modules/Preprocess/test_sync_include_install
     modules/Deploy/test_deploy_directory
 )
 

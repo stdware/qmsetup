@@ -26,8 +26,15 @@ macro(qm_init_directories)
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${QMSETUP_BUILD_DIR}/lib)
     endif()
 
+    if(NOT DEFINED QMSETUP_BUILD_SHARE_DIR)
+        set(QMSETUP_BUILD_SHARE_DIR ${QMSETUP_BUILD_DIR}/share)
+    endif()
+
+    # Deprecated, and set for as long as something may still be reading it. The
+    # three above are CMake's own variables and this one never was, so it had no
+    # business in that namespace. Read QMSETUP_BUILD_SHARE_DIR instead.
     if(NOT DEFINED CMAKE_BUILD_SHARE_DIR)
-        set(CMAKE_BUILD_SHARE_DIR ${QMSETUP_BUILD_DIR}/share)
+        set(CMAKE_BUILD_SHARE_DIR ${QMSETUP_BUILD_SHARE_DIR})
     endif()
 endmacro()
 

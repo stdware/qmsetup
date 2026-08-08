@@ -20,7 +20,12 @@ qmtest_equal("the build directory is named after the configuration"
 qmtest_equal("executables go under bin" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" "${QMSETUP_BUILD_DIR}/bin")
 qmtest_equal("libraries go under lib" "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}" "${QMSETUP_BUILD_DIR}/lib")
 qmtest_equal("import libraries go under lib too" "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}" "${QMSETUP_BUILD_DIR}/lib")
-qmtest_equal("resources go under share" "${CMAKE_BUILD_SHARE_DIR}" "${QMSETUP_BUILD_DIR}/share")
+qmtest_equal("resources go under share" "${QMSETUP_BUILD_SHARE_DIR}" "${QMSETUP_BUILD_DIR}/share")
+
+# The old name, kept until nothing reads it. It never belonged in CMake's
+# namespace, the three above being CMake's own and this one not.
+qmtest_equal("and the deprecated name still answers the same"
+    "${CMAKE_BUILD_SHARE_DIR}" "${QMSETUP_BUILD_SHARE_DIR}")
 
 # ------------------------------------------------------------------
 # A project that has made up its own mind
@@ -30,6 +35,7 @@ unset(QMSETUP_BUILD_DIR)
 unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 unset(CMAKE_LIBRARY_OUTPUT_DIRECTORY)
 unset(CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
+unset(QMSETUP_BUILD_SHARE_DIR)
 unset(CMAKE_BUILD_SHARE_DIR)
 
 set(QMSETUP_BUILD_DIR "/somewhere/else")
@@ -42,6 +48,7 @@ unset(QMSETUP_BUILD_DIR)
 unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY)
 unset(CMAKE_LIBRARY_OUTPUT_DIRECTORY)
 unset(CMAKE_ARCHIVE_OUTPUT_DIRECTORY)
+unset(QMSETUP_BUILD_SHARE_DIR)
 unset(CMAKE_BUILD_SHARE_DIR)
 
 # One directory of its own, and the others still worked out.

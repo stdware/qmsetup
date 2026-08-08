@@ -355,6 +355,16 @@ endmacro()
 
     INCLUDE/LINKDIR: `dir/*` will be expanded to all subdirectories
                      `dir/**` will be expanded to all descendent directories recursively
+
+    Scopes: for LINKS, INCLUDE, LINKDIR, DEFINES and FEATURES the bare name is
+    public, and the _INTERFACE and _PRIVATE forms are the other two.
+
+    CCFLAGS and LDFLAGS go the other way. The bare name is private, and public
+    is spelt CCFLAGS_PUBLIC and LDFLAGS_PUBLIC. A compiler or linker flag is
+    usually about how this target is built rather than about how to use it, so
+    private is the answer wanted nearly every time and is what the short spelling
+    gives. Worth knowing, since it is the one place here where the bare name does
+    not mean public.
 ]] #
 macro(qm_configure_target _target)
     set(options)
@@ -531,7 +541,7 @@ function(qm_add_win_rc _target)
         return()
     endif()
 
-    _qm_check_target_type_helper(${_target} _ "EXECUTABLE" "SHARED_LIBRARY")
+    _qm_return_unless_target_type(${_target} _ "EXECUTABLE" "SHARED_LIBRARY")
 
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON OUTPUT_DIR)
@@ -592,7 +602,7 @@ function(qm_add_win_rc_enhanced _target)
         return()
     endif()
 
-    _qm_check_target_type_helper(${_target} _type "EXECUTABLE" "SHARED_LIBRARY")
+    _qm_return_unless_target_type(${_target} _type "EXECUTABLE" "SHARED_LIBRARY")
 
     set(options)
     set(oneValueArgs
@@ -679,7 +689,7 @@ function(qm_add_win_manifest _target)
         return()
     endif()
 
-    _qm_check_target_type_helper(${_target} _ "EXECUTABLE")
+    _qm_return_unless_target_type(${_target} _ "EXECUTABLE")
 
     set(options UTF8 ADMIN)
     set(oneValueArgs NAME VERSION DESCRIPTION OUTPUT_DIR)
@@ -760,7 +770,7 @@ function(qm_add_mac_bundle _target)
         return()
     endif()
 
-    _qm_check_target_type_helper(${_target} _ "EXECUTABLE")
+    _qm_return_unless_target_type(${_target} _ "EXECUTABLE")
 
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION COPYRIGHT ICON INFO_PLIST)
@@ -897,21 +907,8 @@ function(qm_collect_targets _var)
         set(_dir ${CMAKE_CURRENT_SOURCE_DIR})
     endif()
 
-    set(_tmp_targets)
-
-    macro(_get_targets_recursive _targets _dir)
-        get_property(_subdirs DIRECTORY ${_dir} PROPERTY SUBDIRECTORIES)
-
-        foreach(_subdir IN LISTS _subdirs)
-            _get_targets_recursive(${_targets} ${_subdir})
-        endforeach()
-
-        get_property(_current_targets DIRECTORY ${_dir} PROPERTY BUILDSYSTEM_TARGETS)
-        list(APPEND ${_targets} ${_current_targets})
-    endmacro()
-
     # Get targets
-    _get_targets_recursive(_tmp_targets ${_dir})
+    _qm_collect_targets_recursive(_tmp_targets ${_dir})
     set(_targets)
 
     if(NOT FUNC_EXECUTABLE AND NOT FUNC_SHARED AND NOT FUNC_STATIC AND NOT FUNC_INTERFACE AND NOT FUNC_UTILITY)
@@ -1157,7 +1154,44 @@ endfunction()
 # ----------------------------------
 # Private functions
 # ----------------------------------
-macro(_qm_check_target_type_helper _target _type)
+
+# Every target in \a _dir and in the directories under it, appended to the list
+# named by \a _out.
+#
+# A function rather than a macro, since a macro defined inside a function is
+# defined for the whole project and redefined on every call, and its locals are
+# the caller's. Recursion needs the answer carried back out, which is what the
+# read and write of \a _out around the loop is for.
+function(_qm_collect_targets_recursive _out _dir)
+    set(_found ${${_out}})
+
+    get_property(_subdirs DIRECTORY ${_dir} PROPERTY SUBDIRECTORIES)
+
+    foreach(_subdir IN LISTS _subdirs)
+        _qm_collect_targets_recursive(_found ${_subdir})
+    endforeach()
+
+    get_property(_current DIRECTORY ${_dir} PROPERTY BUILDSYSTEM_TARGETS)
+    list(APPEND _found ${_current})
+
+    set(${_out} ${_found} PARENT_SCOPE)
+endfunction()
+#[[
+    Return from the calling function unless \a _target is one of the types named,
+    and answer the type in \a _type where it is.
+
+    _qm_return_unless_target_type(<target> <type_var> <type...>)
+
+    A macro, since the return is the caller's. Named for that: called
+    _qm_check_target_type_helper, nothing at a call site said that the lines
+    after it might not run.
+
+    ##FIXME A target of the wrong type is passed over without a word, so
+    ##FIXME qm_add_win_rc on a static library does nothing and says nothing. A
+    ##FIXME diagnostic belongs here, and is left out for now because projects
+    ##FIXME already call these on whatever they have.
+]] #
+macro(_qm_return_unless_target_type _target _type)
     set(_tmp_target_type_list ${ARGN})
     get_target_property(_tmp_target_type ${_target} TYPE)
 
