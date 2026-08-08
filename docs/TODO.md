@@ -8,15 +8,22 @@ Both halves have a suite that runs from CTest on Windows, Linux and macOS: `test
 - `qm_compiler_*`. Each is a list of compiler flags chosen per compiler, so a test could only read the list back to itself, which says nothing about whether the flags are the right ones. What would catch a mistake there is compiling with them.
 - Everything under `cmake/modules/private`. It says on it that it may be modified or removed, and nothing outside qmsetup should be calling it. That takes `qm_install_package` with it, which configures and builds an external package during configure and wants a network to do anything worth asserting on.
 
-## Tested only where Qt is
+## Tested where the dependency is there
 
-`qm_find_qt`, `qm_link_qt`, `qm_include_qt_private`, `qm_add_translation` and `qm_install_qml_modules` are covered, against a real installation, by `tests/cmake/QMSetupAPI/test_qt_targets`, `tests/cmake/modules/Translate/test_translation` and `tests/cmake/modules/Qml/test_install_qml_modules`. All are registered only when the configure found a Qt, so pass `-DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler>` to have them run. A machine without one registers none of them rather than registering tests that pass themselves over, and CI has no Qt, so nothing there runs them yet.
+`qm_find_qt`, `qm_link_qt` and `qm_include_qt_private` are covered by `tests/cmake/QMSetupAPI/test_qt_targets`, `qm_add_translation` by `tests/cmake/modules/Translate/test_translation`, `qm_install_qml_modules` by `tests/cmake/modules/Qml/test_install_qml_modules`, and `qm_create_protobuf` by `tests/cmake/modules/Protobuf/test_create_protobuf`. All of them run against a real installation rather than a stub.
 
-`qm_install_qml_modules` is covered as well, by `tests/cmake/modules/Qml/test_install_qml_modules`. It is registered on top of the Qt check above, since it is built on `qt_query_qml_module` and that arrived in Qt 6.5.
+Each registers itself only where the configure found what it needs, so a machine without one of them runs a shorter suite rather than one full of tests that pass themselves over. Name the installations the ordinary way and they all run, `CMAKE_PREFIX_PATH` taking more than one entry:
 
-`qm_create_protobuf` is not covered yet either, though nothing stands in the way. It needs a protobuf, found the same way with `CMAKE_PREFIX_PATH`, and that variable takes more than one entry so Qt and protobuf can both be named at once.
+```sh
+cmake -B build -DQMSETUP_BUILD_TESTS=ON \
+      "-DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler>;/path/to/protobuf"
+```
 
-It wants `find_package(Protobuf CONFIG)` rather than plain `find_package(Protobuf)`, which is what the module's own message and the example in the README now say. The function asks for the `protobuf::protoc` target and module mode does not create one, leaving `Protobuf_PROTOC_EXECUTABLE` not found as well, at least where the compiler is installed somewhere the find module does not look. The two forms cannot follow one another either: the second stops on targets the first has already defined.
+The QML one asks for Qt 6.5 on top of that, `qt_query_qml_module` having arrived then.
+
+Protobuf wants `find_package(Protobuf CONFIG)` rather than plain `find_package(Protobuf)`, which is what the module's own message and the example in the README say. The function asks for the `protobuf::protoc` target and module mode does not create one, leaving `Protobuf_PROTOC_EXECUTABLE` not found as well, at least where the compiler is installed somewhere the find module does not look. The two forms cannot follow one another either: the second stops on targets the first has already defined.
+
+CI installs Qt on the four matrix jobs and protobuf everywhere but Windows, where the only route to a development package is vcpkg building it and abseil from source. Since a dependency that failed to install would be a shorter run rather than a failure, each job names the tests it expects and stops if one of them did not register.
 
 ## Not tested yet
 
@@ -24,6 +31,8 @@ It wants `find_package(Protobuf CONFIG)` rather than plain `find_package(Protobu
 - The scripts under `cmake/scripts`, called directly rather than through the function that wraps them. `copy.cmake` is reached through `qm_add_copy_command` and `configure_file.cmake` through `qm_future_configure_file`, both against a real build, so what a direct call would add is the refusal each makes when an argument is missing. `xxd.cmake` is reached only by `qm_add_binary_resource`, which is private.
 
 ## Unverified
+
+- The workflow under `.github` has never run on GitHub. Every command in it has been run by hand on Windows, Linux and macOS, and the YAML parses and agrees with itself, but which archives `aqtinstall` puts on disk for a given version and architecture, and whether the distribution packages carry the CMake configuration a `find_package` needs, are answers only a real run gives. The checks that each job makes on what registered are there so that a wrong answer is a failure rather than a quiet gap.
 
 - The standard library filter cannot be seen to work on macOS. Everything under `/usr/lib` now lives in the dyld shared cache rather than on disk, so `libSystem` is reported as not found whether or not `--standard` was asked for, and the deployment has nothing to leave behind. Checked on Windows and Linux, where the filter has files to act on.
 - Nothing compiles what `qm_add_win_rc` and `qm_add_win_rc_enhanced` write. The tests read the generated `.rc` and check what is in it, and the icons they name are files with the right extension and nothing else in them, so that a resource compiler would accept the result is not checked. The same holds for `qm_add_win_manifest`, which nothing embeds.

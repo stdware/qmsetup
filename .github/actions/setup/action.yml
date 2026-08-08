@@ -1,5 +1,11 @@
 name: Set up the build
-description: Ninja, Python and the compiler environment, so that a job only has to run cmake.
+description: Ninja, Python, protobuf and the compiler environment, so that a job only has to run cmake.
+
+inputs:
+  protobuf:
+    description: Install protobuf, so that the tests for qm_create_protobuf register themselves.
+    required: false
+    default: 'true'
 
 runs:
   using: composite
@@ -35,3 +41,22 @@ runs:
       if: runner.os == 'Windows'
       with:
         arch: x64
+
+    # protobuf, for qm_create_protobuf. The tests ask for it with
+    # find_package(Protobuf CONFIG) and register themselves only when they find
+    # protobuf::protoc, so a runner without one is a test that does not appear
+    # rather than a job that fails. That is why nothing here is fatal.
+    #
+    # Windows is left out. What is wanted is the development package with its
+    # CMake configuration in it, and the way to that on Windows is vcpkg
+    # building protobuf and abseil from source, which is ten minutes a run for
+    # one test that Linux and macOS already cover.
+    - name: Protobuf (Linux)
+      if: runner.os == 'Linux' && inputs.protobuf == 'true'
+      shell: bash
+      run: sudo apt-get install -y protobuf-compiler libprotobuf-dev
+
+    - name: Protobuf (macOS)
+      if: runner.os == 'macOS' && inputs.protobuf == 'true'
+      shell: bash
+      run: brew install protobuf
