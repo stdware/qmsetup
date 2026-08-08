@@ -156,9 +156,20 @@ endif()
 # The one that wants protobuf
 # ------------------------------------------------------------------
 
-# CONFIG, since module mode gives the libraries and not protobuf::protoc, which
-# is the target qm_create_protobuf asks for.
+# Both ways, since neither reaches every protobuf. One built and installed the
+# upstream way, which is what vcpkg ships, answers CONFIG and gives module mode
+# the libraries without protobuf::protoc. A distribution package is the other
+# way about: Ubuntu's libprotobuf-dev carries no CMake configuration at all, so
+# CONFIG cannot find it, while FindProtobuf looks for the compiler on the path
+# and makes the target out of what it finds.
+#
+# CONFIG first, and module mode only if that found nothing. The other order is
+# an error, the second call stopping on targets the first has already defined.
 find_package(Protobuf CONFIG QUIET)
+
+if(NOT TARGET protobuf::protoc)
+    find_package(Protobuf QUIET)
+endif()
 
 if(TARGET protobuf::protoc)
     message(STATUS "qmsetup tests: protobuf ${Protobuf_VERSION} at ${Protobuf_DIR}")

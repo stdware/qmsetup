@@ -3,9 +3,13 @@
 # Registered only where tests/cmake/CMakeLists.txt found a protobuf, so there is
 # no check in here asking whether one is present.
 #
-# Found with CONFIG. Module mode gives the libraries and no protobuf::protoc,
-# which is the target this function asks for, and the two forms cannot follow
-# one another: the second stops on targets the first has already defined.
+# Found both ways, since neither reaches every protobuf. One installed the
+# upstream way answers CONFIG, and a distribution package carries no CMake
+# configuration at all and is found by FindProtobuf looking for the compiler.
+#
+# CONFIG first. The other order is an error, the second call stopping on targets
+# the first has already defined, and a CONFIG that found nothing defines nothing
+# for module mode to trip over.
 #
 # Built by testing/build.cmake, since the generating rule runs at build time.
 # Nothing is installed. What was generated is asserted in check.cmake, and the
@@ -15,7 +19,11 @@
 cmake_minimum_required(VERSION 3.19)
 project(qmtest_create_protobuf CXX)
 
-find_package(Protobuf CONFIG REQUIRED)
+find_package(Protobuf CONFIG QUIET)
+
+if(NOT TARGET protobuf::protoc)
+    find_package(Protobuf REQUIRED)
+endif()
 
 include(${QMSETUP_API})
 

@@ -94,7 +94,7 @@ jobs:
       # it needs. A dependency that did not install would otherwise be a shorter
       # run rather than a failure, which is the one way this job could go green
       # while covering less than it says. So they are asked for by name.
-      - name: What was installed is being tested
+      - name: Check that the Qt and protobuf tests registered
         shell: bash
         run: |
           expected="test_qt_targets test_translation test_install_qml_modules"
@@ -204,7 +204,7 @@ jobs:
 
       # The same question the matrix jobs ask, for the one dependency this job
       # installs.
-      - name: What was installed is being tested
+      - name: Check that the protobuf test registered
         shell: msys2 {0}
         run: |
           if ! ctest --test-dir build -N -R test_create_protobuf | grep -q test_create_protobuf; then

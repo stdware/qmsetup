@@ -21,7 +21,7 @@ cmake -B build -DQMSETUP_BUILD_TESTS=ON \
 
 The QML one asks for Qt 6.5 on top of that, `qt_query_qml_module` having arrived then.
 
-Protobuf wants `find_package(Protobuf CONFIG)` rather than plain `find_package(Protobuf)`, which is what the module's own message and the example in the README say. The function asks for the `protobuf::protoc` target and module mode does not create one, leaving `Protobuf_PROTOC_EXECUTABLE` not found as well, at least where the compiler is installed somewhere the find module does not look. The two forms cannot follow one another either: the second stops on targets the first has already defined.
+Protobuf is asked for both ways, since neither reaches every installation. One built and installed the upstream way, which is what vcpkg ships, answers `find_package(Protobuf CONFIG)` and gives module mode the libraries without the `protobuf::protoc` that `qm_create_protobuf` wants. A distribution package is the other way about: Ubuntu's `libprotobuf-dev` carries no CMake configuration at all, so `CONFIG` cannot see it, and `FindProtobuf` looks for the compiler on the path and makes the target out of what it finds. `CONFIG` is asked first, the other order being an error where the second call stops on targets the first has already defined.
 
 CI installs Qt on the four matrix jobs and protobuf everywhere but Windows, where the only route to a development package is vcpkg building it and abseil from source. Since a dependency that failed to install would be a shorter run rather than a failure, each job names the tests it expects and stops if one of them did not register.
 
@@ -32,7 +32,7 @@ CI installs Qt on the four matrix jobs and protobuf everywhere but Windows, wher
 
 ## Unverified
 
-- The workflow under `.github` has never run on GitHub. Every command in it has been run by hand on Windows, Linux and macOS, and the YAML parses and agrees with itself, but which archives `aqtinstall` puts on disk for a given version and architecture, and whether the distribution packages carry the CMake configuration a `find_package` needs, are answers only a real run gives. The checks that each job makes on what registered are there so that a wrong answer is a failure rather than a quiet gap.
+- The protobuf that a distribution ships is not tested anywhere but on CI. The machine this was written on has one from vcpkg, which is found the other way about, so the `FindProtobuf` half of the arrangement above is exercised only by the Linux jobs.
 
 - The standard library filter cannot be seen to work on macOS. Everything under `/usr/lib` now lives in the dyld shared cache rather than on disk, so `libSystem` is reported as not found whether or not `--standard` was asked for, and the deployment has nothing to leave behind. Checked on Windows and Linux, where the filter has files to act on.
 - Nothing compiles what `qm_add_win_rc` and `qm_add_win_rc_enhanced` write. The tests read the generated `.rc` and check what is in it, and the icons they name are files with the right extension and nothing else in them, so that a resource compiler would accept the result is not checked. The same holds for `qm_add_win_manifest`, which nothing embeds.
