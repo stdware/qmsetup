@@ -14,7 +14,9 @@ Both halves have a suite that runs from CTest on Windows, Linux and macOS: `test
 
 `qm_install_qml_modules` is still untested. It wants a QML module to install, which is a fixture of a different size from the ones above.
 
-`qm_create_protobuf` is not covered yet either, though it can be. It needs a protobuf, found the same way with `CMAKE_PREFIX_PATH`, and the search path takes more than one entry so Qt and protobuf can both be named. Worth knowing before writing it: the function asks for the `protobuf::protoc` target, and `find_package(Protobuf)` in module mode does not create one. `find_package(protobuf CONFIG)` does. The two cannot be used one after the other, the second reporting that some of the targets are already defined.
+`qm_create_protobuf` is not covered yet either, though nothing stands in the way. It needs a protobuf, found the same way with `CMAKE_PREFIX_PATH`, and that variable takes more than one entry so Qt and protobuf can both be named at once.
+
+It wants `find_package(Protobuf CONFIG)` rather than plain `find_package(Protobuf)`, which is what the module's own message and the example in the README now say. The function asks for the `protobuf::protoc` target and module mode does not create one, leaving `Protobuf_PROTOC_EXECUTABLE` not found as well, at least where the compiler is installed somewhere the find module does not look. The two forms cannot follow one another either: the second stops on targets the first has already defined.
 
 ## Not tested yet
 
