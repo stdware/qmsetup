@@ -12,6 +12,8 @@ Both halves have a suite that runs from CTest on Windows, Linux and macOS: `test
 
 `qm_find_qt`, `qm_link_qt` and `qm_include_qt_private` are covered by `tests/cmake/QMSetupAPI/test_qt_targets`, `qm_add_translation` by `tests/cmake/modules/Translate/test_translation`, `qm_install_qml_modules` by `tests/cmake/modules/Qml/test_install_qml_modules`, and `qm_create_protobuf` by `tests/cmake/modules/Protobuf/test_create_protobuf`. All of them run against a real installation rather than a stub.
 
+The QML half of `qm_deploy_directory` is one of these, in `tests/cmake/modules/Deploy/test_deploy_qml`, and the rest of that function is covered without a Qt in `test_deploy_directory` beside it. What splits them is qmake: a QML module is named relative to a directory only qmake can say where is, while `PLUGINS` given `EXTRA_PLUGIN_PATHS` never asks for one.
+
 Each registers itself only where the configure found what it needs, so a machine without one of them runs a shorter suite rather than one full of tests that pass themselves over. Name the installations the ordinary way and they all run, `CMAKE_PREFIX_PATH` taking more than one entry:
 
 ```sh
@@ -30,6 +32,7 @@ Between them the jobs reach both ways of finding protobuf: Linux has the distrib
 ## Not tested yet
 
 - The pass that strips a universal binary down to the architecture in use, which needs a binary built for two. `lipo` itself is on every machine with the command line tools, so what is missing is the fixture: building one means a second pass over the whole deploy tree with `CMAKE_OSX_ARCHITECTURES`, and it would test one function.
+- `FORCE`, on `qm_deploy_directory` and on `qm_win_applocal_deps`. It is what makes a copy happen where the destination already holds a file of the same name and no older, so a test wants two runs with something put in the way between them, and either function copies enough that doing it twice is the slowest thing in the suite.
 - The scripts under `cmake/scripts`, called directly rather than through the function that wraps them. `copy.cmake` is reached through `qm_add_copy_command` and `configure_file.cmake` through `qm_future_configure_file`, both against a real build, so what a direct call would add is the refusal each makes when an argument is missing. `xxd.cmake` is reached only by `qm_add_binary_resource`, which is private.
 
 ## Unverified

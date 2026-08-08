@@ -138,14 +138,19 @@ if(QT_FOUND)
     list(APPEND _built_projects modules/Translate/test_translation)
 
     # qm_install_qml_modules is built on qt_query_qml_module, which arrived in
-    # Qt 6.5, so a Qt5 or an early Qt6 has nothing for it to call.
+    # Qt 6.5, so a Qt5 or an early Qt6 has nothing for it to call. The QML half
+    # of qm_deploy_directory wants the same version for its own reason: the
+    # module it deploys is QtCore, which arrived then as well.
     find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Qml QUIET)
 
     if(TARGET Qt${QT_VERSION_MAJOR}::Qml AND QT_VERSION VERSION_GREATER_EQUAL 6.5)
-        list(APPEND _built_projects modules/Qml/test_install_qml_modules)
+        list(APPEND _built_projects
+            modules/Qml/test_install_qml_modules
+            modules/Deploy/test_deploy_qml
+        )
     else()
-        message(STATUS "qmsetup tests: no Qml module, or a Qt older than 6.5, "
-            "so qm_install_qml_modules is left untested")
+        message(STATUS "qmsetup tests: no Qml module, or a Qt older than 6.5, so "
+            "qm_install_qml_modules and the QML half of qm_deploy_directory are left untested")
     endif()
 else()
     message(STATUS "qmsetup tests: no Qt found, so the functions that want one are left untested. "

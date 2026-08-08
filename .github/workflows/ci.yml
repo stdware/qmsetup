@@ -97,7 +97,7 @@ jobs:
       - name: Check that the Qt and protobuf tests registered
         shell: bash
         run: |
-          expected="test_qt_targets test_translation test_install_qml_modules"
+          expected="test_qt_targets test_translation test_install_qml_modules test_deploy_qml"
 
           if [ "$RUNNER_OS" != "Windows" ]; then
             expected="$expected test_create_protobuf"
