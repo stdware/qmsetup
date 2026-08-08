@@ -201,7 +201,7 @@ qm_add_translation(${PROJECT_NAME}_translations
 ```cmake
 qm_import(Protobuf)
 
-find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
 qm_create_protobuf(_proto_src
     INPUT a.proto b.proto
     INCLUDE_DIRECTORIES src/proto

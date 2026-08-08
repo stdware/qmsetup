@@ -35,7 +35,7 @@ function(qm_create_protobuf _out)
     # Find `protoc`
     if(NOT PROTOC_EXECUTABLE)
         if(NOT TARGET protobuf::protoc)
-            message(FATAL_ERROR "qm_create_protobuf: protobuf compiler not found. Add find_package(Protobuf) to CMake to enable.")
+            message(FATAL_ERROR "qm_create_protobuf: protobuf compiler not found. Add find_package(Protobuf CONFIG) to CMake to enable.")
         endif()
 
         get_target_property(PROTOC_EXECUTABLE protobuf::protoc LOCATION)

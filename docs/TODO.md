@@ -4,7 +4,7 @@ Both halves have a suite that runs from CTest on Windows, Linux and macOS: `test
 
 ## Not tested, and will not be
 
-- Protobuf for `qm_create_protobuf`, and doxygen for `qm_setup_doxygen`. Both want a tool installed to say anything at all.
+- Doxygen for `qm_setup_doxygen`, which wants the tool installed to say anything at all.
 - `qm_compiler_*`. Each is a list of compiler flags chosen per compiler, so a test could only read the list back to itself, which says nothing about whether the flags are the right ones. What would catch a mistake there is compiling with them.
 - Everything under `cmake/modules/private`. It says on it that it may be modified or removed, and nothing outside qmsetup should be calling it. That takes `qm_install_package` with it, which configures and builds an external package during configure and wants a network to do anything worth asserting on.
 
@@ -13,6 +13,8 @@ Both halves have a suite that runs from CTest on Windows, Linux and macOS: `test
 `qm_find_qt`, `qm_link_qt`, `qm_include_qt_private` and `qm_add_translation` are covered, against a real installation, by `tests/cmake/QMSetupAPI/test_qt_targets` and `tests/cmake/modules/Translate/test_translation`. Both are registered only when the configure found a Qt, so pass `-DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler>` to have them run. A machine without one registers neither rather than registering tests that pass themselves over, and CI has no Qt, so nothing there runs them yet.
 
 `qm_install_qml_modules` is still untested. It wants a QML module to install, which is a fixture of a different size from the ones above.
+
+`qm_create_protobuf` is not covered yet either, though it can be. It needs a protobuf, found the same way with `CMAKE_PREFIX_PATH`, and the search path takes more than one entry so Qt and protobuf can both be named. Worth knowing before writing it: the function asks for the `protobuf::protoc` target, and `find_package(Protobuf)` in module mode does not create one. `find_package(protobuf CONFIG)` does. The two cannot be used one after the other, the second reporting that some of the targets are already defined.
 
 ## Not tested yet
 
