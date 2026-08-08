@@ -25,9 +25,9 @@ int cmd_incsync(const cli::ParseResult &result) {
     bool all = !result.option("-n").has_value();
 
     const fs::path &src =
-        stdc::path::clean_path(fs::absolute(str2tstr(result.value<std::string>(0).value_or(std::string()))));
+        stdc::path::clean_path(fs::absolute(str2tstr(argumentValue(result, 0))));
     const fs::path &dest =
-        stdc::path::clean_path(fs::absolute(str2tstr(result.value<std::string>(1).value_or(std::string()))));
+        stdc::path::clean_path(fs::absolute(str2tstr(argumentValue(result, 1))));
     if (!fs::is_directory(src)) {
         throw std::runtime_error("not a directory: \"" + tstr2str(src) + "\"");
     }
@@ -45,9 +45,8 @@ int cmd_incsync(const cli::ParseResult &result) {
         }
 
         for (int i = 0; i < cnt; ++i) {
-            includes.emplace_back(
-                str2tstr(includeResult->value<std::string>(0, i).value_or(std::string())),
-                str2tstr(includeResult->value<std::string>(1, i).value_or(std::string())));
+            includes.emplace_back(str2tstr(givenValue(*includeResult, 0, i)),
+                                  str2tstr(givenValue(*includeResult, 1, i)));
         }
     }
 

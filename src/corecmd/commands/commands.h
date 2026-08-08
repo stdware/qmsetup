@@ -50,6 +50,35 @@ inline bool isStandardSet(const cli::ParseResult &result) {
 
 /// @}
 
+/// \name Reading what was given
+///
+/// A parse result answers with \c std::optional, since a value that is not there and a value
+/// that is empty are different questions. Nothing here needs them to be: an argument that was
+/// not given and one given as an empty string both mean the command has nothing to work with.
+/// So these fold the two together and hand back a plain value.
+///
+/// They are also the readable way to spell it. Written out, asking for one string is
+/// <tt>result.value<std::string>(0).value_or(std::string())</tt>, and the tail of that cannot
+/// be shortened to \c {} because \c value_or deduces its parameter and a braced initialiser
+/// deduces nothing. MSVC takes it anyway, so a line written that way builds here and stops the
+/// build on GCC.
+/// @{
+
+/// One positional argument of the command that was reached.
+inline std::string argumentValue(const cli::ParseResult &result, int index) {
+    return result.value<std::string>(index).value_or(std::string());
+}
+
+/// The values of one positional argument of the command that was reached.
+inline std::vector<std::string> argumentValues(const cli::ParseResult &result, int index) {
+    return result.values<std::string>(index).value_or(std::vector<std::string>{});
+}
+
+/// The first argument of \a token's first occurrence.
+inline std::string optionValue(const cli::ParseResult &result, std::string_view token) {
+    return result.valueForOption<std::string>(token).value_or(std::string());
+}
+
 /// The values of one argument of \a token, across every time it was given.
 ///
 /// \param index which of the option's arguments to read, for the ones that take more than one
@@ -63,9 +92,14 @@ inline std::vector<std::string> optionValues(const cli::ParseResult &result,
     return given->values<std::string>(index).value_or(std::vector<std::string>{});
 }
 
-/// The values of one positional argument of the command that was reached.
-inline std::vector<std::string> argumentValues(const cli::ParseResult &result, int index) {
-    return result.values<std::string>(index).value_or(std::vector<std::string>{});
+/// One argument of one occurrence of an option already known to have been given.
+///
+/// \param index which of the option's arguments to read
+/// \param occurrence which time it was given, for an option that may be repeated
+inline std::string givenValue(const cli::OptionResult &given, int index = 0, int occurrence = 0) {
+    return given.value<std::string>(index, occurrence).value_or(std::string());
 }
+
+/// @}
 
 #endif // COMMANDS_H

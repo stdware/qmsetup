@@ -38,7 +38,7 @@ int cmd_copy(const cli::ParseResult &result) {
     }
 
     const auto &dest =
-        stdc::path::clean_path(fs::absolute(str2tstr(result.value<std::string>(1).value_or(std::string()))));
+        stdc::path::clean_path(fs::absolute(str2tstr(argumentValue(result, 1))));
 
     // Add excludes
     TStringList excludes;
@@ -92,8 +92,8 @@ int cmd_rmdir(const cli::ParseResult &result) {
 int cmd_touch(const cli::ParseResult &result) {
     bool verbose = isVerboseSet(result);
 
-    const auto &file = str2tstr(result.value<std::string>(0).value_or(std::string()));
-    const auto &refFile = str2tstr(result.value<std::string>(1).value_or(std::string()));
+    const auto &file = str2tstr(argumentValue(result, 0));
+    const auto &refFile = str2tstr(argumentValue(result, 1));
 
     // Check existence
     if (!fs::is_regular_file(file)) {
@@ -122,4 +122,3 @@ int cmd_touch(const cli::ParseResult &result) {
     Utils::setFileTime(file, t);
     return 0;
 }
-

@@ -30,7 +30,7 @@ namespace {
 
         request.dest = fs::current_path();
         if (auto given = result.option("-o"); given) {
-            request.dest = absoluteOf(given->value<std::string>().value_or(std::string()));
+            request.dest = absoluteOf(givenValue(*given));
         }
 
         for (const auto &item : argumentValues(result, 0)) {
@@ -42,9 +42,8 @@ namespace {
             request.extraFiles.reserve(count);
             for (int i = 0; i < count; ++i) {
                 request.extraFiles.emplace_back(
-                    Deploy::toDeployable(
-                        absoluteOf(given->value<std::string>(0, i).value_or(std::string()))),
-                    absoluteOf(given->value<std::string>(1, i).value_or(std::string())));
+                    Deploy::toDeployable(absoluteOf(givenValue(*given, 0, i))),
+                    absoluteOf(givenValue(*given, 1, i)));
             }
         }
 
