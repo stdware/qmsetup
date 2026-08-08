@@ -11,18 +11,60 @@
 # platform and, on Windows, by every compiler.
 include("${_build}/built_names.cmake")
 
-# Where it goes is the deployment's decision rather than the compiler's. A
-# Windows library belongs beside the binaries and everywhere else it does not.
-if(WIN32)
-    set(_library_dir "${_prefix}/bin")
-else()
-    set(_library_dir "${_prefix}/lib")
-endif()
+set(_library_dir "${_prefix}/qmtest_libs")
+set(_plugin_dir "${_prefix}/qmtest_plugins")
 
-qmtest_exists("the library the application needs was brought along" "${_library_dir}/${_extra_name}")
+# ------------------------------------------------------------------
+# What following the graph found
+# ------------------------------------------------------------------
 
-# And nothing of the system came with it, --standard having been asked for.
-file(GLOB _deployed "${_library_dir}/*")
+qmtest_exists("the library the application needs was brought along"
+    "${_library_dir}/${_extra_name}")
+
+# ------------------------------------------------------------------
+# LIBRARY_DIR
+# ------------------------------------------------------------------
+
+# Where a library lands when nothing says is beside the binaries on Windows and
+# under lib everywhere else, and LIBRARY_DIR is what overrides that. So neither
+# of those two has anything in it.
+qmtest_not_exists("and not where it would have gone by default"
+    "${_prefix}/bin/${_extra_name}")
+qmtest_not_exists("nor the other default" "${_prefix}/lib/${_extra_name}")
+
+# ------------------------------------------------------------------
+# EXTRA_LIBRARIES
+# ------------------------------------------------------------------
+
+# Matched by name against what is in the searching paths, and copied where the
+# libraries go.
+qmtest_exists("a binary named outright is brought along"
+    "${_library_dir}/${_prebuilt_name}")
+
+# And a searching path is somewhere to look rather than something to take. This
+# library sits in one, is linked by nothing, and is named by nothing, so nothing
+# should have brought it.
+qmtest_not_exists("while what is merely in a searching path is left alone"
+    "${_library_dir}/${_loose_name}")
+
+# ------------------------------------------------------------------
+# PLUGINS, PLUGIN_DIR and EXTRA_PLUGIN_PATHS
+# ------------------------------------------------------------------
+
+# The category is kept, a plugin being named as <category>/<name> and belonging
+# under a directory of that name wherever it is put.
+qmtest_exists("a plugin named is brought along, under its category"
+    "${_plugin_dir}/iconengines/${_plugin_name}")
+
+qmtest_not_exists("and not flattened beside it" "${_plugin_dir}/${_plugin_name}")
+qmtest_not_exists("nor left among the libraries" "${_library_dir}/${_plugin_name}")
+
+# ------------------------------------------------------------------
+# STANDARD
+# ------------------------------------------------------------------
+
+# Nothing of the system came with any of it.
+file(GLOB_RECURSE _deployed "${_library_dir}/*" "${_plugin_dir}/*")
 set(_runtime)
 
 foreach(_item IN LISTS _deployed)
