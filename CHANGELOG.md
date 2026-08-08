@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.1.0.0 (unreleased)
+## v1.1.0.0 (2026-08-08)
 
 ### Removed
 
@@ -20,7 +20,7 @@
 
 ### Changed
 
-- `qmcorecmd` is built on [stdcorelib](https://github.com/stdware/stdcorelib) rather than syscmdline. It arrives as a submodule under `src`, so a clone wants `--recursive`, and an installed copy is used instead where there is one.
+- `qmcorecmd` is built on [stdcorelib](https://github.com/stdware/stdcorelib) v1.1.0.0 rather than syscmdline. It arrives as a submodule under `src`, so a clone wants `--recursive`, and an installed copy is used instead where there is one.
 - On Linux, deployment reads what a binary asks for with `patchelf --print-needed` and works out where each of those resolves to with `ldd`, where it used to read `ldd` alone. `ldd` reports the whole closure flattened, so excluding a library with `-e` left everything behind it looking as though the binary had asked for it directly. Excluding one now hides what only it asked for, which is what the option means everywhere else.
 - `qm_get_subdirs` keeps what matches any of the `REGEX_INCLUDE` expressions rather than what matches all of them. Two names could not both be true of one directory, so asking for two gave nothing.
 - `qm_find_qt` takes `QUIET` and `REQUIRED` together. They were one chain of `elseif`, so asking for two used the first and dropped the rest. `EXACT` is still accepted and still does nothing, there being no version for it to match.

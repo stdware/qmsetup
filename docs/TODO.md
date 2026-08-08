@@ -1,6 +1,6 @@
 # Status
 
-Both halves have a suite that runs from CTest on Windows, Linux and macOS: `tests/cli` runs `qmcorecmd` as a black box, and `tests/cmake` runs the `qm_*` functions. What follows is what neither of them reaches.
+Both halves have a suite that runs from CTest on Windows, Linux and macOS: `tests/cli` runs `qmcorecmd` as a black box, and `tests/cmake` runs the `qm_*` functions. What follows is what they do not reach, and what they reach only where something else is installed.
 
 ## Not tested, and will not be
 
@@ -23,7 +23,7 @@ The QML one asks for Qt 6.5 on top of that, `qt_query_qml_module` having arrived
 
 Protobuf is asked for both ways, since neither reaches every installation. One built and installed the upstream way, which is what vcpkg ships, answers `find_package(Protobuf CONFIG)` and gives module mode the libraries without the `protobuf::protoc` that `qm_create_protobuf` wants. A distribution package is the other way about: Ubuntu's `libprotobuf-dev` carries no CMake configuration at all, so `CONFIG` cannot see it, and `FindProtobuf` looks for the compiler on the path and makes the target out of what it finds. `CONFIG` is asked first, the other order being an error where the second call stops on targets the first has already defined.
 
-CI installs Qt on the four matrix jobs and protobuf everywhere but Windows, where the only route to a development package is vcpkg building it and abseil from source. Since a dependency that failed to install would be a shorter run rather than a failure, each job names the tests it expects and stops if one of them did not register, which is how the distribution package was found out about in the first place.
+CI installs Qt on the four matrix jobs, and protobuf on Linux, on macOS and in the MinGW job from msys2. The two MSVC jobs go without, the only route to a development package there being vcpkg building it and abseil from source. Since a dependency that failed to install would be a shorter run rather than a failure, each job names the tests it expects and stops if one of them did not register, which is how the distribution package was found out about in the first place.
 
 Between them the jobs reach both ways of finding protobuf: Linux has the distribution one at 3.21 through `FindProtobuf`, and macOS and MinGW have one at 35 through `CONFIG`.
 
