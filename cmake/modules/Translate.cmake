@@ -282,11 +282,9 @@ function(_qm_add_lupdate_target _target)
         get_directory_property(_inc_DIRS INCLUDE_DIRECTORIES)
 
         # As they stand. CMake stores an include directory absolute whatever it
-        # was written as, so there was nothing for the get_filename_component
-        # that used to be here to do, and its answer was never read anyway.
-        # Putting it to use would have been worse than dropping it: what can be
-        # in this property and is not a path is a generator expression, and
-        # making one of those absolute prepends the source directory to it.
+        # was written as, so there is nothing to make absolute here, and what
+        # can be in this property and is not a path is a generator expression,
+        # which making absolute would prepend the source directory to.
         foreach(_pro_include IN LISTS _inc_DIRS)
             set(_lst_file_srcs "-I${_pro_include}\n${_lst_file_srcs}")
         endforeach()

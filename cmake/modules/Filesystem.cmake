@@ -30,9 +30,9 @@ macro(qm_init_directories)
         set(QMSETUP_BUILD_SHARE_DIR ${QMSETUP_BUILD_DIR}/share)
     endif()
 
-    # Deprecated, and set for as long as something may still be reading it. The
-    # three above are CMake's own variables and this one never was, so it had no
-    # business in that namespace. Read QMSETUP_BUILD_SHARE_DIR instead.
+    # Deprecated, and set for as long as something may still be reading it.
+    # Read QMSETUP_BUILD_SHARE_DIR instead. The three above are CMake's own
+    # variables and this one is not, so it does not belong in that namespace.
     if(NOT DEFINED CMAKE_BUILD_SHARE_DIR)
         set(CMAKE_BUILD_SHARE_DIR ${QMSETUP_BUILD_SHARE_DIR})
     endif()
@@ -146,9 +146,9 @@ function(qm_add_copy_command _target)
             message(FATAL_ERROR "qm_add_copy_command: `QMSETUP_BUILD_DIR` not defined, the install directory cannot be determined.")
         endif()
 
-        # The same pair the build phase passes. Written out rather than expanded
-        # from a variable, which would have handed the script bare arguments
-        # with no name to read them under.
+        # The same pair the build phase passes, written out rather than expanded
+        # from a variable so that the script is handed a name to read them under
+        # rather than bare arguments.
         set(_install_extra_args)
 
         if(FUNC_EXTRA_ARGS)

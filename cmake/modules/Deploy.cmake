@@ -134,7 +134,7 @@ function(qm_win_applocal_deps _target)
 endfunction()
 
 #[[
-    Add deploy command when install project, not available in debug mode.
+    Add a deploy command when installing the project. Not for a debug build.
 
     qm_deploy_directory(<install_dir>
         [FORCE] [STANDARD] [VERBOSE]
@@ -158,8 +158,19 @@ endfunction()
     QML: Qt qml directories
     QML_DIR: Qt qml destination
     LIBRARY_DIR: Library destination
-    EXTRA_LIBRARIES： Extra library names list to deploy
+    EXTRA_LIBRARIES: Extra library names list to deploy
     EXTRA_SEARCHING_PATHS: Extra library searching paths
+
+    What it gathers is the release flavour of everything, and that is decided in
+    the scripts underneath rather than here. A plugin is looked for by the name
+    it was given, so `iconengines/qsvgicon` finds `qsvgicon.dll` and never
+    `qsvgicond.dll`, and a debug build beside a release one is turned down on
+    sight. Unix leaves out anything whose name carries `debug`, which is how a
+    macOS framework spells its debug library.
+
+    So nothing stops this being called in a debug build, and what it leaves is a
+    release deployment. Nothing here reads the configuration, and the note above
+    is the whole of the enforcement.
 ]] #
 function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)

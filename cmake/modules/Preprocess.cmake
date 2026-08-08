@@ -39,9 +39,6 @@ include_guard(DIRECTORY)
     NO_STANDARD: Disable standard public-private pattern, enable it to override `QMSETUP_SYNC_INCLUDE_STANDARD`
 #]]
 function(qm_sync_include _src_dir _dest_dir)
-    # STANDARD was never declared, though the body below asks for it. With the
-    # pattern on by default it went unnoticed, since the only time it has
-    # anything to say is when QMSETUP_SYNC_INCLUDE_STANDARD is off.
     set(options FORCE VERBOSE STANDARD NO_STANDARD NO_ALL)
     set(oneValueArgs INSTALL_DIR)
     set(multiValueArgs INCLUDE EXCLUDE)
@@ -277,9 +274,8 @@ function(qm_remove_definition _key)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    # Which property, before reading it. Working the scope out afterwards left
-    # the read with no property name at all, and the write that followed put an
-    # empty list where the definitions had been.
+    # Which property, before reading it, since both the read below and the write
+    # after it are of that name.
     _qm_calc_property_scope_helper(_scope _prop
         TARGET "${FUNC_TARGET}" SOURCE "${FUNC_SOURCE}" DIRECTORY "${FUNC_DIRECTORY}"
         GLOBAL "${FUNC_GLOBAL}" PROPERTY "${FUNC_PROPERTY}"

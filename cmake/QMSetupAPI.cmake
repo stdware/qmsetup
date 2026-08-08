@@ -2,14 +2,15 @@ cmake_minimum_required(VERSION 3.19)
 
 #[[
     NOTICE
-    --------
-    Since Qt official CMake modules sets private header directory variables when you call `find_package(Qt)`
-    only if the Qt targets hasn't been defined, if we place `find_package(Qt)` in a function, the variable
-    will be cleared while the target remains after the function returns, as a result, we can never get the
-    private header directory variables again.
 
-    Therefore, never wrap `find_package(Qt)` in a function, use macro instead, any macros that wraps it also
-    shouldn't be wrapped in any function.
+    Never wrap `find_package(Qt)` in a function. Use a macro, and do not wrap
+    that in a function either.
+
+    Qt's own modules set the private header directory variables only when the Qt
+    targets have not been defined yet. Inside a function those variables belong
+    to the function's scope and go when it returns, while the targets they came
+    with stay. The next call sees the targets, sets nothing, and the directories
+    are gone for good.
 ]] #
 set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 
@@ -183,27 +184,44 @@ endfunction()
 #[[
     Skip CMAKE_AUTOMOC for sources files or ones in directories.
 
-    qm_skip_automoc(<file/dir...>)
+    qm_skip_automoc(<file/dir...> [RECURSIVE])
+
+    A directory stands for the sources directly in it. RECURSIVE takes what is
+    under them as well.
+
+    A name that is neither a file nor a directory is passed over rather than
+    being an error, so that a caller may name something optional.
+
+    \note A source file property belongs to the directory it was set in, so this
+          has to be called where the target using those sources is defined.
 ]] #
 function(qm_skip_automoc)
-    foreach(_item ${ARGN})
+    set(options RECURSIVE)
+    set(oneValueArgs)
+    set(multiValueArgs)
+    cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    set(_patterns *.h *.hpp *.hh *.hxx *.cpp *.cxx *.c *.cc *.m *.mm)
+
+    foreach(_item IN LISTS FUNC_UNPARSED_ARGUMENTS)
         get_filename_component(_item ${_item} ABSOLUTE)
 
         if(IS_DIRECTORY ${_item})
-            file(GLOB _src
-                ${_item}/*.h ${_item}/*.hpp
-                ${_item}/*.hh ${_item}/*.hxx
-                ${_item}/*.cpp ${_item}/*.cxx
-                ${_item}/*.c ${_item}/*.cc
-                ${_item}/*.m ${_item}/*.mm
-            )
-            set_source_files_properties(
-                ${_src} PROPERTIES SKIP_AUTOMOC ON
-            )
+            set(_globs)
+
+            foreach(_pattern IN LISTS _patterns)
+                list(APPEND _globs "${_item}/${_pattern}")
+            endforeach()
+
+            if(FUNC_RECURSIVE)
+                file(GLOB_RECURSE _src ${_globs})
+            else()
+                file(GLOB _src ${_globs})
+            endif()
+
+            set_source_files_properties(${_src} PROPERTIES SKIP_AUTOMOC ON)
         elseif(EXISTS ${_item})
-            set_source_files_properties(
-                ${_item} PROPERTIES SKIP_AUTOMOC ON
-            )
+            set_source_files_properties(${_item} PROPERTIES SKIP_AUTOMOC ON)
         endif()
     endforeach()
 endfunction()
@@ -214,10 +232,8 @@ endfunction()
     qm_find_qt(<modules...> [QUIET] [REQUIRED] [EXACT])
 
     QUIET and REQUIRED are passed on to find_package and may be given together,
-    which is what find_package itself allows. Written as one chain of elseif
-    they could not be, and asking for REQUIRED QUIET took only the first.
-
-    With neither given, REQUIRED is what is meant.
+    which is what find_package itself allows. With neither given, REQUIRED is
+    what is meant.
 
     ##FIXME EXACT is accepted and does nothing. It says how to match a version
     ##FIXME and nothing here ever asks for one, so find_package answers it with
@@ -286,10 +302,8 @@ macro(qm_include_qt_private _target _scope)
             qm_find_qt(${_module})
             set(_var_name Qt${QT_VERSION_MAJOR}${_module}_PRIVATE_INCLUDE_DIRS)
 
-            # Twice, since _var_name holds the name of the variable to read and
-            # not the directories themselves. Once, this added a directory
-            # literally called Qt6Gui_PRIVATE_INCLUDE_DIRS, so the private
-            # headers were still not found and nothing said so.
+            # Dereferenced twice, _var_name holding the name of the variable to
+            # read rather than the directories themselves.
             if(${_var_name})
                 target_include_directories(${_target} ${_scope} ${${_var_name}})
             else()
@@ -461,10 +475,6 @@ macro(qm_configure_target _target)
     # however, if the -std argument is not explicitly specified, the clang language server will
     # not work properly.
     # https://discourse.cmake.org/t/cmake-does-not-set-the-compiler-option-std-to-gnu17-or-c-17-although-i-set-the-target-compile-features-to-cxx-std-17/3299/8
-    # Named, and not appended to. Written as `set_property(TARGET APPEND ...)`
-    # the target list was empty, APPEND being where CMake stops reading names,
-    # so this set the standard on nothing at all. A standard is one value rather
-    # than a list, so there is nothing to append to either.
     foreach(_item IN LISTS FUNC_FEATURES FUNC_FEATURES_PRIVATE)
         if(_item MATCHES "cxx_std_(.+)")
             set_property(TARGET ${_target} PROPERTY CXX_STANDARD ${CMAKE_MATCH_1})
@@ -737,12 +747,11 @@ function(qm_add_win_manifest _target)
 
     if(MSVC)
         if(CMAKE_GENERATOR MATCHES "Visual Studio")
-            # Visual Studio
-            target_link_options(${_target} PRIVATE "/manifest" "/manifestinput:${_out_path}")
-
-            # The manifest file contains a UAC field, we should prevent Ninja from embedding the
-            # automatically generated UAC field
-            target_link_options(${_target} PRIVATE "/manifest" "/manifestuac:no")
+            # The manifest goes to the linker as an input, and /manifestuac:no stops the linker
+            # writing a UAC field of its own, this one carrying one already.
+            target_link_options(${_target} PRIVATE
+                "/manifest" "/manifestinput:${_out_path}" "/manifestuac:no"
+            )
         else() # Ninja
             # https://cmake.org/cmake/help/latest/release/3.4.html#other
             # CMake learned to honor *.manifest source files with MSVC tools. Manifest files named as sources
@@ -841,7 +850,7 @@ endfunction()
     Generate Windows shortcut after building target.
 
     qm_create_win_shortcut(<target> <dir>
-        [OUTPUT_NAME <name]
+        [OUTPUT_NAME <name>]
     )
 ]] #
 function(qm_create_win_shortcut _target _dir)
@@ -860,18 +869,17 @@ function(qm_create_win_shortcut _target _dir)
     # a release build point at different files.
     set(_vbs_name ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut_$<CONFIG>.vbs)
 
-    # The one configure_file writes carries no generator expression in its name.
-    # Written as ${_vbs_name}.in it asked for a file called $<CONFIG>, which
-    # configure_file has no opinion about and Windows will not have at all,
-    # angle brackets being among the characters a name may not hold. So this
-    # stopped on the machines it is meant for and nowhere else.
+    # A name of its own for the one configure_file writes, carrying no generator
+    # expression. configure_file does not evaluate one, so a $<CONFIG> in the
+    # name would be asked of the operating system as it stands, and an angle
+    # bracket is among the characters a Windows file name may not hold.
     set(_vbs_temp ${CMAKE_CURRENT_BINARY_DIR}/${_target}_shortcut.vbs.in)
 
     set(_lnk_path "${_dir}/${_output_name}.lnk")
 
     set(SHORTCUT_PATH ${_lnk_path})
     set(SHORTCUT_TARGET_PATH $<TARGET_FILE:${_target}>)
-    set(SHORTCUT_WORKING_DIRECOTRY $<TARGET_FILE_DIR:${_target}>)
+    set(SHORTCUT_WORKING_DIRECTORY $<TARGET_FILE_DIR:${_target}>)
     set(SHORTCUT_DESCRIPTION $<TARGET_FILE_BASE_NAME:${_target}>)
     set(SHORTCUT_ICON_LOCATION $<TARGET_FILE:${_target}>)
 
@@ -907,9 +915,6 @@ endfunction()
 ]] #
 function(qm_collect_targets _var)
     set(options EXECUTABLE SHARED STATIC INTERFACE UTILITY)
-    # DIRECTORY, which is what the body reads and what the documentation
-    # describes. Declared as DIR, it was never parsed, so every call started
-    # from the current directory whatever it was given.
     set(oneValueArgs DIRECTORY)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -921,6 +926,7 @@ function(qm_collect_targets _var)
     endif()
 
     # Get targets
+    set(_tmp_targets)
     _qm_collect_targets_recursive(_tmp_targets ${_dir})
     set(_targets)
 
@@ -978,8 +984,6 @@ endfunction()
 function(qm_get_subdirs _var)
     set(options ABSOLUTE)
     set(oneValueArgs DIRECTORY RELATIVE)
-    # REGEX_INCLUDE was never declared and REGEX_EXCLUDE was declared misspelt,
-    # so the body below, which spells both correctly, filtered on nothing.
     set(multiValueArgs EXCLUDE REGEX_INCLUDE REGEX_EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -1139,6 +1143,11 @@ endfunction()
     Recursively include directories in a target.
 
     qm_include_recursive(<target> <scope> <dir1> [<dir2> ...])
+
+    Every directory under each one named becomes an include directory, with no
+    filtering, so a tree carrying a .git or a build directory contributes those
+    too. Name the directories that hold headers rather than the root of a
+    checkout.
 #]]
 function(qm_include_recursive _target _scope)
     foreach(_dir ${ARGN})
@@ -1156,9 +1165,14 @@ function(qm_include_recursive _target _scope)
 endfunction()
 
 #[[
-    Get the location of an executable target.
+    Get the location of an imported executable target.
 
     qm_get_executable_location(<target> <var>)
+
+    Reads IMPORTED_LOCATION and the four configuration specific spellings of it,
+    in that order, and takes the first that answers. A target built by this
+    project has none of them, so this is for the ones a find_package brought,
+    and it stops with an error rather than returning empty.
 #]]
 function(qm_get_executable_location _target _var)
     set(_path)
@@ -1274,9 +1288,8 @@ endfunction()
 
 function(_qm_resolve_dir_helper _dirs _out)
     set(_files)
-    # Emptied first. Without this the appends below started from whatever a
-    # caller happened to have in a variable of the same name, and the one caller
-    # that matters is a macro, so that is the user's own scope.
+    # Emptied first. Its one caller is reached through a macro, so this runs in
+    # the user's scope and a variable of the same name may already be there.
     set(_res)
     _qm_resolve_file_helper("${_dirs}" _files)
 

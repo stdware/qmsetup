@@ -249,6 +249,24 @@ qmtest_true("a directory skips what is in it" "${_skipped}")
 get_source_file_property(_deeper "${_here}/include/a/a.h" SKIP_AUTOMOC)
 qmtest_false("and does not go down into another" "${_deeper}")
 
+# Unless asked. The two directories under include/ have a header each, and
+# neither was reached by the call above.
+qm_skip_automoc("${_here}/include" RECURSIVE)
+
+get_source_file_property(_deeper "${_here}/include/a/a.h" SKIP_AUTOMOC)
+qmtest_true("RECURSIVE goes down into another" "${_deeper}")
+
+get_source_file_property(_deeper_too "${_here}/include/b/b.h" SKIP_AUTOMOC)
+qmtest_true("into every one of them" "${_deeper_too}")
+
+get_source_file_property(_top "${_here}/include/root.h" SKIP_AUTOMOC)
+qmtest_true("and still takes what is at the top" "${_top}")
+
+# The keyword is a keyword rather than a name, so nothing looks for a file
+# called RECURSIVE and passes it over quietly.
+get_source_file_property(_untouched "${_here}/src/app.c" SKIP_AUTOMOC)
+qmtest_false("and reaches nothing that was not named" "${_untouched}")
+
 # A name that is neither a file nor a directory is passed over rather than
 # being an error, so a caller can name something optional.
 qm_skip_automoc("${_here}/nothing_of_that_name.h")
