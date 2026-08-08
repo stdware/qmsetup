@@ -1,9 +1,5 @@
 # Changelog
 
-Notable changes to QMSetup. Dates are the day of the release.
-
-Anything that was broken and put right between two releases is not listed, having never reached anybody.
-
 ## v1.1.0.0 (unreleased)
 
 ### Removed
