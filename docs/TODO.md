@@ -10,9 +10,9 @@ Both halves have a suite that runs from CTest on Windows, Linux and macOS: `test
 
 ## Tested only where Qt is
 
-`qm_find_qt`, `qm_link_qt`, `qm_include_qt_private` and `qm_add_translation` are covered, against a real installation, by `tests/cmake/QMSetupAPI/test_qt_targets` and `tests/cmake/modules/Translate/test_translation`. Both are registered only when the configure found a Qt, so pass `-DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler>` to have them run. A machine without one registers neither rather than registering tests that pass themselves over, and CI has no Qt, so nothing there runs them yet.
+`qm_find_qt`, `qm_link_qt`, `qm_include_qt_private`, `qm_add_translation` and `qm_install_qml_modules` are covered, against a real installation, by `tests/cmake/QMSetupAPI/test_qt_targets`, `tests/cmake/modules/Translate/test_translation` and `tests/cmake/modules/Qml/test_install_qml_modules`. All are registered only when the configure found a Qt, so pass `-DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler>` to have them run. A machine without one registers none of them rather than registering tests that pass themselves over, and CI has no Qt, so nothing there runs them yet.
 
-`qm_install_qml_modules` is still untested. It wants a QML module to install, which is a fixture of a different size from the ones above.
+`qm_install_qml_modules` is covered as well, by `tests/cmake/modules/Qml/test_install_qml_modules`. It is registered on top of the Qt check above, since it is built on `qt_query_qml_module` and that arrived in Qt 6.5.
 
 `qm_create_protobuf` is not covered yet either, though nothing stands in the way. It needs a protobuf, found the same way with `CMAKE_PREFIX_PATH`, and that variable takes more than one entry so Qt and protobuf can both be named at once.
 

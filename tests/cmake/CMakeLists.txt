@@ -135,6 +135,17 @@ if(QT_FOUND)
     message(STATUS "qmsetup tests: Qt${QT_VERSION_MAJOR} ${QT_VERSION} at ${QT_DIR}")
     list(APPEND _configured_projects QMSetupAPI/test_qt_targets)
     list(APPEND _built_projects modules/Translate/test_translation)
+
+    # qm_install_qml_modules is built on qt_query_qml_module, which arrived in
+    # Qt 6.5, so a Qt5 or an early Qt6 has nothing for it to call.
+    find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Qml QUIET)
+
+    if(TARGET Qt${QT_VERSION_MAJOR}::Qml AND QT_VERSION VERSION_GREATER_EQUAL 6.5)
+        list(APPEND _built_projects modules/Qml/test_install_qml_modules)
+    else()
+        message(STATUS "qmsetup tests: no Qml module, or a Qt older than 6.5, "
+            "so qm_install_qml_modules is left untested")
+    endif()
 else()
     message(STATUS "qmsetup tests: no Qt found, so the functions that want one are left untested. "
         "Pass -DCMAKE_PREFIX_PATH=/path/to/Qt/<version>/<compiler> to have them run.")

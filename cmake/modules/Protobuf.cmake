@@ -83,7 +83,7 @@ function(qm_create_protobuf _out)
     # Prepare for create once
     if(FUNC_CREATE_ONCE)
         # Check if options contain generator expressions
-        foreach(_opt IN LISTS _include_options LISTS FUNC_OPTIONS)
+        foreach(_opt IN LISTS _include_options FUNC_OPTIONS)
             string(GENEX_STRIP "${_opt}" _no_genex)
 
             if(NOT _no_genex STREQUAL _opt)
