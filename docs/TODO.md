@@ -23,7 +23,9 @@ The QML one asks for Qt 6.5 on top of that, `qt_query_qml_module` having arrived
 
 Protobuf is asked for both ways, since neither reaches every installation. One built and installed the upstream way, which is what vcpkg ships, answers `find_package(Protobuf CONFIG)` and gives module mode the libraries without the `protobuf::protoc` that `qm_create_protobuf` wants. A distribution package is the other way about: Ubuntu's `libprotobuf-dev` carries no CMake configuration at all, so `CONFIG` cannot see it, and `FindProtobuf` looks for the compiler on the path and makes the target out of what it finds. `CONFIG` is asked first, the other order being an error where the second call stops on targets the first has already defined.
 
-CI installs Qt on the four matrix jobs and protobuf everywhere but Windows, where the only route to a development package is vcpkg building it and abseil from source. Since a dependency that failed to install would be a shorter run rather than a failure, each job names the tests it expects and stops if one of them did not register.
+CI installs Qt on the four matrix jobs and protobuf everywhere but Windows, where the only route to a development package is vcpkg building it and abseil from source. Since a dependency that failed to install would be a shorter run rather than a failure, each job names the tests it expects and stops if one of them did not register, which is how the distribution package was found out about in the first place.
+
+Between them the jobs reach both ways of finding protobuf: Linux has the distribution one at 3.21 through `FindProtobuf`, and macOS and MinGW have one at 35 through `CONFIG`.
 
 ## Not tested yet
 
@@ -31,8 +33,6 @@ CI installs Qt on the four matrix jobs and protobuf everywhere but Windows, wher
 - The scripts under `cmake/scripts`, called directly rather than through the function that wraps them. `copy.cmake` is reached through `qm_add_copy_command` and `configure_file.cmake` through `qm_future_configure_file`, both against a real build, so what a direct call would add is the refusal each makes when an argument is missing. `xxd.cmake` is reached only by `qm_add_binary_resource`, which is private.
 
 ## Unverified
-
-- The protobuf that a distribution ships is not tested anywhere but on CI. The machine this was written on has one from vcpkg, which is found the other way about, so the `FindProtobuf` half of the arrangement above is exercised only by the Linux jobs.
 
 - The standard library filter cannot be seen to work on macOS. Everything under `/usr/lib` now lives in the dyld shared cache rather than on disk, so `libSystem` is reported as not found whether or not `--standard` was asked for, and the deployment has nothing to leave behind. Checked on Windows and Linux, where the filter has files to act on.
 - Nothing compiles what `qm_add_win_rc` and `qm_add_win_rc_enhanced` write. The tests read the generated `.rc` and check what is in it, and the icons they name are files with the right extension and nothing else in them, so that a resource compiler would accept the result is not checked. The same holds for `qm_add_win_manifest`, which nothing embeds.

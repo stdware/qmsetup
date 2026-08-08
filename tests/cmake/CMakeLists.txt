@@ -172,7 +172,10 @@ if(NOT TARGET protobuf::protoc)
 endif()
 
 if(TARGET protobuf::protoc)
-    message(STATUS "qmsetup tests: protobuf ${Protobuf_VERSION} at ${Protobuf_DIR}")
+    # Where the compiler is rather than where the package was found. Module mode
+    # leaves Protobuf_DIR not found, having no package to point at.
+    get_target_property(_protoc_location protobuf::protoc LOCATION)
+    message(STATUS "qmsetup tests: protobuf ${Protobuf_VERSION}, protoc at ${_protoc_location}")
     list(APPEND _built_projects modules/Protobuf/test_create_protobuf)
 else()
     message(STATUS "qmsetup tests: no protobuf compiler found, so qm_create_protobuf is left "
