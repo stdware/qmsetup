@@ -281,9 +281,13 @@ function(_qm_add_lupdate_target _target)
 
         get_directory_property(_inc_DIRS INCLUDE_DIRECTORIES)
 
+        # The absolute form, since lupdate runs from the source directory and a
+        # relative include directory is relative to whichever directory declared
+        # it. It was worked out and then not used, the line below naming the
+        # path as it stood.
         foreach(_pro_include IN LISTS _inc_DIRS)
             get_filename_component(_abs_include "${_pro_include}" ABSOLUTE)
-            set(_lst_file_srcs "-I${_pro_include}\n${_lst_file_srcs}")
+            set(_lst_file_srcs "-I${_abs_include}\n${_lst_file_srcs}")
         endforeach()
 
         file(WRITE ${_ts_lst_file} "${_lst_file_srcs}")
@@ -354,12 +358,15 @@ function(_qm_add_lrelease_target _target)
 
         set(_qm_file "${_out_dir}/${FILE_NAME}.qm")
 
+        # The one file this rule reads, and not all of them. Naming the whole
+        # list made every .qm depend on every .ts, so touching one translation
+        # rebuilt the lot.
         add_custom_command(
             OUTPUT ${_qm_file}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${_out_dir}
             COMMAND ${_lrelease_exe} ARGS ${_LRELEASE_OPTIONS} ${_abs_FILE} -qm ${_qm_file}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            DEPENDS ${_lrelease_files}
+            DEPENDS ${_abs_FILE}
             VERBATIM
         )
 

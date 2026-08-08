@@ -273,8 +273,12 @@ macro(qm_include_qt_private _target _scope)
             qm_find_qt(${_module})
             set(_var_name Qt${QT_VERSION_MAJOR}${_module}_PRIVATE_INCLUDE_DIRS)
 
+            # Twice, since _var_name holds the name of the variable to read and
+            # not the directories themselves. Once, this added a directory
+            # literally called Qt6Gui_PRIVATE_INCLUDE_DIRS, so the private
+            # headers were still not found and nothing said so.
             if(${_var_name})
-                target_include_directories(${_target} ${_scope} ${_var_name})
+                target_include_directories(${_target} ${_scope} ${${_var_name}})
             else()
                 # On Linux, QtGuiPrivate depends on XKB which may not be installed, directly include the
                 # private headers as a workaround.
@@ -383,6 +387,7 @@ macro(qm_configure_target _target)
     endif()
 
     target_link_libraries(${_target} ${_public_scope} ${FUNC_LINKS})
+    target_link_libraries(${_target} INTERFACE ${FUNC_LINKS_INTERFACE})
     target_link_libraries(${_target} ${_private_scope} ${FUNC_LINKS_PRIVATE})
 
     if(FUNC_INCLUDE)
@@ -1208,6 +1213,10 @@ endfunction()
 
 function(_qm_resolve_dir_helper _dirs _out)
     set(_files)
+    # Emptied first. Without this the appends below started from whatever a
+    # caller happened to have in a variable of the same name, and the one caller
+    # that matters is a macro, so that is the user's own scope.
+    set(_res)
     _qm_resolve_file_helper("${_dirs}" _files)
 
     foreach(_item IN LISTS _files)

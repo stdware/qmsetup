@@ -7,16 +7,37 @@ include_guard(DIRECTORY)
 ]] #
 macro(qm_compiler_no_warnings)
     foreach(__lang C CXX)
-        if(NOT "x${CMAKE_${__lang}_FLAGS}" STREQUAL "x")
+        # Padded at both ends, and repeated until nothing more comes off.
+        #
+        # The patterns want a space on either side of a flag, which the flag at
+        # the start or the end of the string does not have, so those were never
+        # seen. And a match takes the trailing space with it, which is the space
+        # the flag after it needed, so of `-Wall -Wextra` only the first came
+        # off. Both showed up wherever the flags were set without a space to
+        # spare, which is how anybody writes them.
+        set(__flags " ${CMAKE_${__lang}_FLAGS} ")
+        set(__before)
+
+        while(NOT __before STREQUAL __flags)
+            set(__before "${__flags}")
+
             if(MSVC)
-                string(REGEX REPLACE " [/-]W[01234] " " " CMAKE_${__lang}_FLAGS ${CMAKE_${__lang}_FLAGS})
+                string(REGEX REPLACE " [/-]W[01234] " " " __flags "${__flags}")
             else()
-                string(REGEX REPLACE " -W(all)?(extra)? " " " CMAKE_${__lang}_FLAGS ${CMAKE_${__lang}_FLAGS})
-                string(REGEX REPLACE " -[W]?pedantic " " " CMAKE_${__lang}_FLAGS ${CMAKE_${__lang}_FLAGS})
+                # An alternation rather than two optional groups, which also
+                # matched the nothing between them and so took a bare -W with
+                # them, along with -Wallextra.
+                string(REGEX REPLACE " -W(all|extra)? " " " __flags "${__flags}")
+                string(REGEX REPLACE " -W?pedantic " " " __flags "${__flags}")
             endif()
-        endif()
+        endwhile()
+
+        string(STRIP "${__flags}" CMAKE_${__lang}_FLAGS)
         string(APPEND CMAKE_${__lang}_FLAGS " -w ")
     endforeach()
+
+    unset(__flags)
+    unset(__before)
     if(MSVC)
         add_compile_definitions(-D_CRT_NON_CONFORMING_SWPRINTFS)
         add_compile_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_SECURE_NO_DEPRECATE)

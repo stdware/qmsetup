@@ -44,7 +44,10 @@ function(qm_win_applocal_deps _target)
     endif()
 
     set(options FORCE VERBOSE)
-    set(oneValueArgs TARGET CUSTOM_TARGET OUTPUT_DIR)
+    # No TARGET. Nothing reads it and nothing documents it, and declaring a
+    # keyword is not free: the word was taken out of whatever list it landed in,
+    # so an EXCLUDE pattern spelt TARGET went missing rather than being matched.
+    set(oneValueArgs CUSTOM_TARGET OUTPUT_DIR)
     set(multiValueArgs EXTRA_SEARCHING_PATHS EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 

@@ -1,6 +1,11 @@
 include_guard(DIRECTORY)
 
 function(qm_get_windows_proxy _out)
+    # Answered before anything can go wrong, so that a caller reading it back
+    # after a run that found nothing sees nothing rather than whatever the
+    # variable held before. Every path out of here below is a return.
+    set(${_out} "" PARENT_SCOPE)
+
     if(NOT WIN32)
         return()
     endif()

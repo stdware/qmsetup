@@ -115,9 +115,9 @@ function(qm_sync_include _src_dir _dest_dir)
             # Get command output only and use file(INSTALL) to install files
             install(CODE "
                 get_filename_component(_install_dir \"${_install_dir}\" ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
-        
+
                 execute_process(
-                    COMMAND \"${QMSETUP_CORECMD_EXECUTABLE}\" incsync -d 
+                    COMMAND \"${QMSETUP_CORECMD_EXECUTABLE}\" incsync -d
                         ${_args_quoted} \"${_src_dir}\" \${_install_dir}
                     WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
                     OUTPUT_VARIABLE _output_contents
@@ -127,9 +127,17 @@ function(qm_sync_include _src_dir _dest_dir)
                 string(REPLACE \"\\n\" \";\" _lines \"\${_output_contents}\")
 
                 foreach(_line IN LISTS _lines)
-                    string(REGEX MATCH \"from \\\"([^\\\"]*)\\\" to \\\"([^\\\"]*)\\\"\" _ \${_line})
-                    get_filename_component(_target_path \${CMAKE_MATCH_2} DIRECTORY)
-                    file(INSTALL \${CMAKE_MATCH_1} DESTINATION \${_target_path})
+                    string(REGEX MATCH \"from \\\"([^\\\"]*)\\\" to \\\"([^\\\"]*)\\\"\" _matched \"\${_line}\")
+
+                    # A line that says something else is passed over. CMAKE_MATCH_1 and
+                    # CMAKE_MATCH_2 keep what the last match put there, so reading them
+                    # anyway installed the header before this one a second time.
+                    if(NOT _matched)
+                        continue()
+                    endif()
+
+                    get_filename_component(_target_path \"\${CMAKE_MATCH_2}\" DIRECTORY)
+                    file(INSTALL \"\${CMAKE_MATCH_1}\" DESTINATION \"\${_target_path}\")
                 endforeach()
             ")
         endif()
@@ -340,8 +348,13 @@ function(qm_generate_build_info _file)
         set(_prefix ${FUNC_PREFIX})
     else()
         string(TOUPPER "${PROJECT_NAME}" _prefix)
-        string(MAKE_C_IDENTIFIER ${_prefix} _prefix)
     endif()
+
+    # Both ways round. A prefix that was given went through as it stood, so a
+    # project named on the command line as my-lib asked for macros called
+    # my-lib_SYSTEM_NAME, which no compiler will take, while the same name
+    # arrived at from PROJECT_NAME came out fine.
+    string(MAKE_C_IDENTIFIER "${_prefix}" _prefix)
 
     set(_dir)
     qm_set_value(_dir FUNC_ROOT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -497,25 +510,29 @@ endfunction()
 # ----------------------------------
 # Private functions
 # ----------------------------------
-function(_qm_calc_property_scope_helper _scope _prop)
+# The two names it answers with are its arguments, so the locals it works in
+# are named apart from them. Written the other way about, the body assigned over
+# its own parameters and then set variables literally called _scope and _prop,
+# which is the right answer only for a caller that asked for those two names.
+function(_qm_calc_property_scope_helper _scope_out _prop_out)
     if(FUNC_TARGET)
-        set(_scope TARGET ${FUNC_TARGET})
+        set(_result_scope TARGET ${FUNC_TARGET})
     elseif(FUNC_SOURCE)
-        set(_scope SOURCE ${FUNC_SOURCE})
+        set(_result_scope SOURCE ${FUNC_SOURCE})
     elseif(FUNC_DIRECTORY)
-        set(_scope DIRECTORY ${FUNC_DIRECTORY})
+        set(_result_scope DIRECTORY ${FUNC_DIRECTORY})
     elseif(FUNC_GLOBAL)
-        set(_scope GLOBAL)
+        set(_result_scope GLOBAL)
     elseif(QMSETUP_DEFINITION_SCOPE)
-        set(_scope ${QMSETUP_DEFINITION_SCOPE})
+        set(_result_scope ${QMSETUP_DEFINITION_SCOPE})
     else()
-        set(_scope GLOBAL)
+        set(_result_scope GLOBAL)
     endif()
 
-    qm_set_value(_prop FUNC_PROPERTY QMSETUP_DEFINITION_PROPERTY "CONFIG_DEFINITIONS")
+    qm_set_value(_result_prop FUNC_PROPERTY QMSETUP_DEFINITION_PROPERTY "CONFIG_DEFINITIONS")
 
-    set(_scope ${_scope} PARENT_SCOPE)
-    set(_prop ${_prop} PARENT_SCOPE)
+    set(${_scope_out} ${_result_scope} PARENT_SCOPE)
+    set(${_prop_out} ${_result_prop} PARENT_SCOPE)
 endfunction()
 
 function(_qm_generate_config_helper)

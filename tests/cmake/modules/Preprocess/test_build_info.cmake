@@ -49,6 +49,20 @@ qmtest_file_contains("YEAR asks for the year" "${_dated}" "MYAPP_BUILD_YEAR")
 qmtest_file_contains("TIME asks for the time" "${_dated}" "MYAPP_BUILD_TIME")
 
 # ------------------------------------------------------------------
+# A prefix that is not an identifier
+# ------------------------------------------------------------------
+
+# The name a project goes by is not always something a macro may be called, and
+# the one worked out from PROJECT_NAME was put right while the one given here
+# was not, so a prefix of my-lib asked for macros no compiler would take.
+set(_awkward "${QMTEST_WORK_DIR}/awkward.h")
+qm_generate_build_info("${_awkward}" PREFIX "my-lib 1.0" NO_WARNING)
+
+qmtest_file_contains("what cannot be in an identifier is replaced"
+    "${_awkward}" "my_lib_1_0_SYSTEM_NAME")
+qmtest_file_lacks("rather than written out as it stands" "${_awkward}" "my-lib")
+
+# ------------------------------------------------------------------
 # The repositories
 # ------------------------------------------------------------------
 

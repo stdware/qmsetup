@@ -59,10 +59,45 @@ get_target_property(_ldflags mylib LINK_OPTIONS)
 qmtest_contains("LDFLAGS is on the target" "${_ldflags}" "-qmtest-link-flag")
 
 # ------------------------------------------------------------------
+# The three link scopes
+#
+# LINKS_INTERFACE was parsed and documented and then never applied, so a library
+# named by it reached nothing at all.
+# ------------------------------------------------------------------
+
+add_library(scopelib_public STATIC src/lib.c)
+add_library(scopelib_interface STATIC src/lib.c)
+add_library(scopelib_private STATIC src/lib.c)
+
+add_library(scopelib STATIC src/lib.c)
+qm_configure_target(scopelib
+    LINKS scopelib_public
+    LINKS_INTERFACE scopelib_interface
+    LINKS_PRIVATE scopelib_private
+)
+
+get_target_property(_links scopelib LINK_LIBRARIES)
+get_target_property(_ilinks scopelib INTERFACE_LINK_LIBRARIES)
+
+qmtest_contains("LINKS reaches the target itself" "${_links}" "scopelib_public")
+qmtest_contains("and whatever links it" "${_ilinks}" "scopelib_public")
+
+qmtest_contains("LINKS_INTERFACE reaches whatever links it" "${_ilinks}" "scopelib_interface")
+qmtest_lacks("and not the target itself" "${_links}" "scopelib_interface")
+
+qmtest_contains("LINKS_PRIVATE reaches the target" "${_links}" "scopelib_private")
+qmtest_lacks("and stops there" "${_ilinks}" "scopelib_private")
+
+# ------------------------------------------------------------------
 # The directories a pattern stands for
 #
 # include/ has a and b under it, so `include/*` is the three of them.
 # ------------------------------------------------------------------
+
+# qm_configure_target is a macro, so what it does runs in this scope, and the
+# helper that expands a pattern once appended to a variable it had not emptied
+# first. Anything of that name already here came out as an include directory.
+set(_res "${_here}/qmtest_should_not_be_included")
 
 add_library(globlib STATIC src/lib.c)
 qm_configure_target(globlib INCLUDE "${_here}/include/*")
@@ -74,6 +109,10 @@ qmtest_contains("all of it" "${_inc}" "${_here}/include/b")
 
 # A file under one of them is a file, not a directory to include.
 qmtest_lacks("and nothing that is not a directory" "${_inc}" "${_here}/include/root.h")
+
+qmtest_lacks("and nothing the caller happened to have in a variable"
+    "${_inc}" "${_here}/qmtest_should_not_be_included")
+unset(_res)
 
 # ------------------------------------------------------------------
 # Link directories
