@@ -4,7 +4,7 @@ Notable changes to QMSetup. Dates are the day of the release.
 
 Anything that was broken and put right between two releases is not listed, having never reached anybody.
 
-## Unreleased
+## v1.1.0.0 (unreleased)
 
 ### Removed
 
@@ -59,6 +59,6 @@ Anything that was broken and put right between two releases is not listed, havin
 - CI builds and tests on Linux with gcc and with clang, on macOS, and on Windows with MSVC, with clang-cl and with MinGW, and installs the package and uses it from another project. Qt and protobuf are installed so the tests that want them run, and each job names the tests it expects and stops if one of them did not register.
 - `qmcorecmd` is laid out as `commands/` and `utils/`, with the platform specific half of deploying behind a seam that each platform answers.
 
-## 1.0.0.0, 2026-01-18
+## v1.0.0.0 (2026-01-18)
 
 The first release.
