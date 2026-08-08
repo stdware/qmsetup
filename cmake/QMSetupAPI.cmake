@@ -211,7 +211,20 @@ endfunction()
 #[[
     Find Qt libraries. Don't wrap it in any functions.
 
-    qm_find_qt(<modules...> [QUIET | REQUIRED | EXACT])
+    qm_find_qt(<modules...> [QUIET] [REQUIRED] [EXACT])
+
+    QUIET and REQUIRED are passed on to find_package and may be given together,
+    which is what find_package itself allows. Written as one chain of elseif
+    they could not be, and asking for REQUIRED QUIET took only the first.
+
+    With neither given, REQUIRED is what is meant.
+
+    ##FIXME EXACT is accepted and does nothing. It says how to match a version
+    ##FIXME and nothing here ever asks for one, so find_package answers it with
+    ##FIXME "Ignoring EXACT since no version is requested". It is not passed on,
+    ##FIXME since all that would add is that warning at every call site. Giving
+    ##FIXME it something to do means a VERSION argument, which this has never
+    ##FIXME had.
 #]]
 macro(qm_find_qt)
     set(options QUIET REQUIRED EXACT)
@@ -223,14 +236,14 @@ macro(qm_find_qt)
 
     if(FUNC_QUIET)
         list(APPEND _qm_find_qt_options QUIET)
-    elseif(FUNC_REQUIRED)
-        list(APPEND _qm_find_qt_options REQUIRED)
-    elseif(FUNC_EXACT)
-        list(APPEND _qm_find_qt_options EXACT)
     endif()
 
-    if(NOT _qm_find_qt_options)
-        set(_qm_find_qt_options REQUIRED)
+    if(FUNC_REQUIRED)
+        list(APPEND _qm_find_qt_options REQUIRED)
+    endif()
+
+    if(NOT FUNC_QUIET AND NOT FUNC_REQUIRED)
+        list(APPEND _qm_find_qt_options REQUIRED)
     endif()
 
     foreach(_module IN LISTS FUNC_UNPARSED_ARGUMENTS)
@@ -984,10 +997,24 @@ function(qm_get_subdirs _var)
         endforeach()
     endif()
 
+    # What matches any of them, rather than what matches all of them. Filtering
+    # in a loop narrows the list each time round, so two expressions kept only
+    # what satisfied both, and asking to include two different names gave
+    # nothing. Excluding below is the other way about and does compose, since
+    # leaving out this and also that is one thing after another.
     if(FUNC_REGEX_INCLUDE)
-        foreach(_exp IN LISTS FUNC_REGEX_INCLUDE)
-            list(FILTER _entries INCLUDE REGEX ${_exp})
+        set(_matching)
+
+        foreach(_entry IN LISTS _entries)
+            foreach(_exp IN LISTS FUNC_REGEX_INCLUDE)
+                if(_entry MATCHES "${_exp}")
+                    list(APPEND _matching "${_entry}")
+                    break()
+                endif()
+            endforeach()
         endforeach()
+
+        set(_entries ${_matching})
     endif()
 
     if(FUNC_REGEX_EXCLUDE)

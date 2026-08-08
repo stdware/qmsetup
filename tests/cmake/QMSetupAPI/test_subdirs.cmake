@@ -50,6 +50,12 @@ qmtest_equal("excluding what is not there changes nothing" "${_kept}" "alpha;bet
 qm_get_subdirs(_kept DIRECTORY "${_tree}" REGEX_INCLUDE "^a")
 qmtest_equal("REGEX_INCLUDE keeps what matches" "${_kept}" "alpha")
 
+# Any of them rather than all of them. Two names cannot both be true of one
+# directory, so filtering one after the other left nothing at all.
+qm_get_subdirs(_kept DIRECTORY "${_tree}" REGEX_INCLUDE "^a" "^b")
+qmtest_equal("REGEX_INCLUDE takes more than one, and keeps what matches any"
+    "${_kept}" "alpha;beta")
+
 qm_get_subdirs(_kept DIRECTORY "${_tree}" REGEX_EXCLUDE "^a")
 qmtest_equal("REGEX_EXCLUDE drops what matches" "${_kept}" "beta;gamma")
 

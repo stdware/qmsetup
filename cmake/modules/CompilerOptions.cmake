@@ -102,14 +102,33 @@ function(qm_compiler_eliminate_dead_code)
     if(MSVC)
         add_compile_options(-Gw -Gy -Zc:inline)
         add_link_options(-OPT:REF -OPT:ICF -OPT:LBR)
-    else()
-        add_compile_options(-ffunction-sections -fdata-sections)
-        if(APPLE)
-            add_link_options(-Wl,-dead_strip)
-        else()
-            add_link_options(-Wl,--as-needed -Wl,--strip-all -Wl,--gc-sections)
-        endif()
-        if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang")
+        return()
+    endif()
+
+    add_compile_options(-ffunction-sections -fdata-sections)
+
+    if(APPLE)
+        add_link_options(-Wl,-dead_strip)
+        return()
+    endif()
+
+    add_link_options(-Wl,--as-needed -Wl,--gc-sections)
+
+    # Not in a configuration that was asked for with debugging in it. Taking
+    # every symbol out is not eliminating dead code, and a build made to be
+    # debugged has nothing left to debug with once it has been done.
+    add_link_options("$<$<NOT:$<CONFIG:Debug,RelWithDebInfo>>:-Wl,--strip-all>")
+
+    # Asked of the linker rather than guessed from the compiler. Folding
+    # identical code is a feature of gold and of lld, and a compiler drives
+    # whichever linker it was pointed at, so which compiler it is says nothing.
+    get_property(_languages GLOBAL PROPERTY ENABLED_LANGUAGES)
+
+    if("CXX" IN_LIST _languages)
+        include(CheckLinkerFlag)
+        check_linker_flag(CXX "-Wl,--icf=all" QMSETUP_HAVE_LINKER_ICF)
+
+        if(QMSETUP_HAVE_LINKER_ICF)
             add_link_options(-Wl,--icf=all)
         endif()
     endif()

@@ -43,6 +43,32 @@ qmtest_true("and the module's target is there" "${_core_found}")
 qm_find_qt(Core)
 qmtest_true("asking again is no trouble" "${QT_VERSION_MAJOR}")
 
+# Two of the options together, which a chain of elseif could not take. What
+# find_package does with them is its own business, so what is checked is that
+# the call goes through and still finds the module.
+qm_find_qt(Concurrent QUIET REQUIRED)
+
+set(_concurrent_found off)
+
+if(TARGET Qt${QT_VERSION_MAJOR}::Concurrent)
+    set(_concurrent_found on)
+endif()
+
+qmtest_true("QUIET and REQUIRED may be given together" "${_concurrent_found}")
+
+# Nothing of that name anywhere, asked for quietly, so the configure carries on
+# and no target appears.
+qm_find_qt(QmTestNoSuchModule QUIET)
+
+set(_absent_found off)
+
+if(TARGET Qt${QT_VERSION_MAJOR}::QmTestNoSuchModule)
+    set(_absent_found on)
+endif()
+
+qmtest_false("a module that is not there is passed over when asked quietly"
+    "${_absent_found}")
+
 # ------------------------------------------------------------------
 # qm_link_qt
 # ------------------------------------------------------------------
