@@ -17,6 +17,8 @@
 #  define OS_EXECUTABLE "ELF"
 #endif
 
+static const cli::Option verboseOption({"-V", "--verbose"}, "Print more information");
+
 int main(int argc, char *argv[]) {
     cli::Command copyCommand = []() {
         cli::Command command("copy", "Copy files or directories if different");
@@ -28,7 +30,7 @@ int main(int argc, char *argv[]) {
             cli::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             cli::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
-        command.addOptions({cli::Option::Verbose});
+        command.addOption(verboseOption);
         command.setHandler(cmd_copy);
         return command;
     }();
@@ -38,7 +40,7 @@ int main(int argc, char *argv[]) {
         command.addArguments({
             cli::Argument("dir", "Directories").multi(),
         });
-        command.addOption({cli::Option::Verbose});
+        command.addOption(verboseOption);
         command.setHandler(cmd_rmdir);
         return command;
     }();
@@ -49,7 +51,7 @@ int main(int argc, char *argv[]) {
             cli::Argument("file", "File to update time stamp"),
             cli::Argument("ref file", "Reference file", false),
         });
-        command.addOption({cli::Option::Verbose});
+        command.addOption(verboseOption);
         command.setHandler(cmd_touch);
         return command;
     }();
@@ -68,7 +70,7 @@ int main(int argc, char *argv[]) {
             cli::Option({"-f", "--force"}, "Skip calculating hash and overwrite always"),
             cli::Option({"-d", "--dryrun"}, "Print contents only"),
         });
-        command.addOption({cli::Option::Verbose});
+        command.addOption(verboseOption);
         command.setHandler(cmd_configure);
         return command;
     }();
@@ -91,7 +93,7 @@ int main(int argc, char *argv[]) {
             cli::Option({"-d", "--dryrun"}, "Print reorganizing details only"),
             cli::Option({"-f", "--force"}, "Force deleting existing directory"),
         });
-        command.addOption({cli::Option::Verbose});
+        command.addOption(verboseOption);
         command.setHandler(cmd_incsync);
         return command;
     }();
@@ -119,7 +121,7 @@ int main(int argc, char *argv[]) {
             cli::Option({"-d", "--dryrun"}, "Print dependencies only"),
             cli::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
-        command.addOption({cli::Option::Verbose});
+        command.addOption(verboseOption);
         command.setHandler(cmd_deploy);
         return command;
     }();

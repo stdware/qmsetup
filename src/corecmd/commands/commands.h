@@ -41,7 +41,7 @@ inline bool isDryRunSet(const cli::ParseResult &result) {
 }
 
 inline bool isVerboseSet(const cli::ParseResult &result) {
-    return result.isRoleSet(cli::Option::Verbose);
+    return result.option("-V").has_value();
 }
 
 inline bool isStandardSet(const cli::ParseResult &result) {
@@ -89,15 +89,17 @@ inline std::vector<std::string> optionValues(const cli::ParseResult &result,
     if (!given) {
         return {};
     }
-    return given->values<std::string>(index).value_or(std::vector<std::string>{});
+    return given->allValues<std::string>(index).value_or(std::vector<std::string>{});
 }
 
 /// One argument of one occurrence of an option already known to have been given.
 ///
 /// \param index which of the option's arguments to read
 /// \param occurrence which time it was given, for an option that may be repeated
+///
+/// \pre \a occurrence names a time the option was given, which is what \c count() answers
 inline std::string givenValue(const cli::OptionResult &given, int index = 0, int occurrence = 0) {
-    return given.value<std::string>(index, occurrence).value_or(std::string());
+    return given.at(occurrence).value<std::string>(index).value_or(std::string());
 }
 
 /// @}
