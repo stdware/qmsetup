@@ -33,7 +33,7 @@ Between them the jobs reach both ways of finding protobuf: Linux has the distrib
 
 - The pass that strips a universal binary down to the architecture in use, which needs a binary built for two. `lipo` itself is on every machine with the command line tools, so what is missing is the fixture: building one means a second pass over the whole deploy tree with `CMAKE_OSX_ARCHITECTURES`, and it would test one function.
 - `FORCE`, on `qm_deploy_directory` and on `qm_win_applocal_deps`. It is what makes a copy happen where the destination already holds a file of the same name and no older, so a test wants two runs with something put in the way between them, and either function copies enough that doing it twice is the slowest thing in the suite.
-- The scripts under `cmake/scripts`, called directly rather than through the function that wraps them. `copy.cmake` is reached through `qm_add_copy_command` and `configure_file.cmake` through `qm_future_configure_file`, both against a real build, so what a direct call would add is the refusal each makes when an argument is missing. `xxd.cmake` is reached only by `qm_add_binary_resource`, which is private.
+- The scripts under `cmake/scripts`, called directly rather than through the function that wraps them. `copy.cmake` is reached through `qm_add_copy_command`, `configure_file.cmake` through `qm_future_configure_file`, and `xxd.cmake` through `qm_add_binary_resource`, all against a real build. What a direct call would add is the refusal each makes when an argument is missing.
 
 ## Unverified
 

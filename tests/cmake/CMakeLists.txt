@@ -85,6 +85,7 @@ set(_built_projects
     modules/Filesystem/test_future_configure_file
     modules/Preprocess/test_sync_include_install
     modules/Deploy/test_deploy_directory
+    modules/private/Generate/test_binary_resource
 )
 
 if(WIN32)

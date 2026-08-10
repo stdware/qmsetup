@@ -1,0 +1,1 @@
+QMSetup binary resource
