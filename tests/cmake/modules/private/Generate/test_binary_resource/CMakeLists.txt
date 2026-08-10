@@ -8,8 +8,10 @@ include(GNUInstallDirs)
 include(${QMSETUP_API})
 include("${QMSETUP_MODULES_DIR}/modules/private/Generate.cmake")
 
+set(_resource "${CMAKE_CURRENT_BINARY_DIR}/resource.bin")
 set(_generated "${CMAKE_CURRENT_BINARY_DIR}/embedded-data.c")
-qm_add_binary_resource("${CMAKE_CURRENT_SOURCE_DIR}/resource.txt" "${_generated}")
+file(WRITE "${_resource}" "QMSetup binary resource")
+qm_add_binary_resource("${_resource}" "${_generated}")
 
 add_executable(binary_resource src/main.c "${_generated}")
 install(TARGETS binary_resource RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
