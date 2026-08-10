@@ -46,3 +46,21 @@ qmtest_exists("a dotted URI becomes one directory per part" "${_nested}/Nested.q
 
 qmtest_not_exists("rather than one directory with a dot in its name"
     "${_prefix}/qml/QmTest.Nested/qmldir")
+
+# ------------------------------------------------------------------
+# Optional module products
+# ------------------------------------------------------------------
+
+set(_no_plugin "${_prefix}/qml/QmTest/NoPlugin")
+qmtest_exists("a module without a plugin still has its qmldir" "${_no_plugin}/qmldir")
+qmtest_exists("and its QML file" "${_no_plugin}/NoPlugin.qml")
+file(GLOB _no_plugin_binaries "${_no_plugin}/*qmtest_qmlmod_no_pluginplugin*")
+qmtest_false("and no plugin was invented for it" "${_no_plugin_binaries}")
+
+set(_no_types "${_prefix}/qml/QmTest/NoTypes")
+qmtest_exists("a module without type information still has its qmldir" "${_no_types}/qmldir")
+qmtest_exists("and its QML file too" "${_no_types}/NoTypes.qml")
+qmtest_not_exists("and no type information file was invented"
+    "${_no_types}/qmtest_qmlmod_no_types.qmltypes")
+file(GLOB _no_types_plugin "${_no_types}/*qmtest_qmlmod_no_typesplugin*")
+qmtest_false("and no plugin was invented for it" "${_no_types_plugin}")

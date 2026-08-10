@@ -233,3 +233,8 @@ endforeach()
 foreach(_module IN LISTS _built_projects)
     qmtest_cmake_add(${_module} ${CMAKE_CURRENT_SOURCE_DIR}/testing/build.cmake)
 endforeach()
+
+# This project deliberately makes its install fail, so it has a driver that
+# treats the nonzero install result as the expected behavior.
+qmtest_cmake_add(modules/Filesystem/test_copy_command_failure
+    ${CMAKE_CURRENT_SOURCE_DIR}/testing/install_failure.cmake)

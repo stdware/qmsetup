@@ -54,15 +54,19 @@ function(qm_install_qml_modules _target)
 
     # Install the QML module runtime loadable plugin
     set(_module_dir "${_prefix}/${_module_target_path}")
-    install(TARGETS "${_module_plugin_target}"
-        LIBRARY DESTINATION "${_module_dir}"
-        RUNTIME DESTINATION "${_module_dir}"
-        ARCHIVE DESTINATION "${_module_dir}"
-    )
+    if(_module_plugin_target)
+        install(TARGETS "${_module_plugin_target}"
+            LIBRARY DESTINATION "${_module_dir}"
+            RUNTIME DESTINATION "${_module_dir}"
+            ARCHIVE DESTINATION "${_module_dir}"
+        )
+    endif()
 
     # Install the QML module meta information.
     install(FILES "${_module_qmldir}" DESTINATION "${_module_dir}")
-    install(FILES "${_module_typeinfo}" DESTINATION "${_module_dir}")
+    if(_module_typeinfo)
+        install(FILES "${_module_typeinfo}" DESTINATION "${_module_dir}")
+    endif()
 
     # Install QML files, possibly renamed.
     list(LENGTH _module_qml_files _num_files)

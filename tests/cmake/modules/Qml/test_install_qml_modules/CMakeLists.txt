@@ -46,3 +46,24 @@ qt_add_qml_module(qmtest_qmlmod_nested
     QML_FILES Nested.qml
 )
 qm_install_qml_modules(qmtest_qmlmod_nested)
+
+# A module does not have to build a runtime plugin. An empty PLUGIN_TARGET from
+# qt_query_qml_module means there is simply no plugin install rule to add.
+qt_add_qml_module(qmtest_qmlmod_no_plugin
+    URI QmTest.NoPlugin
+    VERSION 1.0
+    NO_PLUGIN
+    QML_FILES NoPlugin.qml
+)
+qm_install_qml_modules(qmtest_qmlmod_no_plugin)
+
+# Type information is optional too. The qmldir and QML file still have to be
+# installed when no qmltypes file was generated.
+qt_add_qml_module(qmtest_qmlmod_no_types
+    URI QmTest.NoTypes
+    VERSION 1.0
+    NO_PLUGIN
+    NO_GENERATE_QMLTYPES
+    QML_FILES NoTypes.qml
+)
+qm_install_qml_modules(qmtest_qmlmod_no_types)

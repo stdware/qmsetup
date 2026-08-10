@@ -173,6 +173,7 @@ function(qm_add_copy_command _target)
                 ${_install_extra_args}
                 -P \"${QMSETUP_MODULES_DIR}/scripts/copy.cmake\"
                 WORKING_DIRECTORY \"${CMAKE_CURRENT_SOURCE_DIR}\"
+                COMMAND_ERROR_IS_FATAL ANY
             )
         ")
     endif()
