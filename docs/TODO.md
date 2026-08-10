@@ -6,7 +6,7 @@ Both halves have a suite that runs from CTest on Windows, Linux and macOS: `test
 
 - Doxygen for `qm_setup_doxygen`, which wants the tool installed to say anything at all.
 - `qm_compiler_*`. Each is a list of compiler flags chosen per compiler, so a test could only read the list back to itself, which says nothing about whether the flags are the right ones. What would catch a mistake there is compiling with them.
-- Everything under `cmake/modules/private`. It says on it that it may be modified or removed, and nothing outside qmsetup should be calling it. That takes `qm_install_package` with it, which configures and builds an external package during configure and wants a network to do anything worth asserting on.
+- Most behavior under `cmake/modules/private`. It says on it that it may be modified or removed, and nothing outside qmsetup should be calling it. `qm_install_package` has a local regression test for forwarding the selected generator program, but its external package workflows are otherwise left alone because useful coverage would want a network.
 
 ## Tested where the dependency is there
 

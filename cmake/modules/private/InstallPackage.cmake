@@ -102,6 +102,13 @@ function(qm_install_package _name)
             list(APPEND _extra_args -A "${CMAKE_GENERATOR_PLATFORM}")
         endif()
 
+        # Keep the generator program that the parent already resolved. A relative
+        # PATH entry can resolve somewhere else after WORKING_DIRECTORY changes.
+        # https://github.com/stdware/qmsetup/issues/8
+        if(CMAKE_MAKE_PROGRAM)
+            list(APPEND _extra_args "-DCMAKE_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}")
+        endif()
+
         # Remove old build directory
         if(IS_DIRECTORY ${_build_dir})
             file(REMOVE_RECURSE ${_build_dir})

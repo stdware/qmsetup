@@ -62,6 +62,7 @@ set(_scripts
 set(_configured_projects
     QMSetupAPI/test_targets
     modules/Preprocess/test_definition_scopes
+    modules/private/InstallPackage/test_make_program
 )
 
 # Registered only where they do anything, rather than configuring a project
