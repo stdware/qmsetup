@@ -30,11 +30,11 @@ namespace Utils {
 
         stdc::Popen proc;
         proc.args(argv)
-            .stdin_(stdc::Popen::DEVNULL)
-            .stdout_(stdc::Popen::PIPE)
+            .standardInput(stdc::Popen::DeviceNull)
+            .standardOutput(stdc::Popen::Pipe)
             // Folded together. What a tool says when it fails is what the error below carries,
             // and some of them say it on one stream and some on the other.
-            .stderr_(stdc::Popen::STDOUT);
+            .standardError(stdc::Popen::StandardOutput);
 
         std::string message;
         if (!proc.start(&message)) {
@@ -42,11 +42,11 @@ namespace Utils {
         }
 
         std::string output = std::get<0>(proc.communicate({}, timeout));
-        if (const auto ec = proc.error_code()) {
+        if (const auto ec = proc.errorCode()) {
             throw std::runtime_error("failed to run \"" + command + "\": " + ec.message());
         }
 
-        const auto code = proc.returncode();
+        const auto code = proc.returnCode();
         if (!code) {
             throw std::runtime_error("command \"" + command + "\" did not finish");
         }
@@ -312,10 +312,8 @@ namespace Utils {
     // library that happens to begin that way with it.
     static bool isDynamicLoader(const std::string &name) {
         return stdc::str::starts_with(name, "ld-linux") ||
-               stdc::str::starts_with(name, "ld-musl") ||
-               stdc::str::starts_with(name, "ld-elf") ||
-               stdc::str::starts_with(name, "ld.so") ||
-               stdc::str::starts_with(name, "ld64.so");
+               stdc::str::starts_with(name, "ld-musl") || stdc::str::starts_with(name, "ld-elf") ||
+               stdc::str::starts_with(name, "ld.so") || stdc::str::starts_with(name, "ld64.so");
     }
 
     // The names in the binary's own DT_NEEDED, which is where its dependency
