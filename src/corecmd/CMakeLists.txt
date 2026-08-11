@@ -1,4 +1,7 @@
-project(qmcorecmd VERSION ${QMSETUP_VERSION} LANGUAGES CXX)
+project(qmcorecmd
+    VERSION ${QMSETUP_VERSION}
+    LANGUAGES CXX
+)
 
 set(RC_COPYRIGHT "Copyright 2023-present Stdware Collections")
 set(RC_DESCRIPTION "QMSetup Core Utility Command")
@@ -43,7 +46,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 )
 
 # Compat with gcc 8
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9")
     target_link_libraries(${PROJECT_NAME} PRIVATE stdc++fs)
 endif()
 
@@ -64,9 +67,9 @@ if(WIN32)
     )
 endif()
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_DESC="${RC_DESCRIPTION}, Version ${QMSETUP_VERSION}")
-target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_COPYRIGHT="${RC_COPYRIGHT}, checkout https://github.com/stdware/qmsetup")
-target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_VERSION="${QMSETUP_VERSION}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_DESC="${RC_DESCRIPTION}, Version ${PROJECT_VERSION}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_COPYRIGHT="${RC_COPYRIGHT}, checkout ${QMSETUP_HOMEPAGE_URL}")
+target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_VERSION="${PROJECT_VERSION}")
 
 set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME corecmd)
 
@@ -85,7 +88,7 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 # Check patchelf
-if (NOT WIN32 AND NOT APPLE)
+if(NOT WIN32 AND NOT APPLE)
     execute_process(
         COMMAND patchelf --version
         OUTPUT_VARIABLE _patchelf_version_output
@@ -94,7 +97,7 @@ if (NOT WIN32 AND NOT APPLE)
     )
 
     if(NOT "${_patchelf_version_output}" MATCHES "patchelf")
-        message(WARNING "Patchelf not found, the deploy feature won't work.")
+        message(WARNING "Patchelf not found, the deploy feature will not work.")
     else()
         string(REGEX REPLACE "patchelf (.+)" "\\1" _patchelf_version ${_patchelf_version_output})
         message(STATUS "Found patchelf, version ${_patchelf_version}")

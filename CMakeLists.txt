@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.19)
 
-project(qmsetup VERSION 1.1.1.0 LANGUAGES CXX)
+project(qmsetup
+    VERSION 1.1.1.0
+    LANGUAGES CXX
+    DESCRIPTION "CMake Modules and Basic Libraries for C/C++ projects."
+    HOMEPAGE_URL "https://github.com/stdware/qmsetup"
+)
 
 # ----------------------------------
 # Configure Options
@@ -39,6 +44,8 @@ endif()
 # Project Variables
 # ----------------------------------
 set(QMSETUP_VERSION ${PROJECT_VERSION})
+set(QMSETUP_DESCRIPTION ${PROJECT_DESCRIPTION})
+set(QMSETUP_HOMEPAGE_URL ${PROJECT_HOMEPAGE_URL})
 set(QMSETUP_INSTALL_NAME ${PROJECT_NAME})
 set(QMSETUP_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
