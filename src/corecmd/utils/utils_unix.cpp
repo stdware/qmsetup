@@ -36,14 +36,13 @@ namespace Utils {
             // and some of them say it on one stream and some on the other.
             .standardError(stdc::Popen::StandardOutput);
 
-        std::string message;
-        if (!proc.start(&message)) {
-            throw std::runtime_error("failed to run \"" + command + "\": " + message);
+        if (!proc.start()) {
+            throw std::runtime_error("failed to run \"" + command + "\": " + proc.errorMessage());
         }
 
         std::string output = std::get<0>(proc.communicate({}, timeout));
-        if (const auto ec = proc.errorCode()) {
-            throw std::runtime_error("failed to run \"" + command + "\": " + ec.message());
+        if (proc.errorCode()) {
+            throw std::runtime_error("failed to run \"" + command + "\": " + proc.errorMessage());
         }
 
         const auto code = proc.returnCode();
