@@ -220,7 +220,12 @@ function(qmtest_cmake_add _module _driver)
     )
     set_tests_properties(cmake.${_name} PROPERTIES
         LABELS cmake
-        TIMEOUT 600
+        # The default is 1500 seconds, long enough for a hang to pass for slowness. Fifteen
+        # seconds at the worst measured on CI, which is test_install_qml_modules configuring and
+        # building a QML project, so anything still running at two minutes is stuck. One number
+        # for all of them, a script that finishes in hundredths of a second being the same kind
+        # of stuck at two minutes as a project that takes fifteen.
+        TIMEOUT 120
     )
 endfunction()
 

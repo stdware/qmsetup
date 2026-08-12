@@ -61,6 +61,9 @@ foreach(_module IN LISTS _modules)
         ENVIRONMENT
             "QMCORECMD=$<TARGET_FILE:qmcorecmd>;QMTEST_FIXTURES=${QMSETUP_TEST_FIXTURE_DIR};QMTEST_FRAMEWORKS=${QMSETUP_TEST_FRAMEWORK_DIR};QMTEST_SCENARIOS=${_scenario_file};PYTHONDONTWRITEBYTECODE=1"
         LABELS qmcorecmd
-        TIMEOUT 300
+        # The default is 1500 seconds, long enough for a hang to pass for slowness. Three
+        # seconds here and eighteen at the worst measured on CI, which is test_deploy_rpath on
+        # the macOS runner, so anything still running at two minutes is stuck.
+        TIMEOUT 120
     )
 endforeach()

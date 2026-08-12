@@ -10,9 +10,7 @@
 #include <sstream>
 
 #include <stdcorelib/console.h>
-#include <stdcorelib/path.h>
 #include <stdcorelib/str.h>
-#include <stdcorelib/stlextra/algorithms.h>
 
 #include "utils/sha-256.h"
 

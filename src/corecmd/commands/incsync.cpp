@@ -12,7 +12,6 @@
 #include <stdcorelib/console.h>
 #include <stdcorelib/path.h>
 #include <stdcorelib/str.h>
-#include <stdcorelib/stlextra/algorithms.h>
 
 using stdc::u8printf;
 
