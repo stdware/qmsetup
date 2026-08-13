@@ -243,7 +243,7 @@ int cmd_configure(const cli::ParseResult &result) {
         std::ofstream outFile(fileName);
         if (!outFile.is_open()) {
             throw std::runtime_error("failed to open file \"" + tstr2str(fileName) +
-                                     "\": " + Utils::standardError());
+                                     "\": " + Utils::sysErrorMessage());
         }
 
         outFile << content;

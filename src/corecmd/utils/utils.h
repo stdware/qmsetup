@@ -82,7 +82,7 @@ namespace Utils {
     std::string time2str(const std::chrono::system_clock::time_point &t);
 
     /// What the last system call had to say, for a message that would otherwise carry a number.
-    std::string standardError(int code = errno);
+    std::string sysErrorMessage(int code = errno);
 
     /// @}
 
@@ -136,15 +136,13 @@ namespace Utils {
     /// \name Processes
     /// @{
 
-#ifndef _WIN32
     /// Runs a program and answers with what it wrote, with its standard error folded in.
     ///
     /// \exception std::runtime_error anything other than a nought exit, carrying what the
     ///            program said
-    /// \note Windows has no counterpart because nothing there needs one. Its dependencies come
-    ///       out of the import table rather than from asking a tool.
+    /// \note Windows binary dependencies come out of the import table rather than from asking a
+    ///       tool, so this function is not used on Windows now.
     std::string executeCommand(const std::string &command, const std::vector<std::string> &args);
-#endif
 
     /// @}
 

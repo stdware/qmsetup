@@ -12,53 +12,10 @@
 #include <stdcorelib/path.h>
 #include <stdcorelib/str.h>
 #include <stdcorelib/stlextra/algorithms.h>
-#include <stdcorelib/support/popen.h>
 
 namespace fs = std::filesystem;
 
 namespace Utils {
-
-    std::string executeCommand(const std::string &command, const std::vector<std::string> &args) {
-        // A generous cap rather than none at all. Everything run here is a quick tool, and a
-        // build with one of them wedged should say so rather than wait for somebody to notice.
-        constexpr int timeout = 120 * 1000;
-
-        std::vector<std::string> argv;
-        argv.reserve(args.size() + 1);
-        argv.push_back(command);
-        argv.insert(argv.end(), args.begin(), args.end());
-
-        stdc::Popen proc;
-        proc.args(argv)
-            .standardInput(stdc::Popen::DeviceNull)
-            .standardOutput(stdc::Popen::Pipe)
-            // Folded together. What a tool says when it fails is what the error below carries,
-            // and some of them say it on one stream and some on the other.
-            .standardError(stdc::Popen::StandardOutput);
-
-        if (!proc.start()) {
-            throw std::runtime_error("failed to run \"" + command + "\": " + proc.errorMessage());
-        }
-
-        std::string output = std::get<0>(proc.communicate({}, timeout));
-        if (proc.errorCode()) {
-            throw std::runtime_error("failed to run \"" + command + "\": " + proc.errorMessage());
-        }
-
-        const auto code = proc.returnCode();
-        if (!code) {
-            throw std::runtime_error("command \"" + command + "\" did not finish");
-        }
-        if (*code == 0) {
-            return output;
-        }
-        // A child that a signal ended comes back as the negated signal number.
-        if (*code < 0) {
-            throw std::runtime_error("command \"" + command + "\" was terminated by signal " +
-                                     std::to_string(-*code));
-        }
-        throw std::runtime_error(std::string(stdc::str::trim(output)));
-    }
 
     FileTime fileTime(const fs::path &path) {
         struct stat sb;

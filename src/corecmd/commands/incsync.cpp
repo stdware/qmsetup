@@ -137,7 +137,7 @@ int cmd_incsync(const cli::ParseResult &result) {
                 std::ofstream outFile(targetPath);
                 if (!outFile.is_open()) {
                     throw std::runtime_error("failed to open file \"" + tstr2str(targetPath) +
-                                             "\": " + Utils::standardError());
+                                             "\": " + Utils::sysErrorMessage());
                 }
                 outFile << "#include \"" << rel << "\"" << std::endl;
                 outFile.close();
