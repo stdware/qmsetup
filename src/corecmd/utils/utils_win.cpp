@@ -36,9 +36,9 @@ namespace Utils {
 
         FileTime times;
         // ... (convert FILETIMEs to std::chrono::system_clock::time_point and store in times)
-        times.accessTime = stdc::windows::FileTimeToTimePoint(lastAccessTime);
-        times.modifyTime = stdc::windows::FileTimeToTimePoint(lastWriteTime);
-        times.statusChangeTime = stdc::windows::FileTimeToTimePoint(creationTime);
+        times.accessTime = stdc::windows::fileTimeToTimePoint(lastAccessTime);
+        times.modifyTime = stdc::windows::fileTimeToTimePoint(lastWriteTime);
+        times.statusChangeTime = stdc::windows::fileTimeToTimePoint(creationTime);
 
         return times;
     }
@@ -51,9 +51,9 @@ namespace Utils {
         }
 
         FILETIME creationTime, lastAccessTime, lastWriteTime;
-        lastAccessTime = stdc::windows::TimePointToFileTime(times.accessTime);
-        lastWriteTime = stdc::windows::TimePointToFileTime(times.modifyTime);
-        creationTime = stdc::windows::TimePointToFileTime(times.statusChangeTime);
+        lastAccessTime = stdc::windows::timePointToFileTime(times.accessTime);
+        lastWriteTime = stdc::windows::timePointToFileTime(times.modifyTime);
+        creationTime = stdc::windows::timePointToFileTime(times.statusChangeTime);
 
         if (!::SetFileTime(hFile, &creationTime, &lastAccessTime, &lastWriteTime)) {
             ::CloseHandle(hFile);
@@ -225,7 +225,7 @@ namespace Utils {
                 if (hFile == INVALID_HANDLE_VALUE || hFile == NULL) {
                     std::wostringstream ss;
                     ss << L"Cannot open \"" << peExecutableFileName << L"\": "
-                       << stdc::windows::SystemError(::GetLastError());
+                       << stdc::windows::systemError(::GetLastError());
                     *errorMessage = ss.str();
                     break;
                 }
@@ -234,7 +234,7 @@ namespace Utils {
                 if (hFileMap == NULL) {
                     std::wostringstream ss;
                     ss << L"Cannot create file mapping of \"" << peExecutableFileName << L"\": "
-                       << stdc::windows::SystemError(::GetLastError());
+                       << stdc::windows::systemError(::GetLastError());
                     *errorMessage = ss.str();
                     break;
                 }
@@ -243,7 +243,7 @@ namespace Utils {
                 if (!fileMemory) {
                     std::wostringstream ss;
                     ss << L"Cannot map \"" << peExecutableFileName << L"\": "
-                       << stdc::windows::SystemError(::GetLastError());
+                       << stdc::windows::systemError(::GetLastError());
                     *errorMessage = ss.str();
                     break;
                 }
