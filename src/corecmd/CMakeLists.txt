@@ -73,16 +73,9 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE TOOL_VERSION="${PROJECT_VERSI
 
 set_target_properties(${PROJECT_NAME} PROPERTIES EXPORT_NAME corecmd)
 
-# Vcpkg requires the binary to be installed in "tools/${PORT}" directory
-if(QMSETUP_VCPKG_TOOLS_HINT)
-    set(_tools_dir tools/${QMSETUP_INSTALL_NAME})
-else()
-    set(_tools_dir ${CMAKE_INSTALL_BINDIR})
-endif()
-
 install(TARGETS ${PROJECT_NAME}
     EXPORT ${QMSETUP_INSTALL_NAME}Targets
-    RUNTIME DESTINATION "${_tools_dir}" OPTIONAL
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" OPTIONAL
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" OPTIONAL
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" OPTIONAL
 )

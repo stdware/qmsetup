@@ -10,7 +10,6 @@ project(qmsetup
 # ----------------------------------
 # Configure Options
 # ----------------------------------
-option(QMSETUP_VCPKG_TOOLS_HINT "Install executables to tools directory" OFF)
 option(QMSETUP_STATIC_RUNTIME "Static link runtime libraries on Windows" ON)
 option(QMSETUP_BUILD_TESTS "Build test cases" OFF)
 

@@ -2,6 +2,10 @@
 
 ## v1.1.1.0 (2026-08-10)
 
+### Removed
+
+- `QMSETUP_VCPKG_TOOLS_HINT` is gone, and `qmcorecmd` is installed to the binary directory whatever a port wants. A port that wants it under `tools/<port>` moves it there with `vcpkg_copy_tools`, which is also what brings along the libraries it loads and what a build installing it there directly leaves it without.
+
 ### Fixed
 
 - Installation now fails when `qm_add_copy_command` cannot copy its files.

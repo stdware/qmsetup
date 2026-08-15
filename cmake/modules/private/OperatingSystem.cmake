@@ -1,3 +1,7 @@
+#[[
+    Warning: This module is private, may be modified or removed in the future, please use with caution.
+]] #
+
 include_guard(DIRECTORY)
 
 function(qm_get_windows_proxy _out)
