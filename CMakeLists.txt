@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 project(qmsetup
-    VERSION 1.1.1.0
+    VERSION 1.1.2.0
     LANGUAGES CXX
     DESCRIPTION "CMake Modules and Basic Libraries for C/C++ projects."
     HOMEPAGE_URL "https://github.com/stdware/qmsetup"

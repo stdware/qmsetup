@@ -1,10 +1,16 @@
 # Changelog
 
-## v1.1.1.0 (2026-08-10)
+## v1.1.2.0 (Unreleased)
 
 ### Removed
 
 - `QMSETUP_VCPKG_TOOLS_HINT` is gone, and `qmcorecmd` is installed to the binary directory whatever a port wants. A port that wants it under `tools/<port>` moves it there with `vcpkg_copy_tools`, which is also what brings along the libraries it loads and what a build installing it there directly leaves it without.
+
+### Internal
+
+- The tests are given a deadline of two minutes rather than the five and ten they had. The slowest on CI is eighteen seconds, so a run that reaches two minutes is stuck rather than slow.
+
+## v1.1.1.0 (2026-08-10)
 
 ### Fixed
 
