@@ -1,16 +1,14 @@
-// copy, rmdir and touch, which are here because Windows has no command of its own for any of
-// them and because CMake's answers are either slower or do not exist.
+// copy, which puts files and directories where they are asked for and passes over what is
+// already there and no older.
 
 #include "commands.h"
 
 #include "utils/utils.h"
 
-#include <iostream>
+#include <stdexcept>
+#include <utility>
 
-#include <stdcorelib/console.h>
 #include <stdcorelib/path.h>
-
-using stdc::u8printf;
 
 int cmd_copy(const cli::ParseResult &result) {
     bool force = isForceSet(result);
@@ -65,60 +63,5 @@ int cmd_copy(const cli::ParseResult &result) {
         Utils::copyDirectory(item, item, dest, force, verbose, excludeFunc);
     }
 
-    return 0;
-}
-
-int cmd_rmdir(const cli::ParseResult &result) {
-    bool verbose = isVerboseSet(result);
-
-    std::vector<fs::path> dirs;
-    {
-        const auto &dirsResult = argumentValues(result, 0);
-        dirs.reserve(dirsResult.size());
-        for (const auto &item : dirsResult) {
-            dirs.emplace_back(fs::absolute(str2tstr(item)));
-        }
-    }
-
-    for (const auto &item : std::as_const(dirs)) {
-        if (!fs::is_directory(item)) {
-            continue;
-        }
-        Utils::removeEmptyDirectories(item, verbose);
-    }
-    return 0;
-}
-
-int cmd_touch(const cli::ParseResult &result) {
-    bool verbose = isVerboseSet(result);
-
-    const auto &file = str2tstr(argumentValue(result, 0));
-    const auto &refFile = str2tstr(argumentValue(result, 1));
-
-    // Check existence
-    if (!fs::is_regular_file(file)) {
-        throw std::runtime_error("not a regular file: \"" + tstr2str(file) + "\"");
-    }
-
-    if (!refFile.empty() && !fs::is_regular_file(refFile)) {
-        throw std::runtime_error("not a regular file: \"" + tstr2str(refFile) + "\"");
-    }
-
-    // Get time
-    Utils::FileTime t;
-    if (!refFile.empty()) {
-        t = Utils::fileTime(refFile);
-    } else {
-        auto now = std::chrono::system_clock::now();
-        t = {now, now, now};
-    }
-
-    // Set time
-    if (verbose) {
-        u8printf("Set A-Time: %s\n", Utils::time2str(t.accessTime).data());
-        u8printf("Set M-Time: %s\n", Utils::time2str(t.modifyTime).data());
-        u8printf("Set C-Time: %s\n", Utils::time2str(t.statusChangeTime).data());
-    }
-    Utils::setFileTime(file, t);
     return 0;
 }

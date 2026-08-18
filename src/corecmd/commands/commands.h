@@ -16,6 +16,9 @@ namespace cli = stdc::cli;
 /// \name The commands
 ///
 /// One per file, named after it. deploy is three, being a different program on every platform.
+///
+/// copy, rmdir and touch are here because Windows has no command of its own for any of them and
+/// because CMake's answers are either slower or do not exist.
 /// @{
 
 int cmd_copy(const cli::ParseResult &result);

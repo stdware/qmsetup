@@ -13,7 +13,9 @@ set(_src
     main.cpp
 
     commands/commands.h
-    commands/filesystem.cpp
+    commands/copy.cpp
+    commands/rmdir.cpp
+    commands/touch.cpp
     commands/configure.cpp
     commands/incsync.cpp
     commands/deploy_p.h
@@ -37,8 +39,8 @@ add_executable(${PROJECT_NAME} ${_src})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(${PROJECT_NAME} PRIVATE stdcorelib::stdcorelib)
 
-# Add features
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20 cxx_std_17)
+# 17 and no higher. The block below is here for GCC 8, which has C++17 and nothing after it, and
+# stdcorelib asks for 17 of everything that links it.
 set_target_properties(${PROJECT_NAME} PROPERTIES
     CXX_EXTENSIONS OFF
     CXX_STANDARD 17
