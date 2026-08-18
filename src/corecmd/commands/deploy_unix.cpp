@@ -268,7 +268,7 @@ namespace Deploy {
             return;
         }
         // Which configuration was asked for decides what is worth copying out of the bundle.
-        if (path.filename().string().ends_with("_debug")) {
+        if (stdc::str::ends_with(path.filename().string(), "_debug")) {
             g_frameworkTypes[path.stem().string()] |= Debug;
         } else {
             g_frameworkTypes[path.stem().string()] |= Release;
