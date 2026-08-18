@@ -8,6 +8,7 @@
 #include <regex>
 #include <set>
 #include <sstream>
+#include <system_error>
 
 #include <stdcorelib/path.h>
 #include <stdcorelib/str.h>
@@ -16,6 +17,11 @@
 namespace fs = std::filesystem;
 
 namespace Utils {
+
+    bool isLink(const fs::path &path) {
+        std::error_code ec;
+        return fs::is_symlink(path, ec);
+    }
 
     FileTime fileTime(const fs::path &path) {
         struct stat sb;

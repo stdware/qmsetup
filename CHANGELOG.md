@@ -6,6 +6,12 @@
 
 - `QMSETUP_VCPKG_TOOLS_HINT` is gone, and `qmcorecmd` is installed to the binary directory whatever a port wants. A port that wants it under `tools/<port>` moves it there with `vcpkg_copy_tools`, which is also what brings along the libraries it loads and what a build installing it there directly leaves it without.
 
+### Fixed
+
+- `qmcorecmd rmdir` leaves a link alone rather than walking into it. A tree holding a link to a directory elsewhere had the empty directories on the far side of it removed along with its own.
+- `qmcorecmd copy` turns down a destination that sits inside a source. `copy d/ d/sub` kept arriving at what it had just written and went on making directories until the platform ran out of path to name them with.
+- `qmcorecmd copy` turns down an empty source rather than reading the last character of a string that has none.
+
 ### Internal
 
 - The tests are given a deadline of two minutes rather than the five and ten they had. The slowest on CI is eighteen seconds, so a run that reaches two minutes is stuck rather than slow.

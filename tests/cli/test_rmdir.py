@@ -55,3 +55,22 @@ class TestRmdir(QmTestCase):
         r = self.run_cmd("rmdir", "empty")
         self.assertOk(r)
         self.assertEqual(r.out, "")
+
+    def test_a_link_is_not_walked_into(self):
+        """A link counts as one of the things that is not a directory.
+
+        Walking into one would empty out directories the command was never
+        given, wherever the link happens to point.
+        """
+        outside = self.mkdir("outside/keepme/emptysub")
+        self.mkdir("tree")
+        try:
+            (self.path("tree") / "link").symlink_to(
+                outside.parent, target_is_directory=True
+            )
+        except (OSError, NotImplementedError):
+            self.skipTest("this machine will not make a symlink")
+
+        self.assertOk(self.run_cmd("rmdir", "tree"))
+        self.assertDir("outside/keepme/emptysub")
+        self.assertDir("tree")

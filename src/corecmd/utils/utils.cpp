@@ -115,6 +115,13 @@ namespace Utils {
     }
 
     bool removeEmptyDirectories(const fs::path &path, bool verbose) {
+        // A link is one of the things that is not a directory, whatever it points at. Walking
+        // into one leaves the tree that was named, and what is emptied out there is emptied for
+        // good, so a caller asking about a link is told the directory holding it is not empty.
+        if (isLink(path)) {
+            return false;
+        }
+
         bool isEmpty = true;
         for (const auto &entry : fs::directory_iterator(path)) {
             if (fs::is_directory(entry.path()) && removeEmptyDirectories(entry.path(), verbose)) {

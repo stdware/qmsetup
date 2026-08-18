@@ -19,6 +19,16 @@ namespace fs = std::filesystem;
 
 namespace Utils {
 
+    bool isLink(const fs::path &path) {
+        // The reparse point attribute rather than whatever the standard library makes of it.
+        // MinGW's reports a symlink here as a plain directory, so fs::is_symlink() says no to a
+        // link that MSVC's says yes to. A junction carries the attribute as well, and is the
+        // other way a directory on Windows turns out to be somewhere else.
+        const DWORD attributes = ::GetFileAttributesW(path.c_str());
+        return attributes != INVALID_FILE_ATTRIBUTES &&
+               (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0;
+    }
+
     FileTime fileTime(const fs::path &path) {
         HANDLE hFile = ::CreateFileW(path.wstring().data(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -320,4 +330,5 @@ namespace Utils {
         }
         return result;
     }
+
 }

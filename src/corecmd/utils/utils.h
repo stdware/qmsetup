@@ -89,6 +89,12 @@ namespace Utils {
     /// \name Files
     /// @{
 
+    /// Whether \a path is a link rather than the thing it names.
+    ///
+    /// Asked here rather than of \c fs::is_symlink(), which answers for a Windows link according
+    /// to whose standard library built the program.
+    bool isLink(const fs::path &path);
+
     struct FileTime {
         std::chrono::system_clock::time_point accessTime;
         std::chrono::system_clock::time_point modifyTime;

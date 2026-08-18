@@ -134,3 +134,30 @@ class TestOptionPlacement(QmTestCase):
         self.write("src/a.txt", "a")
         self.assertOk(self.run_cmd("copy", "src/a.txt", "dest", "-f"))
         self.assertFile("dest/a.txt")
+
+
+class TestRefusals(QmTestCase):
+    """What it will not do, rather than what it does.
+
+    A destination inside a source and an argument that is empty both reach the
+    walk as an ordinary path and are only wrong once it is under way, so they
+    are turned down before it starts.
+    """
+
+    def test_a_destination_inside_a_source_is_refused(self):
+        self.write("d/x/a.txt", "a")
+        self.assertRefused(self.run_cmd("copy", "d", "d/sub"))
+        self.assertNoDir("d/sub")
+
+    def test_and_so_is_a_source_copied_over_its_own_contents(self):
+        self.write("d/x/a.txt", "a")
+        self.assertRefused(self.run_cmd("copy", "d/", "d"))
+
+    def test_a_destination_whose_name_merely_starts_the_same_is_not(self):
+        self.write("d/x/a.txt", "a")
+        self.assertOk(self.run_cmd("copy", "d", "d-elsewhere"))
+        self.assertFile("d-elsewhere/d/x/a.txt")
+
+    def test_an_empty_source_is_refused(self):
+        self.mkdir("dest")
+        self.assertRefused(self.run_cmd("copy", "", "dest"))
