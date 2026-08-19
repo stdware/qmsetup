@@ -29,11 +29,11 @@
 #
 # Not covered:
 #
-#   qm_compiler_* is left alone on purpose. Every one of them is a list of
-#   compiler flags chosen per compiler, so a test could only read the list back
-#   to itself, which says nothing about whether the flags are the right ones.
-#   What would catch a mistake there is compiling with them, which is a
-#   different kind of test from any of these.
+#   qm_compiler_*, under modules/private, is left alone on purpose. Every one of
+#   them is a list of compiler flags chosen per compiler, so a test could only
+#   read the list back to itself, which says nothing about whether the flags are
+#   the right ones. What would catch a mistake there is compiling with them,
+#   which is a different kind of test from any of these.
 #
 #   Anything wanting Qt, protobuf or doxygen installed, and the standalone
 #   scripts under cmake/scripts.

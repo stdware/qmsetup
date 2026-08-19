@@ -1,10 +1,18 @@
+#[[
+    Warning: This module is private, may be modified or removed in the future, please use with caution.
+]] #
+
 include_guard(DIRECTORY)
 
-#[[
-    Disable all possible warnings from the compiler.
+#[==[.rst:
+.. cmake:command:: qm_compiler_no_warnings
+
+  Disable all possible warnings from the compiler.
+
+  .. code-block:: cmake
 
     qm_compiler_no_warnings()
-]] #
+#]==]
 macro(qm_compiler_no_warnings)
     foreach(__lang C CXX)
         # Padded at both ends, and repeated until nothing more comes off.
@@ -51,11 +59,15 @@ macro(qm_compiler_no_warnings)
     endif()
 endmacro()
 
-#[[
-    Enable all possible warnings from the compiler.
+#[==[.rst:
+.. cmake:command:: qm_compiler_max_warnings
+
+  Enable all possible warnings from the compiler.
+
+  .. code-block:: cmake
 
     qm_compiler_max_warnings()
-]] #
+#]==]
 function(qm_compiler_max_warnings)
     if(MSVC)
         add_compile_options(-W4)
@@ -66,11 +78,15 @@ function(qm_compiler_max_warnings)
     endif()
 endfunction()
 
-#[[
-    Treat all warnings as errors.
+#[==[.rst:
+.. cmake:command:: qm_compiler_warnings_are_errors
+
+  Treat all warnings as errors.
+
+  .. code-block:: cmake
 
     qm_compiler_warnings_are_errors()
-]] #
+#]==]
 function(qm_compiler_warnings_are_errors)
     if(MSVC)
         add_compile_options(-WX)
@@ -79,11 +95,15 @@ function(qm_compiler_warnings_are_errors)
     endif()
 endfunction()
 
-#[[
-    Prevent the compiler from receiving unknown parameters.
+#[==[.rst:
+.. cmake:command:: qm_compiler_no_unknown_options
+
+  Prevent the compiler from receiving unknown parameters.
+
+  .. code-block:: cmake
 
     qm_compiler_no_unknown_options()
-]] #
+#]==]
 function(qm_compiler_no_unknown_options)
     if(MSVC)
         if(MSVC_VERSION GREATER_EQUAL 1930) # Visual Studio 2022 version 17.0
@@ -93,11 +113,15 @@ function(qm_compiler_no_unknown_options)
     endif()
 endfunction()
 
-#[[
-    Remove all unused code from the final binary.
+#[==[.rst:
+.. cmake:command:: qm_compiler_eliminate_dead_code
+
+  Remove all unused code from the final binary.
+
+  .. code-block:: cmake
 
     qm_compiler_eliminate_dead_code()
-]] #
+#]==]
 function(qm_compiler_eliminate_dead_code)
     if(MSVC)
         add_compile_options(-Gw -Gy -Zc:inline)
@@ -134,22 +158,30 @@ function(qm_compiler_eliminate_dead_code)
     endif()
 endfunction()
 
-#[[
-    Only export symbols which are marked to be exported, just like MSVC.
+#[==[.rst:
+.. cmake:command:: qm_compiler_dont_export_by_default
+
+  Only export symbols which are marked to be exported, just like MSVC.
+
+  .. code-block:: cmake
 
     qm_compiler_dont_export_by_default()
-]] #
+#]==]
 macro(qm_compiler_dont_export_by_default)
     set(CMAKE_C_VISIBILITY_PRESET "hidden")
     set(CMAKE_CXX_VISIBILITY_PRESET "hidden")
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 endmacro()
 
-#[[
-    Enable all possible security issue mitigations from your compiler.
+#[==[.rst:
+.. cmake:command:: qm_compiler_enable_secure_code
+
+  Enable all possible security issue mitigations from your compiler.
+
+  .. code-block:: cmake
 
     qm_compiler_enable_secure_code()
-]] #
+#]==]
 macro(qm_compiler_enable_secure_code)
     if(MSVC)
         add_compile_options(-GS -sdl -guard:cf)
@@ -197,8 +229,12 @@ macro(qm_compiler_enable_secure_code)
     endif()
 endmacro()
 
-#[[
-    Enable all possible Qt coding style policies.
+#[==[.rst:
+.. cmake:command:: qm_compiler_enable_strict_qt
+
+  Enable all possible Qt coding style policies.
+
+  .. code-block:: cmake
 
     qm_compiler_enable_strict_qt(
         TARGETS <target1> <target2> ... <targetN>
@@ -207,10 +243,13 @@ endmacro()
         [ALLOW_UNSAFE_FLAGS]
     )
 
-    NO_DEPRECATED_API: Disable the use of any deprecated Qt APIs. Only has effect since Qt6.
-    ALLOW_KEYWORD: Allow the use of the traditional Qt keywords such as "signal" "slot" "emit".
-    ALLOW_UNSAFE_FLAGS: Allow the use of the unsafe QFlags (unsafe: can be implicitly cast to and from "int").
-]] #
+  ``NO_DEPRECATED_API``
+    Disable the use of any deprecated Qt APIs. Only has effect since Qt6.
+  ``ALLOW_KEYWORD``
+    Allow the use of the traditional Qt keywords such as "signal" "slot" "emit".
+  ``ALLOW_UNSAFE_FLAGS``
+    Allow the use of the unsafe QFlags (unsafe: can be implicitly cast to and from "int").
+#]==]
 function(qm_compiler_enable_strict_qt)
     cmake_parse_arguments(arg "NO_DEPRECATED_API;ALLOW_KEYWORD;ALLOW_UNSAFE_FLAGS" "" "TARGETS" ${ARGN})
     if(NOT arg_TARGETS)

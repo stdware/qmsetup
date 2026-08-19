@@ -19,8 +19,8 @@ qm_import(Filesystem.cmake)
 qmtest_command("and one named with it" qm_add_copy_command)
 
 # Several at once.
-qm_import(CompilerOptions Translate)
-qmtest_command("several named at once" qm_compiler_max_warnings)
+qm_import(Protobuf Translate)
+qmtest_command("several named at once" qm_create_protobuf)
 qmtest_command("all of them" qm_add_translation)
 
 # Bringing one in twice is what an include guard is for, and is not an error.

@@ -12,8 +12,8 @@ cmake -B build -DQMSETUP_BUILD_TESTS=ON \
 ## Not tested, and will not be
 
 - Doxygen for `qm_setup_doxygen`, which wants the tool installed to say anything at all.
-- `qm_compiler_*`. Each is a list of compiler flags chosen per compiler, so a test could only read the list back to itself, which says nothing about whether the flags are the right ones. What would catch a mistake there is compiling with them.
 - Most behavior under `cmake/modules/private`. It says on it that it may be modified or removed, and nothing outside qmsetup should be calling it. `qm_install_package` has a local regression test for forwarding the selected generator program, but its external package workflows are otherwise left alone because useful coverage would want a network.
+- `qm_compiler_*`, which is under `private` for the same reason and has one of its own. Each is a list of compiler flags chosen per compiler, so a test could only read the list back to itself, which says nothing about whether the flags are the right ones. What would catch a mistake there is compiling with them.
 
 ## Not tested yet
 
