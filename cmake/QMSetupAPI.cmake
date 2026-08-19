@@ -217,11 +217,26 @@ endfunction()
 #[==[.rst:
 .. cmake:command:: qm_set_value
 
-  Set value if valid, otherwise use default.
+  Set a variable to the first of several that holds something, or to a default.
 
   .. code-block:: cmake
 
-    qm_set_value(<key> <maybe_value...> <default>)
+    qm_set_value(<key> [<variable>...] <default>)
+
+  ``<key>``
+    the variable to set, in the caller's scope
+  ``<variable>``
+    the *name* of a variable to try rather than its value. They are tried in
+    the order given and the first that ``if()`` calls true is taken, so a
+    variable that is unset, empty or ``OFF`` falls through to the next.
+  ``<default>``
+    a value rather than a name, taken where none of the variables answered
+
+  .. code-block:: cmake
+
+    qm_set_value(_version FUNC_VERSION PROJECT_VERSION "0.0.0.0")
+
+  Naming no variable at all is allowed, and comes to ``set(<key> <default>)``.
 #]==]
 function(qm_set_value _key)
     set(_args "${ARGN}")
@@ -1013,7 +1028,8 @@ endfunction()
   .. code-block:: cmake
 
     qm_collect_targets(<list> [DIRECTORY directory]
-                              [EXECUTABLE] [SHARED] [STATIC] [INTERFACE] [UTILITY])
+                              [EXECUTABLE] [SHARED]
+                              [STATIC] [INTERFACE] [UTILITY])
 
   If one or more types are specified, return targets matching the types.
   If no type is specified, return all targets.
@@ -1264,7 +1280,7 @@ endfunction()
 
   .. code-block:: cmake
 
-    qm_include_recursive(<target> <scope> <dir1> [<dir2> ...])
+    qm_include_recursive(<target> <scope> <dir...>)
 
   Every directory under each one named becomes an include directory, with no
   filtering, so a tree carrying a .git or a build directory contributes those
