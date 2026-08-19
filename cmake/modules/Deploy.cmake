@@ -1,6 +1,14 @@
-#[[
-    Warning: This module depends on `qmcorecmd` after installation.
-]] #
+#[==[.rst:
+Deploy
+------
+
+Gathering what a built or an installed binary needs to run, and putting it
+beside the binary. Windows is done after a build and every platform can be done
+during an install.
+
+.. warning::
+   This module depends on ``qmcorecmd`` after installation.
+#]==]
 if(NOT QMSETUP_CORECMD_EXECUTABLE)
     message(FATAL_ERROR "QMSETUP_CORECMD_EXECUTABLE not defined. Add find_package(qmsetup) to CMake first.")
 endif()
@@ -27,8 +35,12 @@ endif()
 
 include_guard(DIRECTORY)
 
-#[[
-    Automatically copy dependencies for Windows Executables after build.
+#[==[.rst:
+.. cmake:command:: qm_win_applocal_deps
+
+  Automatically copy dependencies for Windows Executables after build.
+
+  .. code-block:: cmake
 
     qm_win_applocal_deps(<target>
         [CUSTOM_TARGET <target>]
@@ -37,7 +49,13 @@ include_guard(DIRECTORY)
         [OUTPUT_DIR <dir>]
         [EXCLUDE <pattern...>]
     )
-]] #
+
+  Does nothing where the platform is not Windows, so a call needs no guard
+  around it.
+
+  .. seealso:: :cmake:command:`qm_deploy_directory`, for the same thing done
+     while installing rather than after building.
+#]==]
 function(qm_win_applocal_deps _target)
     if(NOT WIN32)
         return()
@@ -133,8 +151,12 @@ function(qm_win_applocal_deps _target)
     )
 endfunction()
 
-#[[
-    Add a deploy command when installing the project. Not for a debug build.
+#[==[.rst:
+.. cmake:command:: qm_deploy_directory
+
+  Add a deploy command when installing the project. Not for a debug build.
+
+  .. code-block:: cmake
 
     qm_deploy_directory(<install_dir>
         [FORCE] [STANDARD] [VERBOSE]
@@ -152,26 +174,42 @@ endfunction()
         [COMMENT <comment>]
     )
 
-    PLUGINS: Qt plugins, in format of `<category>/<name>`
-    PLUGIN_DIR: Qt plugins destination
-    EXTRA_PLUGIN_PATHS: Extra Qt plugins searching paths
-    QML: Qt qml directories
-    QML_DIR: Qt qml destination
-    LIBRARY_DIR: Library destination
-    EXTRA_LIBRARIES: Extra library names list to deploy
-    EXTRA_SEARCHING_PATHS: Extra library searching paths
+  ``PLUGINS``
+    Qt plugins, in format of ``<category>/<name>``
+  ``PLUGIN_DIR``
+    Qt plugins destination
+  ``EXTRA_PLUGIN_PATHS``
+    Extra Qt plugins searching paths
+  ``QML``
+    Qt qml directories
+  ``QML_DIR``
+    Qt qml destination
+  ``LIBRARY_DIR``
+    Library destination
+  ``EXTRA_LIBRARIES``
+    Extra library names list to deploy
+  ``EXTRA_SEARCHING_PATHS``
+    Extra library searching paths
 
-    What it gathers is the release flavour of everything, and that is decided in
-    the scripts underneath rather than here. A plugin is looked for by the name
-    it was given, so `iconengines/qsvgicon` finds `qsvgicon.dll` and never
-    `qsvgicond.dll`, and a debug build beside a release one is turned down on
-    sight. Unix leaves out anything whose name carries `debug`, which is how a
-    macOS framework spells its debug library.
+  What it gathers is the release flavour of everything, and that is decided in
+  the scripts underneath rather than here. A plugin is looked for by the name it
+  was given, so ``iconengines/qsvgicon`` finds ``qsvgicon.dll`` and never
+  ``qsvgicond.dll``, and a debug build beside a release one is turned down on
+  sight. Unix leaves out anything whose name carries ``debug``, which is how a
+  macOS framework spells its debug library.
 
-    So nothing stops this being called in a debug build, and what it leaves is a
-    release deployment. Nothing here reads the configuration, and the note above
-    is the whole of the enforcement.
-]] #
+  So nothing stops this being called in a debug build, and what it leaves is a
+  release deployment. Nothing here reads the configuration, and the note above is
+  the whole of the enforcement.
+
+  ``QML`` is the one thing here that cannot be asked for without a Qt, the
+  modules being named relative to a directory only qmake can say where is.
+  ``PLUGINS`` given ``EXTRA_PLUGIN_PATHS`` never reaches qmake.
+
+  ``EXTRA_LIBRARIES`` is matched against what is on disk while the project is
+  being read, so it names neither a target of this build nor a generator
+  expression.
+#]==]
 function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
