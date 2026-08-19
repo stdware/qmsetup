@@ -53,6 +53,24 @@ include_guard(DIRECTORY)
 
   ``CREATE_ONCE``
     create translations at configure phase if not exist
+
+  .. note::
+     The Linguist tools have to be found before this is called, which
+     :cmake:command:`qm_find_qt` is the short way to. A call made without them
+     stops with an error saying so.
+
+  .. code-block:: cmake
+
+     qm_import(Translate)
+
+     qm_find_qt(LinguistTools)
+     qm_add_translation(${PROJECT_NAME}_translations
+         LOCALES ja_JP zh_CN zh_TW
+         PREFIX ${PROJECT_NAME}
+         TARGETS ${PROJECT_NAME}
+         TS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/translations
+         QM_DIR ${CMAKE_CURRENT_BINARY_DIR}/translations
+     )
 #]==]
 function(qm_add_translation _target)
     set(options CREATE_ONCE)

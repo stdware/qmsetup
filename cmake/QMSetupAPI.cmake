@@ -1069,6 +1069,11 @@ endfunction()
   If ``RELATIVE`` is specified, return paths evaluated as a relative path to it.
   If ``ABSOLUTE`` is specified, return absolute paths.
   If neither of them is specified, return names.
+
+  A directory is kept where it matches any of the ``REGEX_INCLUDE``
+  expressions, and dropped where it matches any of the ``REGEX_EXCLUDE`` ones.
+  Two names cannot both be true of one directory, so asking for two of them and
+  getting what matches both would be asking for nothing.
 #]==]
 function(qm_get_subdirs _var)
     set(options ABSOLUTE)

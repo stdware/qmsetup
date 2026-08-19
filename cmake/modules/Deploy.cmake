@@ -206,6 +206,11 @@ endfunction()
   modules being named relative to a directory only qmake can say where is.
   ``PLUGINS`` given ``EXTRA_PLUGIN_PATHS`` never reaches qmake.
 
+  .. note::
+     Where qmake is wanted it has to be found first, which
+     :cmake:command:`qm_find_qt` with any component is the short way to. A call
+     that needs it and does not have it stops with an error saying so.
+
   ``EXTRA_LIBRARIES`` is matched against what is on disk while the project is
   being read, so it names neither a target of this build nor a generator
   expression.

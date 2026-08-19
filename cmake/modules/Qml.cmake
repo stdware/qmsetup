@@ -24,19 +24,22 @@ include_guard(DIRECTORY)
   ``PREFIX``
     install directory prefix (default: "qml")
 
-  Notice:
-  For static library backing targets, you should specify "OUTPUT_TARGETS" when calling "qt_add_qml_module()"
-  to collect the internally generated targets (mainly object libraries), and then install them by calling:
+  .. note::
+     For static library backing targets, you should specify ``OUTPUT_TARGETS``
+     when calling ``qt_add_qml_module()`` to collect the internally generated
+     targets (mainly object libraries), and then install them by calling:
 
-  install(TARGETS ${_output_targets}
-  EXPORT <target set>
-  RUNTIME DESTINATION bin
-  LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib
-  OBJECTS DESTINATION lib
-  )
+     .. code-block:: cmake
 
-  See also: https://doc.qt.io/qt-6/qt-add-qml-module.html
+        install(TARGETS ${_output_targets}
+            EXPORT <target set>
+            RUNTIME DESTINATION bin
+            LIBRARY DESTINATION lib
+            ARCHIVE DESTINATION lib
+            OBJECTS DESTINATION lib
+        )
+
+  .. seealso:: `qt_add_qml_module <https://doc.qt.io/qt-6/qt-add-qml-module.html>`_
 #]==]
 function(qm_install_qml_modules _target)
     set(options)
