@@ -1,7 +1,18 @@
+#[==[.rst:
+Translate
+---------
+
+Qt Linguist, from collecting the strings to releasing the catalogues.
+#]==]
+
 include_guard(DIRECTORY)
 
-#[[
-    Add qt translation target.
+#[==[.rst:
+.. cmake:command:: qm_add_translation
+
+  Add qt translation target.
+
+  .. code-block:: cmake
 
     qm_add_translation(<target>
         [LOCALES locales]
@@ -16,24 +27,33 @@ include_guard(DIRECTORY)
         [CREATE_ONCE]
     )
 
-    Arguments:
-        LOCALES: language names, e.g. zh_CN en_US, must specify if SOURCES or TARGETS is specified
-        PREFIX: translation file prefix, default to target name
+  ``LOCALES``
+    language names, e.g. zh_CN en_US, must specify if SOURCES or TARGETS is specified
+  ``PREFIX``
+    translation file prefix, default to target name
 
-        SOURCES: source files
-        DIRECTORIES: source directories
-        TARGETS: target names, the source files of which will be collected
-        TS_FILES: ts file names, add the specified ts file
+  ``SOURCES``
+    source files
+  ``DIRECTORIES``
+    source directories
+  ``TARGETS``
+    target names, the source files of which will be collected
+  ``TS_FILES``
+    ts file names, add the specified ts file
 
-        TS_DIR: ts files destination, default to `CMAKE_CURRENT_SOURCE_DIR`
-        QM_DIR: qm files destination, default to `CMAKE_CURRENT_BINARY_DIR`
+  ``TS_DIR``
+    ts files destination, default to ``CMAKE_CURRENT_SOURCE_DIR``
+  ``QM_DIR``
+    qm files destination, default to ``CMAKE_CURRENT_BINARY_DIR``
 
-        TS_DEPENDS: add lupdate task as a dependency to the given targets
-        QM_DEPENDS: add lrelease task as a dependency to the given targets
+  ``TS_DEPENDS``
+    add lupdate task as a dependency to the given targets
+  ``QM_DEPENDS``
+    add lrelease task as a dependency to the given targets
 
-        CREATE_ONCE: create translations at configure phase if not exist
-    
-]] #
+  ``CREATE_ONCE``
+    create translations at configure phase if not exist
+#]==]
 function(qm_add_translation _target)
     set(options CREATE_ONCE)
     set(oneValueArgs PREFIX TS_DIR QM_DIR)

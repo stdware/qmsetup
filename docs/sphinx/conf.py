@@ -34,6 +34,12 @@ highlight_language = "cmake"
 html_theme = "alabaster"
 exclude_patterns = ["_build"]
 
+# No "page source" link and no copy of the sources beside the pages. Every source
+# under here is a one line stub, so what the link offers a reader is the name of
+# a file rather than the text they are looking at.
+html_copy_source = False
+html_show_sourcelink = False
+
 
 # Where the repository is, said once.
 #

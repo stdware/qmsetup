@@ -1,7 +1,18 @@
+#[==[.rst:
+Doxygen
+-------
+
+Setting up a Doxygen run as a build target.
+#]==]
+
 include_guard(DIRECTORY)
 
-#[[
-    Add Doxygen documentation generating target.
+#[==[.rst:
+.. cmake:command:: qm_setup_doxygen
+
+  Add Doxygen documentation generating target.
+
+  .. code-block:: cmake
 
     qm_setup_doxygen(<target>
         [NAME           <name>]
@@ -14,7 +25,7 @@ include_guard(DIRECTORY)
 
         [TAGFILES           <file> ...]
         [GENERATE_TAGFILE   <file>]
-        
+
         [INPUT                  <file> ...]
         [INCLUDE_DIRECTORIES    <dir> ...]
         [COMPILE_DEFINITIONS    <NAME=VALUE> ...]
@@ -23,7 +34,7 @@ include_guard(DIRECTORY)
         [NO_EXPAND_MACROS       <macro> ...]
         [DEPENDS                <dependency> ...]
     )
-]] #
+#]==]
 function(qm_setup_doxygen _target)
     set(options)
     set(oneValueArgs NAME VERSION DESCRIPTION LOGO MDFILE OUTPUT_DIR INSTALL_DIR GENERATE_TAGFILE)

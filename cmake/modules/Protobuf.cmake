@@ -1,7 +1,18 @@
+#[==[.rst:
+Protobuf
+--------
+
+Turning ``.proto`` files into sources with the protobuf compiler.
+#]==]
+
 include_guard(DIRECTORY)
 
-#[[
-    Add rules for creating Google Protobuf source files.
+#[==[.rst:
+.. cmake:command:: qm_create_protobuf
+
+  Add rules for creating Google Protobuf source files.
+
+  .. code-block:: cmake
 
     qm_create_protobuf(<OUT>
         INPUT <files...>
@@ -13,19 +24,26 @@ include_guard(DIRECTORY)
         [CREATE_ONCE]
     )
 
-    INPUT: source files
-    OUTPUT_DIR: output directory
+  ``INPUT``
+    source files
+  ``OUTPUT_DIR``
+    output directory
 
-    TARGET: add a custom target to run the generating command
+  ``TARGET``
+    add a custom target to run the generating command
 
-    INCLUDE_DIRECTORIES: extra include directories
-    OPTIONS: extra options passed to protobuf compiler
-    DEPENDS: dependencies
+  ``INCLUDE_DIRECTORIES``
+    extra include directories
+  ``OPTIONS``
+    extra options passed to protobuf compiler
+  ``DEPENDS``
+    dependencies
 
-    CREATE_ONCE: create proto code files at configure phase if not exist
+  ``CREATE_ONCE``
+    create proto code files at configure phase if not exist
 
-    OUT: output source file paths
-#]]
+  OUT: output source file paths
+#]==]
 function(qm_create_protobuf _out)
     set(options CREATE_ONCE)
     set(oneValueArgs OUTPUT_DIR TARGET)

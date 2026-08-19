@@ -1,6 +1,13 @@
-#[[
-    Warning: This module depends on `qmcorecmd` after installation.
-]] #
+#[==[.rst:
+Preprocess
+----------
+
+Generating headers before anything is compiled: configuration macros, build
+information, and an include directory built out of a source tree.
+
+.. warning::
+   This module depends on ``qmcorecmd`` after installation.
+#]==]
 if(NOT QMSETUP_CORECMD_EXECUTABLE)
     message(FATAL_ERROR "QMSETUP_CORECMD_EXECUTABLE not defined. Add find_package(qmsetup) to CMake first.")
 endif()
@@ -23,9 +30,13 @@ endif()
 
 include_guard(DIRECTORY)
 
-#[[
-    Generate indirect reference files for header files to make the include statements more orderly.
-    The generated file has the same timestamp as the source file.
+#[==[.rst:
+.. cmake:command:: qm_sync_include
+
+  Generate indirect reference files for header files to make the include statements more orderly.
+  The generated file has the same timestamp as the source file.
+
+  .. code-block:: cmake
 
     qm_sync_include(<src> <dest>
         [STANDARD] [NO_STANDARD] [NO_ALL]
@@ -35,9 +46,11 @@ include_guard(DIRECTORY)
         [FORCE] [VERBOSE]
     )
 
-    STANDARD: Enable standard public-private pattern, can be forced to enable by enabling `QMSETUP_SYNC_INCLUDE_STANDARD`
-    NO_STANDARD: Disable standard public-private pattern, enable it to override `QMSETUP_SYNC_INCLUDE_STANDARD`
-#]]
+  ``STANDARD``
+    Enable standard public-private pattern, can be forced to enable by enabling ``QMSETUP_SYNC_INCLUDE_STANDARD``
+  ``NO_STANDARD``
+    Disable standard public-private pattern, enable it to override ``QMSETUP_SYNC_INCLUDE_STANDARD``
+#]==]
 function(qm_sync_include _src_dir _dest_dir)
     set(options FORCE VERBOSE STANDARD NO_STANDARD NO_ALL)
     set(oneValueArgs INSTALL_DIR)
@@ -146,8 +159,12 @@ function(qm_sync_include _src_dir _dest_dir)
     endif()
 endfunction()
 
-#[[
-    Add a definition to a property scope.
+#[==[.rst:
+.. cmake:command:: qm_add_definition
+
+  Add a definition to a property scope.
+
+  .. code-block:: cmake
 
     qm_add_definition( <key | key=value> | <key> <value>
         [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
@@ -158,11 +175,15 @@ endfunction()
         [NUMERICAL] [CLASSICAL]
     )
 
-    STRING_LITERAL: Force quotes on values
-    NO_KEYWORD: Treat any keyword as string
-    NUMERICAL: Use 1/-1 as defined/undefined, can be forced to enable by enabling `QMSETUP_DEFINITION_NUMERICAL`
-    CLASSICAL: Use classical definition, enable it to override `QMSETUP_DEFINITION_NUMERICAL`
-]] #
+  ``STRING_LITERAL``
+    Force quotes on values
+  ``NO_KEYWORD``
+    Treat any keyword as string
+  ``NUMERICAL``
+    Use 1/-1 as defined/undefined, can be forced to enable by enabling ``QMSETUP_DEFINITION_NUMERICAL``
+  ``CLASSICAL``
+    Use classical definition, enable it to override ``QMSETUP_DEFINITION_NUMERICAL``
+#]==]
 function(qm_add_definition _first)
     set(options GLOBAL STRING_LITERAL NO_KEYWORD NUMERICAL CLASSICAL)
     set(oneValueArgs TARGET SOURCE DIRECTORY PROPERTY)
@@ -260,14 +281,18 @@ function(qm_add_definition _first)
     set_property(${_scope} APPEND PROPERTY ${_prop} "${_result}")
 endfunction()
 
-#[[
-    Remove a definition from a property scope.
+#[==[.rst:
+.. cmake:command:: qm_remove_definition
+
+  Remove a definition from a property scope.
+
+  .. code-block:: cmake
 
     qm_remove_definition(<key>
         [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
         [PROPERTY <prop>]
     )
-]] #
+#]==]
 function(qm_remove_definition _key)
     set(options GLOBAL)
     set(oneValueArgs TARGET SOURCE DIRECTORY PROPERTY)
@@ -292,9 +317,13 @@ function(qm_remove_definition _key)
     set_property(${_scope} PROPERTY ${_prop} "${_definitions}")
 endfunction()
 
-#[[
-    Generate a configuration header of a property scope. If the configuration has not changed,
-    the generated file's timestemp will not be updated when you reconfigure it.
+#[==[.rst:
+.. cmake:command:: qm_generate_config
+
+  Generate a configuration header of a property scope. If the configuration has not changed,
+  the generated file's timestemp will not be updated when you reconfigure it.
+
+  .. code-block:: cmake
 
     qm_generate_config(<file>
         [GLOBAL | TARGET <target> | SOURCE <file> | DIRECTORY <dir>]
@@ -305,7 +334,7 @@ endfunction()
         [NO_WARNING]
         [NO_HASH]
     )
-]] #
+#]==]
 function(qm_generate_config _file)
     set(options GLOBAL NO_WARNING NO_HASH)
     set(oneValueArgs TARGET SOURCE DIRECTORY PROPERTY PROJECT_NAME WARNING_FILE)
@@ -340,8 +369,12 @@ function(qm_generate_config _file)
     )
 endfunction()
 
-#[[
-    Generate build info information header.
+#[==[.rst:
+.. cmake:command:: qm_generate_build_info
+
+  Generate build info information header.
+
+  .. code-block:: cmake
 
     qm_generate_build_info(<file>
         [REQUIRED]
@@ -355,12 +388,15 @@ endfunction()
         [NO_HASH]
     )
 
-    file: Output file
+  file: Output file
 
-    REQUIRED: Abort if there's any error with git
-    ROOT_DIRECTORY: Repository root directory (CMake will try to run `git` at this directory)
-    PREFIX: Macros prefix, default to the upper case of `PROJECT_NAME`
-]] #
+  ``REQUIRED``
+    Abort if there's any error with git
+  ``ROOT_DIRECTORY``
+    Repository root directory (CMake will try to run ``git`` at this directory)
+  ``PREFIX``
+    Macros prefix, default to the upper case of ``PROJECT_NAME``
+#]==]
 function(qm_generate_build_info _file)
     set(options NO_WARNING NO_HASH YEAR TIME REQUIRED)
     set(oneValueArgs ROOT_DIRECTORY PREFIX PROJECT_NAME WARNING_FILE)
@@ -545,10 +581,10 @@ endfunction()
 #[[
     Which property, on which scope, a definition belongs to.
 
-    _qm_calc_property_scope_helper(<scope_var> <prop_var>
-        [TARGET <target>] [SOURCE <file>] [DIRECTORY <dir>] [GLOBAL <bool>]
-        [PROPERTY <prop>]
-    )
+      _qm_calc_property_scope_helper(<scope_var> <prop_var>
+          [TARGET <target>] [SOURCE <file>] [DIRECTORY <dir>] [GLOBAL <bool>]
+          [PROPERTY <prop>]
+      )
 
     Everything it reads is passed to it, so that a caller may name its own
     variables whatever it likes. The locals below are named apart from the two
@@ -583,11 +619,11 @@ endfunction()
 #[[
     Run the configure command over a list of definitions.
 
-    _qm_generate_config_helper(<file>
-        [DEFINITIONS <def...>]
-        [PROJECT_NAME <name>] [WARNING_FILE <file>]
-        [NO_WARNING] [NO_HASH]
-    )
+      _qm_generate_config_helper(<file>
+          [DEFINITIONS <def...>]
+          [PROJECT_NAME <name>] [WARNING_FILE <file>]
+          [NO_WARNING] [NO_HASH]
+      )
 
     Also passed everything it reads.
 ]] #

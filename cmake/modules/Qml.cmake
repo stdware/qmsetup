@@ -1,33 +1,43 @@
+#[==[.rst:
+Qml
+---
+
+Installing QML modules the way Qt lays them out.
+#]==]
+
 include_guard(DIRECTORY)
 
-#[[
-    Installs a QML module and its runtime loadable plugin, meta information, QML files, and resources.
-    The module is identified by the given target name.
+#[==[.rst:
+.. cmake:command:: qm_install_qml_modules
 
-    The Qt version should be greater than or equal to 6.3.
+  Installs a QML module and its runtime loadable plugin, meta information, QML files, and resources.
+  The module is identified by the given target name.
+
+  The Qt version should be greater than or equal to 6.3.
+
+  .. code-block:: cmake
 
     qm_install_qml_modules(target
         [PREFIX prefix]
     )
 
-    Arguments:
-        PREFIX: install directory prefix (default: "qml")
-    
-    Notice:
-        For static library backing targets, you should specify "OUTPUT_TARGETS" when calling "qt_add_qml_module()"
-        to collect the internally generated targets (mainly object libraries), and then install them by calling:
+  ``PREFIX``
+    install directory prefix (default: "qml")
 
-        install(TARGETS ${_output_targets}
-            EXPORT <target set>
-            RUNTIME DESTINATION bin
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib
-            OBJECTS DESTINATION lib
-        )
+  Notice:
+  For static library backing targets, you should specify "OUTPUT_TARGETS" when calling "qt_add_qml_module()"
+  to collect the internally generated targets (mainly object libraries), and then install them by calling:
 
-        See also: https://doc.qt.io/qt-6/qt-add-qml-module.html
-    
-]] #
+  install(TARGETS ${_output_targets}
+  EXPORT <target set>
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  OBJECTS DESTINATION lib
+  )
+
+  See also: https://doc.qt.io/qt-6/qt-add-qml-module.html
+#]==]
 function(qm_install_qml_modules _target)
     set(options)
     set(oneValueArgs PREFIX)

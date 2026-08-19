@@ -21,6 +21,17 @@ or import it once the package is found:
 
 .. toctree::
    :maxdepth: 2
+
+   api
+
+.. toctree::
+   :maxdepth: 2
    :caption: Modules
 
    modules/Deploy
+   modules/Doxygen
+   modules/Filesystem
+   modules/Preprocess
+   modules/Protobuf
+   modules/Qml
+   modules/Translate

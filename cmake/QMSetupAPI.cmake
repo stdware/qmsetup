@@ -1,3 +1,11 @@
+#[==[.rst:
+The API
+=======
+
+What ``find_package(qmsetup)`` brings on its own, before any module is imported.
+Paths, versions, target configuration and the Qt helpers are here.
+#]==]
+
 cmake_minimum_required(VERSION 3.19)
 
 #[[
@@ -40,11 +48,15 @@ endif()
 
 include_guard(DIRECTORY)
 
-#[[
-    Include modules of this library.
+#[==[.rst:
+.. cmake:command:: qm_import
+
+  Include modules of this library.
+
+  .. code-block:: cmake
 
     qm_import(<module...>)
-]] #
+#]==]
 macro(qm_import)
     foreach(_module ${ARGN})
         if(NOT _module MATCHES "(.+)\\.cmake")
@@ -61,11 +73,15 @@ macro(qm_import)
     endforeach()
 endmacro()
 
-#[[
-    Include all modules of this library.
+#[==[.rst:
+.. cmake:command:: qm_import_all
+
+  Include all modules of this library.
+
+  .. code-block:: cmake
 
     qm_import_all()
-]] #
+#]==]
 macro(qm_import_all)
     file(GLOB _tmp_modules "${QMSETUP_MODULES_DIR}/modules/*.cmake")
 
@@ -76,11 +92,15 @@ macro(qm_import_all)
     unset(_tmp_modules)
 endmacro()
 
-#[[
-    Find third-party packages by including scripts in `find-modules`.
+#[==[.rst:
+.. cmake:command:: qm_find_package
+
+  Find third-party packages by including scripts in ``find-modules``.
+
+  .. code-block:: cmake
 
     qm_find_package(<module...>)
-]] #
+#]==]
 macro(qm_find_package)
     foreach(_module ${ARGN})
         if(NOT _module MATCHES "(.+)\\.cmake")
@@ -102,11 +122,15 @@ macro(qm_find_package)
     endforeach()
 endmacro()
 
-#[[
-    Parse version and create seq vars with specified prefix.
+#[==[.rst:
+.. cmake:command:: qm_parse_version
+
+  Parse version and create seq vars with specified prefix.
+
+  .. code-block:: cmake
 
     qm_parse_version(<prefix> <version>)
-]] #
+#]==]
 function(qm_parse_version _prefix _version)
     string(REPLACE "." ";" _version_list ${_version})
     list(LENGTH _version_list _version_count)
@@ -123,11 +147,15 @@ function(qm_parse_version _prefix _version)
     endforeach()
 endfunction()
 
-#[[
-    Get shorter version number.
+#[==[.rst:
+.. cmake:command:: qm_crop_version
+
+  Get shorter version number.
+
+  .. code-block:: cmake
 
     qm_crop_version(<VAR> <version> <count>)
-]] #
+#]==]
 function(qm_crop_version _var _version _count)
     qm_parse_version(FUNC ${_version})
 
@@ -141,11 +169,15 @@ function(qm_crop_version _var _version _count)
     set(${_var} ${_short_version} PARENT_SCOPE)
 endfunction()
 
-#[[
-    Tell if the given paths are same in canonical form.
+#[==[.rst:
+.. cmake:command:: qm_paths_equal
+
+  Tell if the given paths are same in canonical form.
+
+  .. code-block:: cmake
 
     qm_paths_equal(<VAR> <path1> <path2>)
-]] #
+#]==]
 function(qm_paths_equal _out _path1 _path2)
     # cmake_path(NORMAL_PATH) is introduced in CMake 3.20, we don't use it
     # We call `get_filename_component` twice to normalize the paths
@@ -162,11 +194,15 @@ function(qm_paths_equal _out _path1 _path2)
     endif()
 endfunction()
 
-#[[
-    Set value if valid, otherwise use default.
+#[==[.rst:
+.. cmake:command:: qm_set_value
+
+  Set value if valid, otherwise use default.
+
+  .. code-block:: cmake
 
     qm_set_value(<key> <maybe_value...> <default>)
-]] #
+#]==]
 function(qm_set_value _key)
     set(_args "${ARGN}")
     list(POP_BACK _args _default)
@@ -181,20 +217,24 @@ function(qm_set_value _key)
     set(${_key} ${_default} PARENT_SCOPE)
 endfunction()
 
-#[[
-    Skip CMAKE_AUTOMOC for sources files or ones in directories.
+#[==[.rst:
+.. cmake:command:: qm_skip_automoc
+
+  Skip CMAKE_AUTOMOC for sources files or ones in directories.
+
+  .. code-block:: cmake
 
     qm_skip_automoc(<file/dir...> [RECURSIVE])
 
-    A directory stands for the sources directly in it. RECURSIVE takes what is
-    under them as well.
+  A directory stands for the sources directly in it. RECURSIVE takes what is
+  under them as well.
 
-    A name that is neither a file nor a directory is passed over rather than
-    being an error, so that a caller may name something optional.
+  A name that is neither a file nor a directory is passed over rather than
+  being an error, so that a caller may name something optional.
 
-    \note A source file property belongs to the directory it was set in, so this
-          has to be called where the target using those sources is defined.
-]] #
+  \note A source file property belongs to the directory it was set in, so this
+  has to be called where the target using those sources is defined.
+#]==]
 function(qm_skip_automoc)
     set(options RECURSIVE)
     set(oneValueArgs)
@@ -226,22 +266,26 @@ function(qm_skip_automoc)
     endforeach()
 endfunction()
 
-#[[
-    Find Qt libraries. Don't wrap it in any functions.
+#[==[.rst:
+.. cmake:command:: qm_find_qt
+
+  Find Qt libraries. Don't wrap it in any functions.
+
+  .. code-block:: cmake
 
     qm_find_qt(<modules...> [QUIET] [REQUIRED] [EXACT])
 
-    QUIET and REQUIRED are passed on to find_package and may be given together,
-    which is what find_package itself allows. With neither given, REQUIRED is
-    what is meant.
+  QUIET and REQUIRED are passed on to find_package and may be given together,
+  which is what find_package itself allows. With neither given, REQUIRED is
+  what is meant.
 
-    ##FIXME EXACT is accepted and does nothing. It says how to match a version
-    ##FIXME and nothing here ever asks for one, so find_package answers it with
-    ##FIXME "Ignoring EXACT since no version is requested". It is not passed on,
-    ##FIXME since all that would add is that warning at every call site. Giving
-    ##FIXME it something to do means a VERSION argument, which this has never
-    ##FIXME had.
-#]]
+  ##FIXME EXACT is accepted and does nothing. It says how to match a version
+  ##FIXME and nothing here ever asks for one, so find_package answers it with
+  ##FIXME "Ignoring EXACT since no version is requested". It is not passed on,
+  ##FIXME since all that would add is that warning at every call site. Giving
+  ##FIXME it something to do means a VERSION argument, which this has never
+  ##FIXME had.
+#]==]
 macro(qm_find_qt)
     # unread-keyword: EXACT
     set(options QUIET REQUIRED EXACT)
@@ -276,11 +320,15 @@ macro(qm_find_qt)
     unset(_qm_find_qt_options)
 endmacro()
 
-#[[
-    Link Qt libraries. Don't wrap it in any functions.
+#[==[.rst:
+.. cmake:command:: qm_link_qt
+
+  Link Qt libraries. Don't wrap it in any functions.
+
+  .. code-block:: cmake
 
     qm_link_qt(<target> <scope> <modules...>)
-#]]
+#]==]
 macro(qm_link_qt _target _scope)
     foreach(_module ${ARGN})
         qm_find_qt(${_module})
@@ -288,11 +336,15 @@ macro(qm_link_qt _target _scope)
     endforeach()
 endmacro()
 
-#[[
-    Include Qt private header directories. Don't wrap it in any functions.
+#[==[.rst:
+.. cmake:command:: qm_include_qt_private
+
+  Include Qt private header directories. Don't wrap it in any functions.
+
+  .. code-block:: cmake
 
     qm_include_qt_private(<target> <scope> <modules...>)
-#]]
+#]==]
 macro(qm_include_qt_private _target _scope)
     foreach(_module ${ARGN})
         qm_find_qt(${_module}Private QUIET)
@@ -338,8 +390,12 @@ macro(qm_include_qt_private _target _scope)
     endforeach()
 endmacro()
 
-#[[
-    Helper to set or append all kinds of attributes to a target. Don't wrap it in any functions.
+#[==[.rst:
+.. cmake:command:: qm_configure_target
+
+  Helper to set or append all kinds of attributes to a target. Don't wrap it in any functions.
+
+  .. code-block:: cmake
 
     qm_configure_target(<target>
         [SOURCES           <files>]
@@ -381,19 +437,19 @@ endmacro()
         [SKIP_AUTOMOC   <dir/file...>]
     )
 
-    INCLUDE/LINKDIR: `dir/*` will be expanded to all subdirectories
-                     `dir/**` will be expanded to all descendent directories recursively
+  INCLUDE/LINKDIR: ``dir/*`` will be expanded to all subdirectories
+  ``dir/**`` will be expanded to all descendent directories recursively
 
-    Scopes: for LINKS, INCLUDE, LINKDIR, DEFINES and FEATURES the bare name is
-    public, and the _INTERFACE and _PRIVATE forms are the other two.
+  Scopes: for LINKS, INCLUDE, LINKDIR, DEFINES and FEATURES the bare name is
+  public, and the _INTERFACE and _PRIVATE forms are the other two.
 
-    CCFLAGS and LDFLAGS go the other way. The bare name is private, and public
-    is spelt CCFLAGS_PUBLIC and LDFLAGS_PUBLIC. A compiler or linker flag is
-    usually about how this target is built rather than about how to use it, so
-    private is the answer wanted nearly every time and is what the short spelling
-    gives. Worth knowing, since it is the one place here where the bare name does
-    not mean public.
-]] #
+  CCFLAGS and LDFLAGS go the other way. The bare name is private, and public
+  is spelt CCFLAGS_PUBLIC and LDFLAGS_PUBLIC. A compiler or linker flag is
+  usually about how this target is built rather than about how to use it, so
+  private is the answer wanted nearly every time and is what the short spelling
+  gives. Worth knowing, since it is the one place here where the bare name does
+  not mean public.
+#]==]
 macro(qm_configure_target _target)
     set(options)
     set(oneValueArgs)
@@ -509,15 +565,19 @@ macro(qm_configure_target _target)
     endif()
 endmacro()
 
-#[[
-    Helper to define export macros.
+#[==[.rst:
+.. cmake:command:: qm_export_defines
+
+  Helper to define export macros.
+
+  .. code-block:: cmake
 
     qm_export_defines(<target>
         [PREFIX     <prefix>]
         [STATIC     <token>]
         [LIBRARY    <token>]
     )
-]] #
+#]==]
 function(qm_export_defines _target)
     set(options)
     set(oneValueArgs PREFIX STATIC LIBRARY)
@@ -548,8 +608,12 @@ function(qm_export_defines _target)
     target_compile_definitions(${_target} PRIVATE ${_library_macro})
 endfunction()
 
-#[[
-    Attach windows RC file to a target.
+#[==[.rst:
+.. cmake:command:: qm_add_win_rc
+
+  Attach windows RC file to a target.
+
+  .. code-block:: cmake
 
     qm_add_win_rc(<target>
         [NAME           name]
@@ -559,7 +623,7 @@ endfunction()
         [ICON           ico]
         [OUTPUT_DIR     dir]
     )
-]] #
+#]==]
 function(qm_add_win_rc _target)
     if(NOT WIN32)
         return()
@@ -604,8 +668,12 @@ function(qm_add_win_rc _target)
     endif()
 endfunction()
 
-#[[
-    Attach windows RC file to a target, enhanced edition.
+#[==[.rst:
+.. cmake:command:: qm_add_win_rc_enhanced
+
+  Attach windows RC file to a target, enhanced edition.
+
+  .. code-block:: cmake
 
     qm_add_win_rc_enhanced(<target>
         [NAME              name]
@@ -620,7 +688,7 @@ endfunction()
         [ICONS             icon file paths]
         [OUTPUT_DIR        dir]
     )
-]] #
+#]==]
 function(qm_add_win_rc_enhanced _target)
     if(NOT WIN32)
         return()
@@ -696,8 +764,12 @@ function(qm_add_win_rc_enhanced _target)
     endforeach()
 endfunction()
 
-#[[
-    Attach windows manifest file to a target.
+#[==[.rst:
+.. cmake:command:: qm_add_win_manifest
+
+  Attach windows manifest file to a target.
+
+  .. code-block:: cmake
 
     qm_add_win_manifest(<target>
         [NAME           name]
@@ -707,7 +779,7 @@ endfunction()
         [UTF8]
         [ADMIN]
     )
-]] #
+#]==]
 function(qm_add_win_manifest _target)
     if(NOT WIN32)
         return()
@@ -776,8 +848,12 @@ function(qm_add_win_manifest _target)
     endif()
 endfunction()
 
-#[[
-    Add Mac bundle info.
+#[==[.rst:
+.. cmake:command:: qm_add_mac_bundle
+
+  Add Mac bundle info.
+
+  .. code-block:: cmake
 
     qm_add_mac_bundle(<target>
         [NAME           <name>]
@@ -787,7 +863,7 @@ endfunction()
         [ICON           <file>]
         [INFO_PLIST     <file>]
     )
-]] #
+#]==]
 function(qm_add_mac_bundle _target)
     if(NOT APPLE)
         return()
@@ -847,13 +923,17 @@ function(qm_add_mac_bundle _target)
     endif()
 endfunction()
 
-#[[
-    Generate Windows shortcut after building target.
+#[==[.rst:
+.. cmake:command:: qm_create_win_shortcut
+
+  Generate Windows shortcut after building target.
+
+  .. code-block:: cmake
 
     qm_create_win_shortcut(<target> <dir>
         [OUTPUT_NAME <name>]
     )
-]] #
+#]==]
 function(qm_create_win_shortcut _target _dir)
     if(NOT WIN32)
         return()
@@ -905,15 +985,19 @@ function(qm_create_win_shortcut _target _dir)
     )
 endfunction()
 
-#[[
-    Collect targets of given types recursively in a directory.
+#[==[.rst:
+.. cmake:command:: qm_collect_targets
+
+  Collect targets of given types recursively in a directory.
+
+  .. code-block:: cmake
 
     qm_collect_targets(<list> [DIRECTORY directory]
                               [EXECUTABLE] [SHARED] [STATIC] [INTERFACE] [UTILITY])
 
-    If one or more types are specified, return targets matching the types.
-    If no type is specified, return all targets.
-]] #
+  If one or more types are specified, return targets matching the types.
+  If no type is specified, return all targets.
+#]==]
 function(qm_collect_targets _var)
     set(options EXECUTABLE SHARED STATIC INTERFACE UTILITY)
     set(oneValueArgs DIRECTORY)
@@ -965,8 +1049,12 @@ function(qm_collect_targets _var)
     set(${_var} ${_targets} PARENT_SCOPE)
 endfunction()
 
-#[[
-    Get subdirectories' names or paths.
+#[==[.rst:
+.. cmake:command:: qm_get_subdirs
+
+  Get subdirectories' names or paths.
+
+  .. code-block:: cmake
 
     qm_get_subdirs(<list>
         [DIRECTORY dir]
@@ -977,11 +1065,11 @@ endfunction()
         [ABSOLUTE]
     )
 
-    If `DIRECTORY` is not specified, consider `CMAKE_CURRENT_SOURCE_DIR`.
-    If `RELATIVE` is specified, return paths evaluated as a relative path to it.
-    If `ABSOLUTE` is specified, return absolute paths.
-    If neither of them is specified, return names.
-]] #
+  If ``DIRECTORY`` is not specified, consider ``CMAKE_CURRENT_SOURCE_DIR``.
+  If ``RELATIVE`` is specified, return paths evaluated as a relative path to it.
+  If ``ABSOLUTE`` is specified, return absolute paths.
+  If neither of them is specified, return names.
+#]==]
 function(qm_get_subdirs _var)
     set(options ABSOLUTE)
     set(oneValueArgs DIRECTORY RELATIVE)
@@ -1052,8 +1140,12 @@ function(qm_get_subdirs _var)
     set(${_var} ${_res} PARENT_SCOPE)
 endfunction()
 
-#[[
-    Basic template to install a CMake project.
+#[==[.rst:
+.. cmake:command:: qm_basic_install
+
+  Basic template to install a CMake project.
+
+  .. code-block:: cmake
 
     qm_basic_install(
         [NAME <name>]
@@ -1068,8 +1160,8 @@ endfunction()
         [WRITE_CONFIG_OPTIONS <options...>]
     )
 
-    Include `GNUInstallDirs`, `CMakePackageConfigHelpers` before calling this function.
-]] #
+  Include ``GNUInstallDirs``, ``CMakePackageConfigHelpers`` before calling this function.
+#]==]
 function(qm_basic_install)
     set(options)
     set(oneValueArgs NAME VERSION COMPATIBILITY INSTALL_DIR CONFIG_TEMPLATE NAMESPACE)
@@ -1140,16 +1232,20 @@ function(qm_basic_install)
     )
 endfunction()
 
-#[[
-    Recursively include directories in a target.
+#[==[.rst:
+.. cmake:command:: qm_include_recursive
+
+  Recursively include directories in a target.
+
+  .. code-block:: cmake
 
     qm_include_recursive(<target> <scope> <dir1> [<dir2> ...])
 
-    Every directory under each one named becomes an include directory, with no
-    filtering, so a tree carrying a .git or a build directory contributes those
-    too. Name the directories that hold headers rather than the root of a
-    checkout.
-#]]
+  Every directory under each one named becomes an include directory, with no
+  filtering, so a tree carrying a .git or a build directory contributes those
+  too. Name the directories that hold headers rather than the root of a
+  checkout.
+#]==]
 function(qm_include_recursive _target _scope)
     foreach(_dir ${ARGN})
         if(IS_DIRECTORY ${_dir})
@@ -1165,16 +1261,20 @@ function(qm_include_recursive _target _scope)
     endforeach()
 endfunction()
 
-#[[
-    Get the location of an imported executable target.
+#[==[.rst:
+.. cmake:command:: qm_get_executable_location
+
+  Get the location of an imported executable target.
+
+  .. code-block:: cmake
 
     qm_get_executable_location(<target> <var>)
 
-    Reads IMPORTED_LOCATION and the four configuration specific spellings of it,
-    in that order, and takes the first that answers. A target built by this
-    project has none of them, so this is for the ones a find_package brought,
-    and it stops with an error rather than returning empty.
-#]]
+  Reads IMPORTED_LOCATION and the four configuration specific spellings of it,
+  in that order, and takes the first that answers. A target built by this
+  project has none of them, so this is for the ones a find_package brought,
+  and it stops with an error rather than returning empty.
+#]==]
 function(qm_get_executable_location _target _var)
     set(_path)
 
@@ -1222,7 +1322,7 @@ endfunction()
     Return from the calling function unless \a _target is one of the types named,
     and answer the type in \a _type where it is.
 
-    _qm_return_unless_target_type(<target> <type_var> <type...>)
+      _qm_return_unless_target_type(<target> <type_var> <type...>)
 
     A macro, since the return is the caller's. Named for that: called
     _qm_check_target_type_helper, nothing at a call site said that the lines
