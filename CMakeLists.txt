@@ -12,6 +12,7 @@ project(qmsetup
 # ----------------------------------
 option(QMSETUP_STATIC_RUNTIME "Static link runtime libraries on Windows" ON)
 option(QMSETUP_BUILD_TESTS "Build test cases" OFF)
+option(QMSETUP_BUILD_DOCUMENTATIONS "Build documentations" OFF)
 
 # ----------------------------------
 # CMake Settings
@@ -55,4 +56,8 @@ add_subdirectory(src)
 if(QMSETUP_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if (QMSETUP_BUILD_DOCUMENTATIONS)
+    add_subdirectory(docs/sphinx docs)
 endif()
