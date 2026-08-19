@@ -24,6 +24,8 @@ include_guard(DIRECTORY)
         [CREATE_ONCE]
     )
 
+  ``<OUT>``
+    the variable to answer with, holding the paths of the generated sources
   ``INPUT``
     source files
   ``OUTPUT_DIR``
@@ -42,7 +44,23 @@ include_guard(DIRECTORY)
   ``CREATE_ONCE``
     create proto code files at configure phase if not exist
 
-  OUT: output source file paths
+  .. note::
+     protobuf has to be found before this is called, either way round:
+     ``find_package(Protobuf)`` or ``find_package(Protobuf CONFIG)``. What is
+     wanted out of it is ``protobuf::protoc``, and a call made without one stops
+     with an error saying so.
+
+  .. code-block:: cmake
+
+     qm_import(Protobuf)
+
+     find_package(Protobuf CONFIG REQUIRED)
+     qm_create_protobuf(_proto_src
+         INPUT a.proto b.proto
+         INCLUDE_DIRECTORIES src/proto
+         OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/proto
+     )
+     target_sources(${PROJECT_NAME} PUBLIC ${_proto_src})
 #]==]
 function(qm_create_protobuf _out)
     set(options CREATE_ONCE)

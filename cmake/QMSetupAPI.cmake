@@ -278,16 +278,16 @@ endfunction()
   QUIET and REQUIRED are passed on to find_package and may be given together,
   which is what find_package itself allows. With neither given, REQUIRED is
   what is meant.
-
-  ##FIXME EXACT is accepted and does nothing. It says how to match a version
-  ##FIXME and nothing here ever asks for one, so find_package answers it with
-  ##FIXME "Ignoring EXACT since no version is requested". It is not passed on,
-  ##FIXME since all that would add is that warning at every call site. Giving
-  ##FIXME it something to do means a VERSION argument, which this has never
-  ##FIXME had.
 #]==]
 macro(qm_find_qt)
     # unread-keyword: EXACT
+    #
+    ##FIXME EXACT is accepted and does nothing. It says how to match a version
+    ##FIXME and nothing here ever asks for one, so find_package answers it with
+    ##FIXME "Ignoring EXACT since no version is requested". It is not passed on,
+    ##FIXME since all that would add is that warning at every call site. Giving
+    ##FIXME it something to do means a VERSION argument, which this has never
+    ##FIXME had.
     set(options QUIET REQUIRED EXACT)
     set(oneValueArgs)
     set(multiValueArgs)

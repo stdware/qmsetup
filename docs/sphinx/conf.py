@@ -9,9 +9,10 @@
 # In a directory of its own, the rest of docs/ being written by hand and read
 # where it sits rather than built into anything.
 #
-# Deploy.cmake is the only one written this way so far. A module with no `.rst:`
-# comment in it renders as an empty page rather than as an error, so once the
-# rest are moved over the count of them wants asserting somewhere.
+# A module with no `.rst:` comment in it renders as an empty page rather than as
+# an error, and a command whose comment nobody converted is simply absent, so
+# neither shows up as a failure here. What catches that is the count, which the
+# CI documentation job asserts.
 #
 #   pip install sphinx sphinxcontrib-moderncmakedomain
 #   sphinx-build -b html -W docs/sphinx docs/sphinx/_build

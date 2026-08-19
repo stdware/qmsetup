@@ -34,6 +34,74 @@ include_guard(DIRECTORY)
         [NO_EXPAND_MACROS       <macro> ...]
         [DEPENDS                <dependency> ...]
     )
+
+  ``<target>``
+    the custom target to add. It is not part of ``all``, so the documentation is
+    built by asking for it by name.
+
+  ``NAME``
+    what the documentation calls the project, defaulting to ``PROJECT_NAME``
+  ``VERSION``
+    the version shown, defaulting to ``PROJECT_VERSION``
+  ``DESCRIPTION``
+    the one line brief, defaulting to ``PROJECT_DESCRIPTION`` and then to the name
+  ``LOGO``
+    an image for the corner of the page
+  ``MDFILE``
+    a markdown file to use as the main page, added to the input as well
+  ``OUTPUT_DIR``
+    where the HTML is written, defaulting to a directory named after the target
+    under the current binary directory
+  ``INSTALL_DIR``
+    where to install the HTML. Relative to the install prefix. Without it nothing
+    is installed, and with it the documentation is built again while installing
+    rather than taken from wherever the target left it.
+
+  ``TAGFILES``
+    tag files of other projects to link against
+  ``GENERATE_TAGFILE``
+    write a tag file of this project, for another to link against. The directory
+    is made if it is not there.
+
+  ``INPUT``
+    what Doxygen reads
+  ``INCLUDE_DIRECTORIES``
+    added to Doxygen's include path, for resolving what the sources include
+  ``COMPILE_DEFINITIONS``
+    macros Doxygen preprocesses with, as ``NAME=VALUE``
+  ``TARGETS``
+    targets to take the include directories and compile definitions off, so that
+    what Doxygen preprocesses with is what the build compiles with. Read through
+    generator expressions, so a target's own usage requirements come too.
+  ``ENVIRONMENT_EXPORTS``
+    names of CMake variables to put in the environment Doxygen runs under, for a
+    ``Doxyfile`` that reads them. A name that is not set stops the configure.
+  ``NO_EXPAND_MACROS``
+    macros to expand to nothing, for the ones that would otherwise confuse the
+    parser. ``Q_OBJECT`` and friends are what this is for.
+  ``DEPENDS``
+    targets to build before this one runs
+
+  .. note::
+     Doxygen has to be found before this is called, ``find_package(Doxygen)``
+     being what sets the ``DOXYGEN_EXECUTABLE`` this reads. A call made without
+     one stops with an error saying so.
+
+  .. code-block:: cmake
+
+     qm_import(Doxygen)
+
+     find_package(Doxygen REQUIRED)
+     qm_setup_doxygen(${PROJECT_NAME}_RunDoxygen
+         NAME ${PROJECT_NAME}
+         DESCRIPTION "my project"
+         MDFILE "${CMAKE_SOURCE_DIR}/README.md"
+         OUTPUT_DIR "${CMAKE_BINARY_DIR}/doc"
+         INPUT src
+         TARGETS ${PROJECT_NAME}
+         NO_EXPAND_MACROS Q_OBJECT Q_GADGET
+         INSTALL_DIR "doc"
+     )
 #]==]
 function(qm_setup_doxygen _target)
     set(options)
