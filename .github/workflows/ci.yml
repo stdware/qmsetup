@@ -231,17 +231,15 @@ jobs:
           # Configuring reaches src/ before docs/, and stdcorelib is looked for there.
           submodules: true
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Install Sphinx
-        run: python -m pip install sphinx sphinxcontrib-moderncmakedomain
+      # Ninja from PyPI rather than from apt, along with everything else here. The Ubuntu
+      # archive the runners are pointed at goes away often enough to matter, and this job wants
+      # nothing a distribution has to build.
+      - name: Install Ninja and Sphinx
+        run: python -m pip install ninja sphinx sphinxcontrib-moderncmakedomain
 
       # -W is set by docs/sphinx/CMakeLists.txt, so a reference that does not resolve fails here.
       - name: Build documentation

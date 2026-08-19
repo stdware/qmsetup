@@ -38,20 +38,16 @@ jobs:
           # project reaches src/ before it reaches docs/, and that is where it is looked for.
           submodules: recursive
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
       # The pages come out of the comments in cmake/, so nothing is needed here but Sphinx and
       # the domain that reads a CMake bracket comment. No Qt, no protobuf, no compiler beyond
-      # what configuring wants.
-      - name: Install Sphinx
-        run: python -m pip install sphinx sphinxcontrib-moderncmakedomain
+      # what configuring wants, and Ninja from PyPI rather than from an Ubuntu archive that
+      # goes away often enough to matter.
+      - name: Install Ninja and Sphinx
+        run: python -m pip install ninja sphinx sphinxcontrib-moderncmakedomain
 
       - name: Configure
         run: >
