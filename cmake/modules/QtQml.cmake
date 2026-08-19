@@ -1,6 +1,6 @@
 #[==[.rst:
-Qml
----
+QtQml
+-----
 
 Installing QML modules the way Qt lays them out.
 #]==]

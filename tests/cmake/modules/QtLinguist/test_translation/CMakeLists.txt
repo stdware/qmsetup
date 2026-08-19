@@ -18,7 +18,7 @@ project(qmtest_translation CXX)
 
 include(${QMSETUP_API})
 
-qm_import(Translate)
+qm_import(QtLinguist)
 
 qm_find_qt(Core LinguistTools)
 

@@ -19,9 +19,27 @@ qm_import(Filesystem.cmake)
 qmtest_command("and one named with it" qm_add_copy_command)
 
 # Several at once.
-qm_import(Protobuf Translate)
+qm_import(Protobuf QtLinguist)
 qmtest_command("several named at once" qm_create_protobuf)
 qmtest_command("all of them" qm_add_translation)
+
+# A module that has been renamed answers to what it used to be called, which
+# cmake/private/ModuleAliases.cmake is the list of. Asked before qm_import_all
+# below, which would bring the module in under its own name and leave nothing
+# for this to show.
+#
+# The warning is turned off around the call rather than left to print, it being
+# what this asks for rather than something going wrong.
+set(CMAKE_WARN_DEPRECATED OFF)
+qm_import(Qml)
+set(CMAKE_WARN_DEPRECATED ON)
+qmtest_command("a module answers to what it used to be called" qm_install_qml_modules)
+
+# And says so. CMAKE_ERROR_DEPRECATED turns the warning into a failure, which is
+# how a script that is meant to finish can be asked what it said on the way.
+qmtest_script_fails("and says what it is called now"
+    "\"Translate\" is now \"QtLinguist\""
+    "set(CMAKE_ERROR_DEPRECATED ON)\nqm_import(Translate)")
 
 # Bringing one in twice is what an include guard is for, and is not an error.
 qm_import(Preprocess)

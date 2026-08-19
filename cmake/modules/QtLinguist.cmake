@@ -1,6 +1,6 @@
 #[==[.rst:
-Translate
----------
+QtLinguist
+----------
 
 Qt Linguist, from collecting the strings to releasing the catalogues.
 #]==]
@@ -61,7 +61,7 @@ include_guard(DIRECTORY)
 
   .. code-block:: cmake
 
-     qm_import(Translate)
+     qm_import(QtLinguist)
 
      qm_find_qt(LinguistTools)
      qm_add_translation(${PROJECT_NAME}_translations

@@ -22,6 +22,9 @@ cmake_minimum_required(VERSION 3.19)
 ]] #
 set(QMSETUP_MODULES_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+# What the modules used to be called, which qm_import reads.
+include("${CMAKE_CURRENT_LIST_DIR}/private/ModuleAliases.cmake")
+
 if(WIN32)
     set(QMSETUP_SHARED_LIBRARY_CATEGORY bin)
     set(QMSETUP_NULL_FILE "NUL")
@@ -56,14 +59,29 @@ include_guard(DIRECTORY)
   .. code-block:: cmake
 
     qm_import(<module...>)
+
+  The suffix may be left off or written out, and a module under a subdirectory
+  is named through it, as ``private/CompilerOptions``.
+
+  A module that has been renamed answers to what it used to be called as well,
+  with a deprecation warning naming the new one. ``cmake/private/ModuleAliases.cmake``
+  is the list of those.
 #]==]
 macro(qm_import)
     foreach(_module ${ARGN})
-        if(NOT _module MATCHES "(.+)\\.cmake")
-            set(_module "${_module}.cmake")
+        # Asked of the name without its suffix, so that Qml and Qml.cmake are
+        # the same question, and of the whole of it, so that a module under a
+        # subdirectory is one name rather than two.
+        string(REGEX REPLACE "\\.cmake$" "" _qm_import_name "${_module}")
+
+        if(DEFINED QMSETUP_MODULE_ALIAS_${_qm_import_name})
+            message(DEPRECATION
+                "qm_import: \"${_qm_import_name}\" is now "
+                "\"${QMSETUP_MODULE_ALIAS_${_qm_import_name}}\". The old name still works.")
+            set(_qm_import_name "${QMSETUP_MODULE_ALIAS_${_qm_import_name}}")
         endif()
 
-        set(_module_path "${QMSETUP_MODULES_DIR}/modules/${_module}")
+        set(_module_path "${QMSETUP_MODULES_DIR}/modules/${_qm_import_name}.cmake")
 
         if(NOT EXISTS "${_module_path}")
             message(FATAL_ERROR "qm_import: module \"${_module}\" not found.")
@@ -71,6 +89,8 @@ macro(qm_import)
 
         include("${_module_path}")
     endforeach()
+
+    unset(_qm_import_name)
 endmacro()
 
 #[==[.rst:

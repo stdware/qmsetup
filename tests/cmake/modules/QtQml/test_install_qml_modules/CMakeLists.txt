@@ -17,7 +17,7 @@ project(qmtest_install_qml_modules CXX)
 
 include(${QMSETUP_API})
 
-qm_import(Qml)
+qm_import(QtQml)
 
 qm_find_qt(Qml)
 

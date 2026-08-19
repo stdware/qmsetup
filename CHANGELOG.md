@@ -2,6 +2,10 @@
 
 ## v1.1.2.0 (Unreleased)
 
+### Deprecated
+
+- `Qml` is now `QtQml` and `Translate` is now `QtLinguist`. Both old names still work, `qm_import` translating one into the other and saying so once, and `cmake/private/ModuleAliases.cmake` is the list of them. A rename from here on is a moved file and a row in that list.
+
 ### Removed
 
 - `QMSETUP_VCPKG_TOOLS_HINT` is gone, and `qmcorecmd` is installed to the binary directory whatever a port wants. A port that wants it under `tools/<port>` moves it there with `vcpkg_copy_tools`, which is also what brings along the libraries it loads and what a build installing it there directly leaves it without.

@@ -185,7 +185,7 @@ qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
 
 #### Add Qt Translations
 ```cmake
-qm_import(Translate)
+qm_import(QtLinguist)
 
 qm_find_qt(LinguistTools)
 qm_add_translation(${PROJECT_NAME}_translations

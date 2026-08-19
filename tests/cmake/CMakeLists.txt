@@ -137,7 +137,7 @@ find_package(QT NAMES Qt6 Qt5 COMPONENTS Core QUIET)
 if(QT_FOUND)
     message(STATUS "qmsetup tests: Qt${QT_VERSION_MAJOR} ${QT_VERSION} at ${QT_DIR}")
     list(APPEND _configured_projects QMSetupAPI/test_qt_targets)
-    list(APPEND _built_projects modules/Translate/test_translation)
+    list(APPEND _built_projects modules/QtLinguist/test_translation)
 
     # qm_install_qml_modules is built on qt_query_qml_module, which arrived in
     # Qt 6.5, so a Qt5 or an early Qt6 has nothing for it to call. The QML half
@@ -147,7 +147,7 @@ if(QT_FOUND)
 
     if(TARGET Qt${QT_VERSION_MAJOR}::Qml AND QT_VERSION VERSION_GREATER_EQUAL 6.5)
         list(APPEND _built_projects
-            modules/Qml/test_install_qml_modules
+            modules/QtQml/test_install_qml_modules
             modules/Deploy/test_deploy_qml
         )
     else()

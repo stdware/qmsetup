@@ -38,5 +38,5 @@ or import them afterwards, which comes to the same thing:
    modules/Filesystem
    modules/Preprocess
    modules/Protobuf
-   modules/Qml
-   modules/Translate
+   modules/QtLinguist
+   modules/QtQml
