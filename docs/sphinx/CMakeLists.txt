@@ -59,8 +59,17 @@ file(GLOB_RECURSE _doc_sources CONFIGURE_DEPENDS
     "${QMSETUP_SOURCE_DIR}/cmake/*.cmake"
 )
 
+# Emptied first, both of them. Sphinx writes the pages it has and removes none
+# that it has not, so a module that was renamed leaves the page it used to have
+# behind, in the search index and in the navigation, until something takes it
+# away. Taking the cache with it is what makes the run after write everything
+# again rather than find the sources unchanged and write nothing.
+#
+# Affordable because this only runs when one of the files below has changed, and
+# rendering the whole reference is a couple of seconds.
 add_custom_command(
     OUTPUT "${_build_doc_dir}/index.html"
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${_build_doc_dir}" "${CMAKE_CURRENT_BINARY_DIR}/doctrees"
     COMMAND ${_sphinx_command} "${_build_doc_dir}"
     DEPENDS ${_doc_sources}
     COMMENT "Rendering the CMake reference"
@@ -79,6 +88,9 @@ add_custom_target(${QMSETUP_INSTALL_NAME}_docs
 install(CODE "
     set(_command [==[${_sphinx_command}]==])
     message(STATUS \"Rendering the CMake reference\")
+    # Emptied for the same reason as the build does, an install into a prefix
+    # that already holds an older reference otherwise keeping its stale pages.
+    file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/${_doc_dir}\")
     execute_process(
         COMMAND \${_command} \"\${CMAKE_INSTALL_PREFIX}/${_doc_dir}\"
         COMMAND_ERROR_IS_FATAL ANY

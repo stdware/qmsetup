@@ -388,8 +388,8 @@ endfunction()
         [NO_HASH]
     )
 
-  file: Output file
-
+  ``<file>``
+    Output file
   ``REQUIRED``
     Abort if there's any error with git
   ``ROOT_DIRECTORY``
