@@ -6,7 +6,7 @@
 
 ## Features
 
-### Helpful Functions
+### CMake Utilities
 + Path, Version functions
 + Target configuration functions
 + Qt related functions
