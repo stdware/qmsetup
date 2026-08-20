@@ -50,9 +50,21 @@ def _declared(keyword, fallback=""):
 # A link to the repository on every page, which is the sidebar. Not the GitHub
 # button alabaster also offers, that one being an iframe from another host and
 # these pages being read from an install tree as often as from the web.
+_owner, _, _repo = _declared("HOMEPAGE_URL").rpartition("/")
+
 html_theme_options = {
     "description": _declared("DESCRIPTION"),
     "extra_nav_links": {"Source on GitHub": _declared("HOMEPAGE_URL")},
+    # The corner ribbon, which is the one icon the theme can draw without this
+    # repository carrying an image and a stylesheet to go with it. Its octocat
+    # ships with alabaster, so nothing is fetched from anywhere.
+    "github_user": _owner.rpartition("/")[2],
+    "github_repo": _repo,
+    "github_banner": True,
+    # Naming the repository above turns this on by itself, and it is an iframe
+    # from a third host that counts stars. These pages are read out of an
+    # install tree as often as off the web, so it is turned back off.
+    "github_button": False,
 }
 
 # No "page source" link and no copy of the sources beside the pages. Every source
