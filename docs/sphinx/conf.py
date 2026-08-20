@@ -36,9 +36,9 @@ highlight_language = "cmake"
 html_theme = "alabaster"
 exclude_patterns = ["_build"]
 
-# Read out of the project rather than written again here. The url and the line
-# under the title are declared once, at the top of the tree, and this is the
-# fourth place that would otherwise carry a copy of them.
+# Read out of the project rather than written again here. Where this lives is
+# declared once, at the top of the tree, and this is the fourth place that would
+# otherwise carry a copy of it.
 _project_file = (Path(__file__).resolve().parents[2] / "CMakeLists.txt").read_text(encoding="utf-8")
 
 
@@ -47,20 +47,26 @@ def _declared(keyword, fallback=""):
     return found.group(1) if found else fallback
 
 
+# The parts of the page that are a matter of taste rather than of fact. Turn one
+# off and build again.
+SHOW_DESCRIPTION = False  # the project's one line under the title, in the sidebar
+SHOW_GITHUB_RIBBON = True  # the octocat across the top right corner
+SHOW_SOURCE_LINKS = True  # the module each page was written in, at its foot
+
 # A link to the repository on every page, which is the sidebar. Not the GitHub
 # button alabaster also offers, that one being an iframe from another host and
 # these pages being read from an install tree as often as from the web.
 _owner, _, _repo = _declared("HOMEPAGE_URL").rpartition("/")
 
 html_theme_options = {
-    "description": _declared("DESCRIPTION"),
     "extra_nav_links": {"Source on GitHub": _declared("HOMEPAGE_URL")},
+    "description": _declared("DESCRIPTION") if SHOW_DESCRIPTION else "",
     # The corner ribbon, which is the one icon the theme can draw without this
     # repository carrying an image and a stylesheet to go with it. Its octocat
     # ships with alabaster, so nothing is fetched from anywhere.
     "github_user": _owner.rpartition("/")[2],
     "github_repo": _repo,
-    "github_banner": True,
+    "github_banner": SHOW_GITHUB_RIBBON,
     # Naming the repository above turns this on by itself, and it is an iframe
     # from a third host that counts stars. These pages are read out of an
     # install tree as often as off the web, so it is turned back off.
@@ -108,6 +114,9 @@ class QmModule(CMakeModule):
     def run(self):
         source = self.arguments[0]
         self.arguments[0] = f"/{_root_from_source}/{source}"
+
+        if not SHOW_SOURCE_LINKS:
+            return super().run()
 
         machine = self.state_machine
         insert = machine.insert_input
