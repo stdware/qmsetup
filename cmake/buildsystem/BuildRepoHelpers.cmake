@@ -379,6 +379,10 @@ function(${_F}_add_plugin _target)
         set(_category ${FUNC_CATEGORY})
     endif()
 
+    # Kept, because the rpath a plugin is given has to count the directories
+    # between it and the prefix, and a category may be more than one of them.
+    set_target_properties(${_target} PROPERTIES ${_V}_PLUGIN_CATEGORY "${_category}")
+
     set(_build_output_dir ${${_V}_BUILD_PLUGINS_DIR}/${_category})
     set(_install_output_dir ${${_V}_INSTALL_PLUGINS_DIR}/${_category})
 
@@ -757,16 +761,35 @@ function(${_F}_set_default_install_rpath _target)
         endif()
     else()
         if(_type STREQUAL "Plugin")
-            # <proj>_add_plugin() always appends a category level - it falls back to the target
-            # name when CATEGORY is omitted - so a plugin lands in
-            # <prefix>/<install-plugins-dir>/<category>, four levels below the install prefix:
+            # <proj>_add_plugin() always appends a category, falling back to the target name when
+            # CATEGORY is omitted, so a plugin lands in
+            # <prefix>/<install-plugins-dir>/<category>:
             #
             #     <prefix>/lib/<name>/plugins/<category>/libfoo.so
             #              ^4    ^3      ^2       ^1
             #
-            # Reaching <prefix>/lib therefore takes four levels, not three.
+            # Three of those are fixed and the category is not. It is a path rather than a name,
+            # so `CATEGORY a/b` is two directories and the count is one more, which is why it is
+            # read off the target rather than written down here.
+            get_target_property(_category ${_target} ${_V}_PLUGIN_CATEGORY)
+
+            if(NOT _category)
+                set(_category ".")
+            endif()
+
+            string(REGEX REPLACE "/+$" "" _category "${_category}")
+            string(REPLACE "/" ";" _category_parts "${_category}")
+            list(LENGTH _category_parts _category_depth)
+
+            math(EXPR _levels "3 + ${_category_depth}")
+            set(_up)
+
+            foreach(_i RANGE 1 ${_levels})
+                string(APPEND _up "../")
+            endforeach()
+
             set_target_properties(${_target} PROPERTIES
-                INSTALL_RPATH "\$ORIGIN:\$ORIGIN/../../../../lib"
+                INSTALL_RPATH "\$ORIGIN:\$ORIGIN/${_up}lib"
             )
         else()
             set_target_properties(${_target} PROPERTIES
