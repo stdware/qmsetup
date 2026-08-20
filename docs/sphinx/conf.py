@@ -49,7 +49,7 @@ def _declared(keyword, fallback=""):
 
 # The parts of the page that are a matter of taste rather than of fact. Turn one
 # off and build again.
-SHOW_DESCRIPTION = False  # the project's one line under the title, in the sidebar
+SHOW_DESCRIPTION = True  # the project's one line under the title, in the sidebar
 SHOW_GITHUB_RIBBON = True  # the octocat across the top right corner
 SHOW_SOURCE_LINKS = True  # the module each page was written in, at its foot
 
@@ -138,5 +138,17 @@ class QmModule(CMakeModule):
             machine.insert_input = insert
 
 
+def _upper_case_heading(app, pagename, templatename, context, doctree):
+    """The heading above the sidebar, which alabaster draws from `project`.
+
+    No theme option reaches it, and renaming the project would carry into the
+    page titles and the search index as well. What the templates are handed is
+    the one thing left, and `project` is read by nothing else the html builder
+    draws here.
+    """
+    context["project"] = context["project"].upper()
+
+
 def setup(app):
     app.add_directive("qm-module", QmModule)
+    app.connect("html-page-context", _upper_case_heading)
