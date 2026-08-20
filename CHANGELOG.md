@@ -2,23 +2,24 @@
 
 ## v1.1.2.0 (Unreleased)
 
-### Deprecated
-
-- `Qml` is now `QtQml` and `Translate` is now `QtLinguist`. Both old names still work, `qm_import` translating one into the other and saying so once, and `cmake/private/ModuleAliases.cmake` is the list of them. A rename from here on is a moved file and a row in that list.
-
 ### Removed
 
-- `QMSETUP_VCPKG_TOOLS_HINT` is gone, and `qmcorecmd` is installed to the binary directory whatever a port wants. A port that wants it under `tools/<port>` moves it there with `vcpkg_copy_tools`, which is also what brings along the libraries it loads and what a build installing it there directly leaves it without.
+- `QMSETUP_VCPKG_TOOLS_HINT`. `qmcorecmd` now installs to the binary directory, and a vcpkg port moves it with `vcpkg_copy_tools`.
+- `CompilerOptions` is now imported as `private/CompilerOptions`.
+
+### Deprecated
+
+- `Qml` is now `QtQml` and `Translate` is now `QtLinguist`. The old names still import, with a warning.
+
+### Added
+
+- A reference for the `qm_*` commands, built with `QMSETUP_BUILD_DOCUMENTATIONS=ON` and published to GitHub Pages.
 
 ### Fixed
 
-- `qmcorecmd rmdir` leaves a link alone rather than walking into it. A tree holding a link to a directory elsewhere had the empty directories on the far side of it removed along with its own.
-- `qmcorecmd copy` turns down a destination that sits inside a source. `copy d/ d/sub` kept arriving at what it had just written and went on making directories until the platform ran out of path to name them with.
-- `qmcorecmd copy` turns down an empty source rather than reading the last character of a string that has none.
-
-### Internal
-
-- The tests are given a deadline of two minutes rather than the five and ten they had. The slowest on CI is eighteen seconds, so a run that reaches two minutes is stuck rather than slow.
+- `qmcorecmd rmdir` no longer walks through a link and removes directories outside the tree it was given.
+- `qmcorecmd copy` now refuses a destination inside a source, and an empty source.
+- `qmcorecmd` builds as C++17 again.
 
 ## v1.1.1.0 (2026-08-10)
 
