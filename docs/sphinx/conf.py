@@ -75,17 +75,46 @@ _repo_root = _source_dir.parents[1]
 _root_from_source = os.path.relpath(_repo_root, _source_dir).replace(os.sep, "/")
 
 
+# Which revision the links at the foot of each page point into. A branch rather
+# than a tag, the pages being built from whatever was checked out.
+_source_branch = os.environ.get("QMSETUP_DOCS_BRANCH", "main")
+
+
 class QmModule(CMakeModule):
     """`cmake-module`, given a path from the top of the repository.
 
     An absolute path cannot be handed to the directive underneath, which reads
     one as relative to the Sphinx source directory whatever the platform calls a
     root, so the way out is worked out above and put on the front here.
+
+    The module is named at the foot of the page it makes, and linked. A reader
+    who wants to change what is written here needs the .cmake file rather than
+    anything under docs/, the stub being one line that names it, and there is no
+    other way to tell from the page.
     """
 
     def run(self):
-        self.arguments[0] = f"/{_root_from_source}/{self.arguments[0]}"
-        return super().run()
+        source = self.arguments[0]
+        self.arguments[0] = f"/{_root_from_source}/{source}"
+
+        machine = self.state_machine
+        insert = machine.insert_input
+
+        def with_source_link(lines, path):
+            url = f'{_declared("HOMEPAGE_URL")}/blob/{_source_branch}/{source}'
+            insert(list(lines) + [
+                "",
+                ".. rubric:: Where this page comes from",
+                "",
+                f"The comments in `{source} <{url}>`_, which is what to change.",
+                "",
+            ], path)
+
+        machine.insert_input = with_source_link
+        try:
+            return super().run()
+        finally:
+            machine.insert_input = insert
 
 
 def setup(app):
