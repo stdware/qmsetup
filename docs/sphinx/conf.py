@@ -18,6 +18,7 @@
 #   sphinx-build -b html -W docs/sphinx docs/sphinx/_build
 
 import os
+import re
 from pathlib import Path
 
 from sphinxcontrib.moderncmakedomain.cmake import CMakeModule
@@ -34,6 +35,25 @@ highlight_language = "cmake"
 
 html_theme = "alabaster"
 exclude_patterns = ["_build"]
+
+# Read out of the project rather than written again here. The url and the line
+# under the title are declared once, at the top of the tree, and this is the
+# fourth place that would otherwise carry a copy of them.
+_project_file = (Path(__file__).resolve().parents[2] / "CMakeLists.txt").read_text(encoding="utf-8")
+
+
+def _declared(keyword, fallback=""):
+    found = re.search(rf'{keyword}\s+"([^"]*)"', _project_file)
+    return found.group(1) if found else fallback
+
+
+# A link to the repository on every page, which is the sidebar. Not the GitHub
+# button alabaster also offers, that one being an iframe from another host and
+# these pages being read from an install tree as often as from the web.
+html_theme_options = {
+    "description": _declared("DESCRIPTION"),
+    "extra_nav_links": {"Source on GitHub": _declared("HOMEPAGE_URL")},
+}
 
 # No "page source" link and no copy of the sources beside the pages. Every source
 # under here is a one line stub, so what the link offers a reader is the name of
