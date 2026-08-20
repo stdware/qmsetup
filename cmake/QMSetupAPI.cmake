@@ -1,6 +1,6 @@
 #[==[.rst:
-The API
-=======
+Global API
+==========
 
 What ``find_package(qmsetup)`` brings on its own, before any module is imported.
 Paths, versions, target configuration and the Qt helpers are here.
