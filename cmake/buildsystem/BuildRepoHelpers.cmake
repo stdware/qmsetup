@@ -765,8 +765,8 @@ function(${_F}_set_default_install_rpath _target)
             # CATEGORY is omitted, so a plugin lands in
             # <prefix>/<install-plugins-dir>/<category>:
             #
-            #     <prefix>/lib/<name>/plugins/<category>/libfoo.so
-            #              ^4    ^3      ^2       ^1
+            # <prefix>/lib/<name>/plugins/<category>/libfoo.so
+            # ^4    ^3      ^2       ^1
             #
             # Three of those are fixed and the category is not. It is a path rather than a name,
             # so `CATEGORY a/b` is two directories and the count is one more, which is why it is
@@ -830,6 +830,40 @@ macro(_repo_install_pdb _target _dest)
             install(FILES $<TARGET_PDB_FILE:${_target}>
                 DESTINATION ${_dest} OPTIONAL
             )
+        elseif(APPLE)
+            if(CMAKE_DSYMUTIL)
+                set(_dsymutil "${CMAKE_DSYMUTIL}")
+            else()
+                find_program(_dsymutil dsymutil)
+            endif()
+
+            if(NOT _dsymutil OR NOT CMAKE_STRIP)
+                message(FATAL_ERROR "_repo_install_pdb: dsymutil and strip are required on macOS")
+            endif()
+
+            install(CODE "
+                set(_source \"$<TARGET_FILE:${_target}>\")
+                set(_bin \"${_dest}/$<TARGET_FILE_NAME:${_target}>\")
+                set(_pdb \"${_dest}/$<TARGET_FILE_NAME:${_target}>.dSYM\")
+                execute_process(
+                    COMMAND \"${_dsymutil}\" \"\${_source}\" -o \"\${_pdb}\"
+                    WORKING_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}\"
+                    RESULT_VARIABLE _result
+                    ERROR_VARIABLE _error
+                )
+                if(NOT _result EQUAL 0)
+                    message(FATAL_ERROR \"dsymutil failed for \${_source}: \${_error}\")
+                endif()
+                execute_process(
+                    COMMAND \"${CMAKE_STRIP}\" -S \"\${_bin}\"
+                    WORKING_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}\"
+                    RESULT_VARIABLE _result
+                    ERROR_VARIABLE _error
+                )
+                if(NOT _result EQUAL 0)
+                    message(FATAL_ERROR \"strip failed for \${_bin}: \${_error}\")
+                endif()
+            ")
         else()
             install(CODE "
                 set(_bin \"${_dest}/$<TARGET_FILE_NAME:${_target}>\")
