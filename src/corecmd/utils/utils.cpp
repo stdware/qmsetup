@@ -166,10 +166,18 @@ namespace Utils {
             throw std::runtime_error("failed to run \"" + command + "\": " + proc.errorMessage());
         }
 
-        std::string output = std::get<0>(proc.communicate({}, timeout));
-        if (proc.errorCode()) {
-            throw std::runtime_error("failed to run \"" + command + "\": " + proc.errorMessage());
+        auto result = proc.communicate({}, timeout);
+        if (!result) {
+            const auto message = proc.errorMessage();
+            // communicate() leaves a child running at the time limit. The child is killed and
+            // reaped, so that no process outlives the command.
+            if (proc.errorCode() == std::errc::timed_out) {
+                proc.kill();
+                proc.communicate();
+            }
+            throw std::runtime_error("failed to run \"" + command + "\": " + message);
         }
+        std::string output = std::move(std::get<0>(*result));
 
         const auto code = proc.returnCode();
         if (!code) {
