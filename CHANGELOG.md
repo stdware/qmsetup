@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `qm_deploy_directory` on Linux and macOS now processes binaries installed without execute permission, and skips separate debug files.
+
 ## v1.1.2.0 (2026-08-20)
 
 ### Removed

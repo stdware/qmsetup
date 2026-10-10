@@ -77,3 +77,12 @@ foreach(_item IN LISTS _deployed)
 endforeach()
 
 qmtest_equal("and nothing of the system came with it" "${_runtime}" "")
+
+# ------------------------------------------------------------------
+# Input binaries
+# ------------------------------------------------------------------
+
+# qmtest_noexec_lib is installed without execute permission, and its dependency
+# is deployed only if the library is identified by its file type.
+qmtest_exists("a library without execute permission is processed"
+    "${_library_dir}/${_noexec_dep_name}")

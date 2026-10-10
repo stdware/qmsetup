@@ -88,6 +88,37 @@ if [[ ${#QML_REL_PATHS[@]} -gt 0 && -z "$QML_PATH" ]]; then
     exit 1
 fi
 
+# Returns success if the file is an executable, a shared library, or a loadable
+# bundle. Relocatable objects, static archives, and separate debug files are
+# rejected. The execute permission is not consulted because Debian and the
+# distributions derived from it install shared libraries without it.
+#
+# A separate debug file produced by `objcopy --only-keep-debug` retains the file
+# type and the section headers of the original binary. Its .dynamic section has
+# the type NOBITS instead of DYNAMIC, which distinguishes the two. A statically
+# linked executable has no .dynamic section and no dependencies, and is rejected
+# as well.
+is_deployable_binary() {
+    local file_type
+    file_type=$(file -b "$1")
+
+    case "$file_type" in
+        ELF*"shared object"* | ELF*"executable"*)
+            if ! command -v readelf > /dev/null; then
+                echo "Error: readelf is required to identify ELF binaries"
+                exit 1
+            fi
+            readelf -S -W "$1" 2> /dev/null | grep -Eq '[[:space:]]\.dynamic[[:space:]]+DYNAMIC[[:space:]]'
+            ;;
+        Mach-O*"dynamically linked shared library"* | Mach-O*"executable"* | Mach-O*"bundle"*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 # Search input directory
 search_input_dir() {
     local path="$1"
@@ -104,10 +135,7 @@ search_input_dir() {
                 # On Windows, search for.exe and.dll files
                 FILES="$FILES \"$item\""
             else
-                # On Unix, traverse all files, using the file command to
-                # check for executable binary files
-                file_type=$(file -b "$item")
-                if [[ ($file_type == "ELF"* || $file_type == "Mach-O"*) && -x "$item"  ]]; then
+                if is_deployable_binary "$item"; then
                     FILES="$FILES \"$item\""
                 fi
             fi
@@ -191,8 +219,7 @@ handle_qml_file() {
             cp "$file" "$target"
         fi
     else
-        file_type=$(file -b "$file")
-        if [[ ($file_type == "ELF"* || $file_type == "Mach-O"*) && -x "$file" ]]; then
+        if is_deployable_binary "$file"; then
             ARGS+=("-c \"$file\" \"$target_dir\"")
         else
             mkdir -p "$target_dir"

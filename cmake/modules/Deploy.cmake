@@ -214,6 +214,11 @@ endfunction()
   ``EXTRA_LIBRARIES`` is matched against what is on disk while the project is
   being read, so it names neither a target of this build nor a generator
   expression.
+
+  On Linux and macOS, a file under ``<install_dir>`` is processed if it is an
+  executable, a shared library, or a loadable bundle, regardless of its
+  permissions. Relocatable objects, static archives, and separate debug files
+  are skipped.
 #]==]
 function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)

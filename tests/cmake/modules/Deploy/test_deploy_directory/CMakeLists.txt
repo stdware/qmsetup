@@ -71,6 +71,27 @@ endif()
 get_filename_component(_prebuilt_name "${QMSETUP_CORECMD_EXECUTABLE}" NAME)
 file(COPY "${QMSETUP_CORECMD_EXECUTABLE}" DESTINATION "${CMAKE_BINARY_DIR}/prebuilt")
 
+# A library installed without execute permission, as CMake installs shared
+# libraries on Debian and the distributions derived from it. Its dependency is
+# not installed and is deployed only through the library.
+add_library(qmtest_noexec_dep SHARED src/noexec_dep.c)
+target_include_directories(qmtest_noexec_dep PUBLIC src)
+
+add_library(qmtest_noexec_lib SHARED src/noexec.c)
+target_link_libraries(qmtest_noexec_lib PRIVATE qmtest_noexec_dep)
+
+set_target_properties(qmtest_noexec_dep qmtest_noexec_lib PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/built"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/built"
+)
+
+install(TARGETS qmtest_noexec_lib
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+)
+
 # PLUGINS with EXTRA_PLUGIN_PATHS asks for no qmake, which is what lets the
 # plugin half of this run without a Qt. QML is the part that cannot.
 qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
@@ -97,4 +118,5 @@ file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/built_names.cmake" CONTENT
 set(_loose_name \"$<TARGET_FILE_NAME:qmtest_loose_lib>\")
 set(_plugin_name \"$<TARGET_FILE_NAME:qmtest_svgicon>\")
 set(_prebuilt_name \"${_prebuilt_name}\")
+set(_noexec_dep_name \"$<TARGET_FILE_NAME:qmtest_noexec_dep>\")
 ")
