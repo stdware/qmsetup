@@ -15,6 +15,7 @@
 
 - `qm_deploy_directory` on Linux and macOS now processes binaries installed without execute permission, and skips separate debug files.
 - `qm_deploy_directory` on macOS now passes a framework in the install tree to `qmcorecmd` as one item. The framework previously received an rpath that resolved its dependencies only through the rpaths of the application.
+- `qm_deploy_directory` on Linux and macOS now searches the Qt library directory if qmake is known, as it searches the Qt binary directory on Windows. A Qt library that only a library outside Qt requires was previously not deployed.
 
 ## v1.1.2.0 (2026-08-20)
 

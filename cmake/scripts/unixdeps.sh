@@ -80,6 +80,12 @@ if [[ -n "$QMAKE_PATH" ]]; then
     PLUGIN_PATHS+=("$QMAKE_PLUGIN_PATH")
 
     QML_PATH=$($QMAKE_PATH -query QT_INSTALL_QML)
+
+    # The Qt library directory is searched as a library search path. A library
+    # outside Qt that links Qt carries no rpath to Qt, and the Qt libraries that
+    # only such a library requires are found nowhere else. windeps.bat searches
+    # the Qt binary directory for the same reason.
+    ARGS+=("-L $(printf '%q' "$($QMAKE_PATH -query QT_INSTALL_LIBS)")")
 fi
 
 # Add extra plugin searching paths

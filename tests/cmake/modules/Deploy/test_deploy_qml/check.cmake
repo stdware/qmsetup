@@ -55,6 +55,25 @@ endforeach()
 qmtest_true("and with it what it needs of Qt" "${_qt_core}")
 
 # ------------------------------------------------------------------
+# A library outside Qt
+# ------------------------------------------------------------------
+
+# qmtest_qt_user links QtXml and carries no rpath to Qt, and the QML
+# module does not require QtXml. QtXml is therefore deployed only
+# if the scripts search the Qt library directory on their own.
+set(_qt_xml)
+
+foreach(_item IN LISTS _deployed)
+    get_filename_component(_name "${_item}" NAME)
+
+    if(_name MATCHES "Qt[0-9]*Xml")
+        list(APPEND _qt_xml "${_name}")
+    endif()
+endforeach()
+
+qmtest_true("a Qt library that only a library outside Qt requires is deployed" "${_qt_xml}")
+
+# ------------------------------------------------------------------
 # The debug build of the module
 # ------------------------------------------------------------------
 

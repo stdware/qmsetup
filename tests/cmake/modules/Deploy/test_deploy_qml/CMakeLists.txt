@@ -31,27 +31,13 @@ endif()
 qm_import(Deploy)
 
 # For Qt${QT_VERSION_MAJOR}::qmake, which is what tells the deployment where the
-# QML modules are. Core is asked for rather than Qml, nothing here linking
-# either and the qmake target coming with the first component found.
-qm_find_qt(Core)
+# QML modules are, and for QtXml, which qmtest_qt_user links.
+qm_find_qt(Core Xml)
 
 qm_get_executable_location(Qt${QT_VERSION_MAJOR}::qmake _qmake)
 
-# Asked here as well, so that the search path can name where Qt keeps its
-# libraries and the checks can be told which module was deployed rather than
-# working it out again.
 execute_process(COMMAND "${_qmake}" -query QT_INSTALL_QML
     OUTPUT_VARIABLE _qt_qml_dir
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
-execute_process(COMMAND "${_qmake}" -query QT_INSTALL_BINS
-    OUTPUT_VARIABLE _qt_bin_dir
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
-execute_process(COMMAND "${_qmake}" -query QT_INSTALL_LIBS
-    OUTPUT_VARIABLE _qt_lib_dir
     OUTPUT_STRIP_TRAILING_WHITESPACE
     COMMAND_ERROR_IS_FATAL ANY
 )
@@ -68,11 +54,21 @@ install(TARGETS qmtest_qml_app
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-# Both directories, Windows keeping the shared libraries beside the tools and
-# everywhere else keeping them apart. Whichever is the wrong one holds no Qt
-# library and costs a look.
+# A library outside Qt in the install tree. CMake installs the library without
+# an rpath, and the QML module does not require QtXml. The deployment
+# therefore finds QtXml only in the Qt library directory, which the
+# scripts add to the search paths.
+add_library(qmtest_qt_user SHARED src/qt_user.cpp)
+target_link_libraries(qmtest_qt_user PRIVATE Qt${QT_VERSION_MAJOR}::Xml)
+
+install(TARGETS qmtest_qt_user
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+# No search path names a Qt directory. The scripts derive the Qt directories
+# from qmake.
 qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
-    EXTRA_SEARCHING_PATHS "${_qt_bin_dir}" "${_qt_lib_dir}"
     LIBRARY_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_libs"
     QML "QtCore"
     QML_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_qml"
