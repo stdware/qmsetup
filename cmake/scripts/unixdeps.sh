@@ -11,7 +11,7 @@ usage() {
     echo "                   --plugindir <plugin_dir> --libdir <lib_dir> --qmldir <qml_dir>"
     echo "                  [--qmake <qmake_path>] [--extra <extra_path>]..."
     echo "                  [--qml <qml_module>]... [--plugin <plugin>]... [--copy <src> <dest>]..."
-    echo "                  [-f] [-s] [-x] [-V] [-h]"
+    echo "                  [--args-file <file>]... [-f] [-s] [-x] [-V] [-h]"
     echo "  -i <input_dir>              Directory containing binaries and libraries"
     echo "  -m <corecmd_path>           Path to corecmd"
     echo "  --plugindir <plugin_dir>    Output directory for plugins"
@@ -22,6 +22,7 @@ usage() {
     echo "  --qml <qml_module>          Relative path to QML directory (repeatable)"
     echo "  --plugin <plugin>           Specify a Qt plugin to deploy (repeatable)"
     echo "  --copy <src> <dest>         Specify additional binary file to copy and its destination directory (repeatable)"
+    echo "  --args-file <file>          Pass a response file of further corecmd arguments, one per line (repeatable)"
     echo "  -L                          Add a library searching path"
     echo "  -f                          Force overwrite existing files"
     echo "  -s                          Ignore C/C++ runtime and system libraries"
@@ -53,6 +54,7 @@ while (( "$#" )); do
         --plugin)          PLUGINS+=("$2"); shift 2;;
         --qml)             QML_REL_PATHS+=("$2"); shift 2;;
         --copy)            ARGS+=("-c \"$2\" \"$3\""); shift 3;;
+        --args-file)       ARGS+=("$(printf '%q' "@$2")"); shift 2;;
         -f|-s)             ARGS+=("$1"); shift;;
         -x)                FORCE_EXECUTABLE=1; shift;;
         -V)                VERBOSE="-V"; shift;;

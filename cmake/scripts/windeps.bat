@@ -19,6 +19,7 @@ set "EXTRA_PLUGIN_PATHS="
 set "PLUGINS=" & set /a "PLUGIN_COUNT=0"
 set "QML_REL_PATHS="
 set "ARGS=" & set /a "ARG_COUNT=0"
+set "ARGS_FILES="
 
 :: Parse command line
 :parse_args
@@ -33,6 +34,7 @@ if "%1"=="--extra" set "EXTRA_PLUGIN_PATHS=!EXTRA_PLUGIN_PATHS! %~2" & shift & s
 if "%1"=="--plugin" set /a "PLUGIN_COUNT+=1" & set "PLUGINS[!PLUGIN_COUNT!]=%~2" & shift & shift & goto :parse_args
 if "%1"=="--qml" set "QML_REL_PATHS=!QML_REL_PATHS! %~2" & shift & shift & goto :parse_args
 if "%1"=="--copy" call :push_args -c %~2 %~3 & shift & shift & shift & goto :parse_args
+if "%1"=="--args-file" call :push_args_file "%~2" & shift & shift & goto :parse_args
 if "%1"=="-f" call :push_args -f & shift & goto :parse_args
 if "%1"=="-s" call :push_args -s & shift & goto :parse_args
 if "%1"=="-V" set "VERBOSE=-V" & shift & goto :parse_args
@@ -137,7 +139,7 @@ for /L %%i in (1,1,%ARG_COUNT%) do (
 echo -o >> %ARGS_FILE%
 echo !LIB_DIR! >> %ARGS_FILE%
 echo !VERBOSE! >> %ARGS_FILE%
-set "DEPLOY_CMD=!CORECMD_PATH! deploy @!ARGS_FILE!"
+set "DEPLOY_CMD=!CORECMD_PATH! deploy @!ARGS_FILE! !ARGS_FILES!"
 call !DEPLOY_CMD!
 
 :: Check the deployment result
@@ -153,6 +155,18 @@ exit /b
 :: Add args
 :push_args
 for %%x in (%*) do set /a "ARG_COUNT+=1" & set "ARGS[!ARG_COUNT!]=%%x"
+exit /b
+:: ----------------------------------------------------------------------------------
+
+
+
+
+
+:: ----------------------------------------------------------------------------------
+:: Add a response file of further corecmd arguments. Response files do not nest,
+:: so the file is passed beside the generated one rather than inside it.
+:push_args_file
+set "ARGS_FILES=!ARGS_FILES! "@%~1""
 exit /b
 :: ----------------------------------------------------------------------------------
 
@@ -287,7 +301,7 @@ echo Usage: %~n0 -i ^<dir^> -m ^<path^>
 echo                --plugindir ^<plugin_dir^> --libdir ^<lib_dir^> --qmldir ^<qml_dir^>
 echo               [--qmake ^<qmake_path^>] [--extra ^<extra_path^>]...
 echo               [--qml ^<qml_module^>]... [--plugin ^<plugin^>]... [--copy ^<src^> ^<dest^>]...
-echo               [-L ^<path^>]...
+echo               [-L ^<path^>]... [--args-file ^<file^>]...
 echo               [-f] [-s] [-V] [-h]
 exit /b
 :: ----------------------------------------------------------------------------------

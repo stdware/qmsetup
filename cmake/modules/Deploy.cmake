@@ -176,6 +176,7 @@ endfunction()
         [EXTRA_LIBRARIES <path>...]
         [EXTRA_PLUGIN_PATHS <path>...]
         [EXTRA_SEARCHING_PATHS <path>...]
+        [EXCLUDE <regex>...]
 
         [PLUGINS <plugin>...]
         [PLUGIN_DIR <dir>]
@@ -202,6 +203,11 @@ endfunction()
     Extra library names list to deploy
   ``EXTRA_SEARCHING_PATHS``
     Extra library searching paths
+  ``EXCLUDE``
+    Regular expressions for dependencies to skip. A dependency is skipped if its
+    path, written with forward slashes, contains a match, and the libraries that
+    only that dependency requires are skipped with it. Leading and trailing blanks
+    of an expression are not preserved.
 
   What it gathers is the release flavour of everything, and that is decided in
   the scripts underneath rather than here. A plugin is looked for by the name it
@@ -236,7 +242,7 @@ endfunction()
 function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
-    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML EXTRA_SEARCHING_PATHS EXTRA_LIBRARIES)
+    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML EXTRA_SEARCHING_PATHS EXTRA_LIBRARIES EXCLUDE)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get qmake
@@ -354,6 +360,31 @@ function(qm_deploy_directory _install_dir)
     # Windows has no execute permission, and windeps.bat rejects the option.
     if(QMSETUP_FORCE_EXECUTABLE_PERMISSIONS AND NOT WIN32)
         list(APPEND _args "-x")
+    endif()
+
+    # The expressions reach qmcorecmd through a response file, one argument per
+    # line. The command line of the script would require escaping for bash and
+    # for cmd, which interpret characters that regular expressions use. The
+    # counter gives each call in a directory a file of its own.
+    if(FUNC_EXCLUDE)
+        get_property(_count GLOBAL PROPERTY _QM_DEPLOY_DIRECTORY_COUNT)
+
+        if(NOT _count)
+            set(_count 0)
+        endif()
+
+        math(EXPR _count "${_count} + 1")
+        set_property(GLOBAL PROPERTY _QM_DEPLOY_DIRECTORY_COUNT ${_count})
+
+        set(_args_file "${CMAKE_CURRENT_BINARY_DIR}/qm_deploy_directory_${_count}_args.txt")
+        set(_args_content)
+
+        foreach(_item IN LISTS FUNC_EXCLUDE)
+            string(APPEND _args_content "-e\n${_item}\n")
+        endforeach()
+
+        file(WRITE "${_args_file}" "${_args_content}")
+        list(APPEND _args --args-file "${_args_file}")
     endif()
 
     set(_comment_code)

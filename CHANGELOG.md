@@ -5,6 +5,7 @@
 ### Added
 
 - `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`, which grants execute permission to every binary that qmsetup installs or deploys. It defaults to `OFF`.
+- `EXCLUDE` for `qm_deploy_directory`, which skips the dependencies whose paths match the given regular expressions.
 
 ### Changed
 

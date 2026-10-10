@@ -105,3 +105,12 @@ else()
     message(STATUS "Skipped: a separate debug file is not treated as a binary. "
         "The toolchain provides no objcopy that writes one.")
 endif()
+
+# ------------------------------------------------------------------
+# EXCLUDE
+# ------------------------------------------------------------------
+
+# qmtest_excl_lib is installed, and its dependency is deployed unless the
+# expression reaches qmcorecmd unchanged and matches the path of the dependency.
+qmtest_not_exists("a dependency that matches EXCLUDE is not deployed"
+    "${_library_dir}/${_excl_dep_name}")

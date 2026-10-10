@@ -116,6 +116,28 @@ if(CMAKE_OBJCOPY)
     ")
 endif()
 
+# A library in the install tree whose dependency matches EXCLUDE.
+add_library(qmtest_excl_dep SHARED src/excl_dep.c)
+target_include_directories(qmtest_excl_dep PUBLIC src)
+
+add_library(qmtest_excl_lib SHARED src/excl.c)
+target_link_libraries(qmtest_excl_lib PRIVATE qmtest_excl_dep)
+
+set_target_properties(qmtest_excl_dep qmtest_excl_lib PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/built"
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/built"
+)
+
+install(TARGETS qmtest_excl_lib
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+# The expression contains characters that bash and cmd interpret: ^ | ( ) ? ! $
+# and a backslash. The deployment receives the expression unchanged only if the
+# expression does not pass through the command line of either script.
+set(_exclude "(^|/)(lib)?qmtest_excl_dep(?!_never)[^/]*\\.(so|dylib|dll)$")
+
 set(QMSETUP_FORCE_EXECUTABLE_PERMISSIONS on)
 
 # PLUGINS with EXTRA_PLUGIN_PATHS asks for no qmake, which is what lets the
@@ -127,6 +149,7 @@ qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
     PLUGINS "iconengines/qmtest_svgicon"
     PLUGIN_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_plugins"
     EXTRA_PLUGIN_PATHS "${CMAKE_BINARY_DIR}/qmtest_plugins"
+    EXCLUDE "${_exclude}"
     STANDARD
     VERBOSE
     COMMENT "Deploying what the installed binaries need"
@@ -146,4 +169,5 @@ set(_plugin_name \"$<TARGET_FILE_NAME:qmtest_svgicon>\")
 set(_prebuilt_name \"${_prebuilt_name}\")
 set(_noexec_name \"$<TARGET_FILE_NAME:qmtest_noexec_lib>\")
 set(_noexec_dep_name \"$<TARGET_FILE_NAME:qmtest_noexec_dep>\")
+set(_excl_dep_name \"$<TARGET_FILE_NAME:qmtest_excl_dep>\")
 ")
