@@ -23,6 +23,10 @@ cmake -B build -DQMSETUP_BUILD_TESTS=ON \
 - `cmake/buildsystem/BuildRepoHelpers.cmake`, including its use of `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`. No test includes the file.
 - The rejection of a dSYM companion file by `qm_deploy_directory` on macOS. `test_deploy_directory` writes a separate debug file with the objcopy of the toolchain, and AppleClang provides none, so the check is skipped there.
 
+## Pending
+
+- `unixdeps.sh` compares the literal string `"OSTYPE"` instead of `$OSTYPE` in `search_input_dir` and `search_qml_dir`. The condition is always false, and a macOS framework directory is therefore searched file by file instead of being passed as one item.
+
 ## Unverified
 
 - The standard library filter cannot be seen to work on macOS. Everything under `/usr/lib` now lives in the dyld shared cache rather than on disk, so `libSystem` is reported as not found whether or not `--standard` was asked for, and the deployment has nothing to leave behind. Checked on Windows and Linux, where the filter has files to act on.
