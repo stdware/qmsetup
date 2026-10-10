@@ -88,6 +88,11 @@ set(_built_projects
     modules/private/Generate/test_binary_resource
 )
 
+# Frameworks exist only on Apple platforms.
+if(APPLE)
+    list(APPEND _built_projects modules/Deploy/test_deploy_framework)
+endif()
+
 if(WIN32)
     list(APPEND _built_projects modules/Deploy/test_win_applocal_deps)
 

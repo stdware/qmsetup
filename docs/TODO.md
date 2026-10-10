@@ -22,10 +22,7 @@ cmake -B build -DQMSETUP_BUILD_TESTS=ON \
 - The scripts under `cmake/scripts`, called directly rather than through the function that wraps them. `copy.cmake` is reached through `qm_add_copy_command`, `configure_file.cmake` through `qm_future_configure_file`, and `xxd.cmake` through `qm_add_binary_resource`, all against a real build. What a direct call would add is the refusal each makes when an argument is missing.
 - `cmake/buildsystem/BuildRepoHelpers.cmake`, including its use of `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`. No test includes the file.
 - The rejection of a dSYM companion file by `qm_deploy_directory` on macOS. `test_deploy_directory` writes a separate debug file with the objcopy of the toolchain, and AppleClang provides none, so the check is skipped there.
-
-## Pending
-
-- `unixdeps.sh` compares the literal string `"OSTYPE"` instead of `$OSTYPE` in `search_input_dir` and `search_qml_dir`. The condition is always false, and a macOS framework directory is therefore searched file by file instead of being passed as one item.
+- A framework inside a QML directory deployed by `qm_deploy_directory` on macOS. `test_deploy_framework` covers a framework in the install tree, which `search_input_dir` handles. A framework in a QML directory takes the separate branch in `search_qml_dir`, and Qt installs its QML plugins as plain dynamic libraries.
 
 ## Unverified
 

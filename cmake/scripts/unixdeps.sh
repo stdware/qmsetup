@@ -128,7 +128,7 @@ search_input_dir() {
     for item in "$path"/*; do
         if [ -d "$item" ]; then
             # Check if the directory is mac .framework
-            if [[ "OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
+            if [[ "$OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
                 FILES="$FILES \"$item\""
             else
                 search_input_dir "$item"
@@ -237,7 +237,7 @@ search_qml_dir() {
     for item in "$path"/*; do
         if [ -d "$item" ]; then
             # Check if the path is mac .framework
-            if [[ "OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
+            if [[ "$OSTYPE" == "darwin"* ]] && [[ "$item" == *.framework ]]; then
                 handle_qml_file "$item"
             else
                 search_qml_dir "$item"

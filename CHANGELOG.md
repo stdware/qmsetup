@@ -13,6 +13,7 @@
 ### Fixed
 
 - `qm_deploy_directory` on Linux and macOS now processes binaries installed without execute permission, and skips separate debug files.
+- `qm_deploy_directory` on macOS now passes a framework in the install tree to `qmcorecmd` as one item. The framework previously received an rpath that resolved its dependencies only through the rpaths of the application.
 
 ## v1.1.2.0 (2026-08-20)
 
