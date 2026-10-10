@@ -20,6 +20,8 @@ cmake -B build -DQMSETUP_BUILD_TESTS=ON \
 - The pass that strips a universal binary down to the architecture in use, which needs a binary built for two. `lipo` itself is on every machine with the command line tools, so what is missing is the fixture: building one means a second pass over the whole deploy tree with `CMAKE_OSX_ARCHITECTURES`, and it would test one function.
 - `FORCE`, on `qm_deploy_directory` and on `qm_win_applocal_deps`. It is what makes a copy happen where the destination already holds a file of the same name and no older, so a test wants two runs with something put in the way between them, and either function copies enough that doing it twice is the slowest thing in the suite.
 - The scripts under `cmake/scripts`, called directly rather than through the function that wraps them. `copy.cmake` is reached through `qm_add_copy_command`, `configure_file.cmake` through `qm_future_configure_file`, and `xxd.cmake` through `qm_add_binary_resource`, all against a real build. What a direct call would add is the refusal each makes when an argument is missing.
+- `cmake/buildsystem/BuildRepoHelpers.cmake`, including its use of `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`. No test includes the file.
+- The rejection of a dSYM companion file by `qm_deploy_directory` on macOS. `test_deploy_directory` writes a separate debug file with the objcopy of the toolchain, and AppleClang provides none, so the check is skipped there.
 
 ## Unverified
 

@@ -17,6 +17,11 @@ qmtest_exists("and its type information" "${_dir}/qmtest_qmlmod.qmltypes")
 file(GLOB _plugin "${_dir}/*qmtest_qmlmodplugin*")
 qmtest_true("the runtime loadable plugin comes too" "${_plugin}")
 
+# The project sets QMSETUP_FORCE_EXECUTABLE_PERMISSIONS. Without it, CMake
+# installs the plugin without execute permission on Debian and the distributions
+# derived from it.
+qmtest_executable("the plugin receives execute permission" "${_plugin}")
+
 # The QML files and the resources go through two loops of their own, one pairing
 # each file with where it is to be deployed. A file arriving under its deploy
 # path rather than its source path is what says those were read in step.

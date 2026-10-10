@@ -23,6 +23,9 @@ qm_find_qt(Qml)
 
 set(CMAKE_AUTOMOC ON)
 
+# check.cmake requires execute permission on the installed plugin.
+set(QMSETUP_FORCE_EXECUTABLE_PERMISSIONS on)
+
 # Two modules in one directory would otherwise be built into the same place,
 # which Qt refuses. Told where to start, it gives each one a directory named
 # after its URI.

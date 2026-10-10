@@ -330,10 +330,11 @@ function(${_F}_add_application _target)
             set(_export EXPORT ${${_V}_EXPORT})
         endif()
 
+        _qm_get_executable_permissions(_permissions)
         install(TARGETS ${_target}
             ${_export}
             DESTINATION ${_install_runtime_dir} OPTIONAL
-            PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+            ${_permissions}
         )
 
         if(NOT FUNC_NO_INSTALL_PDB AND ${_V}_INSTALL_PDB)
@@ -410,22 +411,24 @@ function(${_F}_add_plugin _target)
             set(_export EXPORT ${${_V}_EXPORT})
         endif()
 
+        _qm_get_executable_permissions(_permissions)
+
         if(${_V}_DEVEL AND NOT FUNC_NO_INSTALL_ARCHIVE)
             install(TARGETS ${_target}
                 ${_export}
                 RUNTIME DESTINATION ${_install_runtime_dir}
-                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                ${_permissions}
                 LIBRARY DESTINATION ${_install_library_dir}
-                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                ${_permissions}
                 ARCHIVE DESTINATION ${_install_archive_dir}
             )
         else()
             install(TARGETS ${_target}
                 ${_export}
                 RUNTIME DESTINATION ${_install_runtime_dir}
-                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                ${_permissions}
                 LIBRARY DESTINATION ${_install_library_dir}
-                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                ${_permissions}
             )
         endif()
 
@@ -506,13 +509,15 @@ function(${_F}_add_library _target)
             set(_export EXPORT ${${_V}_EXPORT})
         endif()
 
+        _qm_get_executable_permissions(_permissions)
+
         if(${_V}_DEVEL)
             install(TARGETS ${_target}
                 ${_export}
                 RUNTIME DESTINATION ${_install_runtime_dir}
-                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                ${_permissions}
                 LIBRARY DESTINATION ${_install_library_dir}
-                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                ${_permissions}
                 ARCHIVE DESTINATION ${_install_archive_dir}
             )
         else()
@@ -520,9 +525,9 @@ function(${_F}_add_library _target)
                 install(TARGETS ${_target}
                     ${_export}
                     RUNTIME DESTINATION ${_install_runtime_dir}
-                    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                    ${_permissions}
                     LIBRARY DESTINATION ${_install_library_dir}
-                    PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+                    ${_permissions}
                 )
             endif()
         endif()
@@ -590,9 +595,11 @@ function(${_F}_add_executable _target)
             set(_export EXPORT ${${_V}_EXPORT})
         endif()
 
+        _qm_get_executable_permissions(_permissions)
         install(TARGETS ${_target}
             ${_export}
             DESTINATION ${_install_runtime_dir} OPTIONAL
+            ${_permissions}
         )
 
         if(NOT FUNC_NO_INSTALL_PDB AND ${_V}_INSTALL_PDB)

@@ -11,7 +11,7 @@ usage() {
     echo "                   --plugindir <plugin_dir> --libdir <lib_dir> --qmldir <qml_dir>"
     echo "                  [--qmake <qmake_path>] [--extra <extra_path>]..."
     echo "                  [--qml <qml_module>]... [--plugin <plugin>]... [--copy <src> <dest>]..."
-    echo "                  [-f] [-s] [-V] [-h]"
+    echo "                  [-f] [-s] [-x] [-V] [-h]"
     echo "  -i <input_dir>              Directory containing binaries and libraries"
     echo "  -m <corecmd_path>           Path to corecmd"
     echo "  --plugindir <plugin_dir>    Output directory for plugins"
@@ -25,6 +25,7 @@ usage() {
     echo "  -L                          Add a library searching path"
     echo "  -f                          Force overwrite existing files"
     echo "  -s                          Ignore C/C++ runtime and system libraries"
+    echo "  -x                          Grant execute permission to the binaries in the output directories"
     echo "  -V                          Show verbose output"
     echo "  -h                          Show this help message"
 }
@@ -34,6 +35,7 @@ EXTRA_PLUGIN_PATHS=()
 QML_REL_PATHS=()
 ARGS=()
 VERBOSE=""
+FORCE_EXECUTABLE=""
 PLUGINS=()
 FILES=""
 
@@ -52,6 +54,7 @@ while (( "$#" )); do
         --qml)             QML_REL_PATHS+=("$2"); shift 2;;
         --copy)            ARGS+=("-c \"$2\" \"$3\""); shift 3;;
         -f|-s)             ARGS+=("$1"); shift;;
+        -x)                FORCE_EXECUTABLE=1; shift;;
         -V)                VERBOSE="-V"; shift;;
         -h) usage; exit 0;;
         *) echo "Error: Unsupported argument $1"; usage; exit 1;;
@@ -267,4 +270,21 @@ eval $DEPLOY_CMD
 # Check the deployment result
 if [ $? -ne 0 ]; then
     exit 1
+fi
+
+# Grant execute permission to the binaries in the output directories. The
+# deployment preserves the permissions of each source, which lack execute
+# permission if the source was installed on Debian or a distribution derived
+# from it.
+if [[ -n "$FORCE_EXECUTABLE" ]]; then
+    for dir in "$LIB_DIR" "$PLUGIN_DIR" "$QML_DIR"; do
+        if [[ ! -d "$dir" ]]; then
+            continue
+        fi
+        while IFS= read -r -d '' file; do
+            if is_deployable_binary "$file"; then
+                chmod 755 "$file"
+            fi
+        done < <(find "$dir" -type f -print0)
+    done
 fi

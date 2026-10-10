@@ -24,6 +24,8 @@ include_guard(DIRECTORY)
   ``PREFIX``
     install directory prefix (default: "qml")
 
+  The plugin receives execute permission if :variable:`QMSETUP_FORCE_EXECUTABLE_PERMISSIONS` is on.
+
   .. note::
      For static library backing targets, you should specify ``OUTPUT_TARGETS``
      when calling ``qt_add_qml_module()`` to collect the internally generated
@@ -68,9 +70,10 @@ function(qm_install_qml_modules _target)
     # Install the QML module runtime loadable plugin
     set(_module_dir "${_prefix}/${_module_target_path}")
     if(_module_plugin_target)
+        _qm_get_executable_permissions(_permissions)
         install(TARGETS "${_module_plugin_target}"
-            LIBRARY DESTINATION "${_module_dir}"
-            RUNTIME DESTINATION "${_module_dir}"
+            LIBRARY DESTINATION "${_module_dir}" ${_permissions}
+            RUNTIME DESTINATION "${_module_dir}" ${_permissions}
             ARCHIVE DESTINATION "${_module_dir}"
         )
     endif()

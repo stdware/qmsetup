@@ -69,7 +69,12 @@ endif()
 # with the right name, the deployment reading each thing it copies. qmcorecmd
 # is one, and the test is handed its path anyway.
 get_filename_component(_prebuilt_name "${QMSETUP_CORECMD_EXECUTABLE}" NAME)
-file(COPY "${QMSETUP_CORECMD_EXECUTABLE}" DESTINATION "${CMAKE_BINARY_DIR}/prebuilt")
+
+# The copy has no execute permission. The deployed copy receives it only through
+# QMSETUP_FORCE_EXECUTABLE_PERMISSIONS.
+file(COPY "${QMSETUP_CORECMD_EXECUTABLE}" DESTINATION "${CMAKE_BINARY_DIR}/prebuilt"
+    FILE_PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+)
 
 # A library installed without execute permission, as CMake installs shared
 # libraries on Debian and the distributions derived from it. Its dependency is
@@ -91,6 +96,27 @@ install(TARGETS qmtest_noexec_lib
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
 )
+
+# A separate debug file in the library directory, as _repo_install_pdb writes
+# one beside each binary on Linux. The file is written without execute
+# permission before the deployment runs, and keeps none if the deployment does
+# not treat it as a binary. The step requires the objcopy of the toolchain, and
+# check.cmake skips the check if the file was not written.
+if(CMAKE_OBJCOPY)
+    install(CODE "
+        set(_debug \"\${CMAKE_INSTALL_PREFIX}/qmtest_libs/$<TARGET_FILE_NAME:qmtest_noexec_lib>.debug\")
+        file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/qmtest_libs\")
+        execute_process(
+            COMMAND \"${CMAKE_OBJCOPY}\" --only-keep-debug \"$<TARGET_FILE:qmtest_noexec_lib>\" \"\${_debug}\"
+            RESULT_VARIABLE _result
+        )
+        if(\"\${_result}\" STREQUAL \"0\" AND EXISTS \"\${_debug}\")
+            file(CHMOD \"\${_debug}\" PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+        endif()
+    ")
+endif()
+
+set(QMSETUP_FORCE_EXECUTABLE_PERMISSIONS on)
 
 # PLUGINS with EXTRA_PLUGIN_PATHS asks for no qmake, which is what lets the
 # plugin half of this run without a Qt. QML is the part that cannot.
@@ -118,5 +144,6 @@ file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/built_names.cmake" CONTENT
 set(_loose_name \"$<TARGET_FILE_NAME:qmtest_loose_lib>\")
 set(_plugin_name \"$<TARGET_FILE_NAME:qmtest_svgicon>\")
 set(_prebuilt_name \"${_prebuilt_name}\")
+set(_noexec_name \"$<TARGET_FILE_NAME:qmtest_noexec_lib>\")
 set(_noexec_dep_name \"$<TARGET_FILE_NAME:qmtest_noexec_dep>\")
 ")

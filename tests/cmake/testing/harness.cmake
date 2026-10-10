@@ -252,6 +252,95 @@ function(qmtest_script_fails _what _expected _code)
     _qmtest_pass()
 endfunction()
 
+# Sets \a _out to whether the host reports execute permission through `test -x`.
+# A probe file in QMTEST_WORK_DIR determines the result once per run.
+function(_qmtest_execute_reported _out)
+    get_property(_probed GLOBAL PROPERTY QMTEST_EXECUTE_PROBED)
+
+    if(NOT _probed)
+        set_property(GLOBAL PROPERTY QMTEST_EXECUTE_PROBED TRUE)
+        set(_reported FALSE)
+
+        if(DEFINED QMTEST_WORK_DIR)
+            set(_probe "${QMTEST_WORK_DIR}/execute_probe")
+            file(WRITE "${_probe}" "")
+
+            file(CHMOD "${_probe}" PERMISSIONS OWNER_READ OWNER_WRITE)
+            execute_process(COMMAND test -x "${_probe}" RESULT_VARIABLE _without)
+
+            file(CHMOD "${_probe}" PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
+            execute_process(COMMAND test -x "${_probe}" RESULT_VARIABLE _with)
+
+            if("${_without}" STREQUAL "1" AND "${_with}" STREQUAL "0")
+                set(_reported TRUE)
+            endif()
+        endif()
+
+        set_property(GLOBAL PROPERTY QMTEST_EXECUTE_REPORTED ${_reported})
+    endif()
+
+    get_property(_reported GLOBAL PROPERTY QMTEST_EXECUTE_REPORTED)
+    set(${_out} ${_reported} PARENT_SCOPE)
+endfunction()
+
+#[[
+    The file has execute permission.
+
+    qmtest_executable(<what> <path>)
+
+    The check requires a host that reports execute permission through `test -x`.
+    On any other host, the check is skipped with a notice.
+]] #
+function(qmtest_executable _what _path)
+    _qmtest_execute_reported(_reported)
+
+    if(NOT _reported)
+        message(STATUS "Skipped: ${_what}. The host does not report execute permission "
+            "through `test -x`.")
+        return()
+    endif()
+
+    execute_process(COMMAND test -x "${_path}" RESULT_VARIABLE _result)
+
+    if("${_result}" STREQUAL "0")
+        _qmtest_pass()
+        return()
+    endif()
+
+    _qmtest_fail("${_what}" "${_path} has no execute permission")
+endfunction()
+
+#[[
+    The file exists and has no execute permission.
+
+    qmtest_not_executable(<what> <path>)
+
+    The host requirement is the same as for qmtest_executable.
+]] #
+function(qmtest_not_executable _what _path)
+    _qmtest_execute_reported(_reported)
+
+    if(NOT _reported)
+        message(STATUS "Skipped: ${_what}. The host does not report execute permission "
+            "through `test -x`.")
+        return()
+    endif()
+
+    if(NOT EXISTS "${_path}")
+        _qmtest_fail("${_what}" "${_path} is not there")
+        return()
+    endif()
+
+    execute_process(COMMAND test -x "${_path}" RESULT_VARIABLE _result)
+
+    if("${_result}" STREQUAL "1")
+        _qmtest_pass()
+        return()
+    endif()
+
+    _qmtest_fail("${_what}" "${_path} has execute permission and should not")
+endfunction()
+
 #[[
     Says how it went, and fails the run if anything went wrong. Every test file
     ends with this.

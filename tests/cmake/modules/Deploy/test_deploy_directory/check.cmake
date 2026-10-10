@@ -86,3 +86,22 @@ qmtest_equal("and nothing of the system came with it" "${_runtime}" "")
 # is deployed only if the library is identified by its file type.
 qmtest_exists("a library without execute permission is processed"
     "${_library_dir}/${_noexec_dep_name}")
+
+# ------------------------------------------------------------------
+# QMSETUP_FORCE_EXECUTABLE_PERMISSIONS
+# ------------------------------------------------------------------
+
+# The source of this copy has no execute permission.
+qmtest_executable("a deployed binary receives execute permission"
+    "${_library_dir}/${_prebuilt_name}")
+
+# The separate debug file lies in the library directory without execute
+# permission. A deployment that treats the file as a binary grants it.
+set(_debug_file "${_library_dir}/${_noexec_name}.debug")
+
+if(EXISTS "${_debug_file}")
+    qmtest_not_executable("a separate debug file is not treated as a binary" "${_debug_file}")
+else()
+    message(STATUS "Skipped: a separate debug file is not treated as a binary. "
+        "The toolchain provides no objcopy that writes one.")
+endif()

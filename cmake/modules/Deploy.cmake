@@ -218,7 +218,8 @@ endfunction()
   On Linux and macOS, a file under ``<install_dir>`` is processed if it is an
   executable, a shared library, or a loadable bundle, regardless of its
   permissions. Relocatable objects, static archives, and separate debug files
-  are skipped.
+  are skipped. The deployed binaries receive execute permission if
+  :variable:`QMSETUP_FORCE_EXECUTABLE_PERMISSIONS` is on.
 #]==]
 function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE)
@@ -336,6 +337,11 @@ function(qm_deploy_directory _install_dir)
 
     if(FUNC_VERBOSE)
         list(APPEND _args "-V")
+    endif()
+
+    # Windows has no execute permission, and windeps.bat rejects the option.
+    if(QMSETUP_FORCE_EXECUTABLE_PERMISSIONS AND NOT WIN32)
+        list(APPEND _args "-x")
     endif()
 
     set(_comment_code)

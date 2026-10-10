@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`, which grants execute permission to every binary that qmsetup installs or deploys. It defaults to `OFF`.
+
+### Changed
+
+- The `<proj>_add_*` commands in `cmake/buildsystem` no longer grant execute permission to the installed binaries unless `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS` is on.
+
 ### Fixed
 
 - `qm_deploy_directory` on Linux and macOS now processes binaries installed without execute permission, and skips separate debug files.

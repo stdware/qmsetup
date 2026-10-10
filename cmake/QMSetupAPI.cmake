@@ -49,6 +49,17 @@ if(NOT DEFINED QMSETUP_FIND_QT_ORDER)
     set(QMSETUP_FIND_QT_ORDER Qt6 Qt5)
 endif()
 
+#[==[.rst:
+.. cmake:variable:: QMSETUP_FORCE_EXECUTABLE_PERMISSIONS
+
+  Grants execute permission to every binary that qmsetup installs or deploys, if on. Defaults to
+  ``OFF``, which leaves the permissions to CMake. CMake installs shared libraries without execute
+  permission on Debian and the distributions derived from it.
+#]==]
+if(NOT DEFINED QMSETUP_FORCE_EXECUTABLE_PERMISSIONS)
+    set(QMSETUP_FORCE_EXECUTABLE_PERMISSIONS off)
+endif()
+
 include_guard(DIRECTORY)
 
 #[==[.rst:
@@ -1337,6 +1348,28 @@ endfunction()
 # ----------------------------------
 # Private functions
 # ----------------------------------
+
+#[[
+    Sets \a _out to the PERMISSIONS arguments of install(TARGETS) that grant execute permission,
+    or to an empty list if QMSETUP_FORCE_EXECUTABLE_PERMISSIONS is off.
+
+      _qm_get_executable_permissions(<out>)
+
+    The result follows the DESTINATION of each artifact kind that receives it. An empty result
+    leaves the permissions to CMake.
+]] #
+function(_qm_get_executable_permissions _out)
+    if(QMSETUP_FORCE_EXECUTABLE_PERMISSIONS)
+        set(${_out} PERMISSIONS
+            OWNER_READ OWNER_WRITE OWNER_EXECUTE
+            GROUP_READ GROUP_EXECUTE
+            WORLD_READ WORLD_EXECUTE
+            PARENT_SCOPE
+        )
+    else()
+        set(${_out} PARENT_SCOPE)
+    endif()
+endfunction()
 
 # Every target in \a _dir and in the directories under it, appended to the list
 # named by \a _out.
