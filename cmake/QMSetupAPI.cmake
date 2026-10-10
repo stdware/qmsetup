@@ -39,12 +39,24 @@ set(QMSETUP_IGNORE_STDOUT > ${QMSETUP_NULL_FILE})
 set(QMSETUP_IGNORE_STDERR 2> ${QMSETUP_NULL_FILE})
 set(QMSETUP_IGNORE_STDOUT_STDERR > ${QMSETUP_NULL_FILE} 2>&1)
 
+#[==[.rst:
+.. cmake:variable:: QMSETUP_CORECMD_EXECUTABLE
+
+  Path of ``qmcorecmd``, which the modules invoke at build and install time. Taken from the
+  imported target ``qmsetup::corecmd`` when ``find_package(qmsetup)`` runs. A project that uses
+  another build of the tool sets this variable after ``find_package(qmsetup)``.
+#]==]
 if(TARGET qmsetup::corecmd)
     get_target_property(QMSETUP_CORECMD_EXECUTABLE qmsetup::corecmd LOCATION)
 else()
     set(QMSETUP_CORECMD_EXECUTABLE)
 endif()
 
+#[==[.rst:
+.. cmake:variable:: QMSETUP_FIND_QT_ORDER
+
+  Package names that :command:`qm_find_qt` tries in order. Defaults to ``Qt6 Qt5``.
+#]==]
 if(NOT DEFINED QMSETUP_FIND_QT_ORDER)
     set(QMSETUP_FIND_QT_ORDER Qt6 Qt5)
 endif()

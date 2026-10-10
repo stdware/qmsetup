@@ -12,18 +12,44 @@ if(NOT QMSETUP_CORECMD_EXECUTABLE)
     message(FATAL_ERROR "QMSETUP_CORECMD_EXECUTABLE not defined. Add find_package(qmsetup) to CMake first.")
 endif()
 
+#[==[.rst:
+.. cmake:variable:: QMSETUP_DEFINITION_NUMERICAL
+
+  Makes :command:`qm_add_definition` behave as if ``NUMERICAL`` were given, unless ``CLASSICAL``
+  is given. Defaults to ``OFF``.
+#]==]
 if(NOT DEFINED QMSETUP_DEFINITION_NUMERICAL)
     set(QMSETUP_DEFINITION_NUMERICAL off)
 endif()
 
+#[==[.rst:
+.. cmake:variable:: QMSETUP_DEFINITION_SCOPE
+
+  Property scope that :command:`qm_add_definition`, :command:`qm_remove_definition`, and
+  :command:`qm_generate_config` use if no scope is given, such as ``DIRECTORY <dir>``. Defaults
+  to ``GLOBAL`` if empty.
+#]==]
 if(NOT DEFINED QMSETUP_DEFINITION_SCOPE)
     set(QMSETUP_DEFINITION_SCOPE)
 endif()
 
+#[==[.rst:
+.. cmake:variable:: QMSETUP_DEFINITION_PROPERTY
+
+  Property that :command:`qm_add_definition`, :command:`qm_remove_definition`, and
+  :command:`qm_generate_config` use for the definitions if ``PROPERTY`` is not given. Defaults to
+  ``CONFIG_DEFINITIONS`` if empty.
+#]==]
 if(NOT DEFINED QMSETUP_DEFINITION_PROPERTY)
     set(QMSETUP_DEFINITION_PROPERTY)
 endif()
 
+#[==[.rst:
+.. cmake:variable:: QMSETUP_SYNC_INCLUDE_STANDARD
+
+  Makes :command:`qm_sync_include` apply the standard public and private pattern unless
+  ``NO_STANDARD`` is given. Defaults to ``ON``.
+#]==]
 if(NOT DEFINED QMSETUP_SYNC_INCLUDE_STANDARD)
     set(QMSETUP_SYNC_INCLUDE_STANDARD on)
 endif()

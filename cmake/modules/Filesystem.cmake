@@ -50,6 +50,19 @@ macro(qm_init_directories)
 endmacro()
 
 #[==[.rst:
+.. cmake:variable:: QMSETUP_BUILD_DIR
+
+  Root of the build output directories. :command:`qm_init_directories` defaults it to
+  ``out-<processor>-<config>`` under ``CMAKE_BINARY_DIR``, a path that contains generator
+  expressions. Projects commonly set a plain path before calling :command:`qm_init_directories`.
+
+.. cmake:variable:: QMSETUP_BUILD_SHARE_DIR
+
+  Build output directory for shared data. :command:`qm_init_directories` defaults it to ``share``
+  under :variable:`QMSETUP_BUILD_DIR`.
+#]==]
+
+#[==[.rst:
 .. cmake:command:: qm_add_copy_command
 
   Add a resources copying command for whole project.

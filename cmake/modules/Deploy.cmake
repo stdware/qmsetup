@@ -13,6 +13,18 @@ if(NOT QMSETUP_CORECMD_EXECUTABLE)
     message(FATAL_ERROR "QMSETUP_CORECMD_EXECUTABLE not defined. Add find_package(qmsetup) to CMake first.")
 endif()
 
+#[==[.rst:
+.. cmake:variable:: QMSETUP_APPLOCAL_DEPS_PATHS
+
+  Library search paths that :command:`qm_win_applocal_deps` and :command:`qm_deploy_directory` add
+  to their own. A relative path is resolved against ``CMAKE_SOURCE_DIR``. Empty by default.
+
+.. cmake:variable:: QMSETUP_APPLOCAL_DEPS_PATHS_<CONFIG>
+
+  Replaces :variable:`QMSETUP_APPLOCAL_DEPS_PATHS` if ``CMAKE_BUILD_TYPE`` is ``<CONFIG>`` and the
+  list is not empty. ``_DEBUG`` and ``_RELEASE`` default to :variable:`QMSETUP_APPLOCAL_DEPS_PATHS`,
+  and ``_RELWITHDEBINFO`` and ``_MINSIZEREL`` default to ``_RELEASE``.
+#]==]
 if(NOT DEFINED QMSETUP_APPLOCAL_DEPS_PATHS)
     set(QMSETUP_APPLOCAL_DEPS_PATHS)
 endif()
