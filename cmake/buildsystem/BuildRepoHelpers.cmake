@@ -833,9 +833,8 @@ macro(_repo_install_pdb _target _dest)
     get_target_property(_type ${_target} TYPE)
 
     if(_type MATCHES "EXECUTABLE|SHARED_LIBRARY")
-        # The linker writes a PDB for every compiler with the MSVC ABI. CMake counts clang-cl
-        # as MSVC but not clang with the GNU front end, whose only sign is the simulated ID.
-        if(MSVC OR CMAKE_C_SIMULATE_ID STREQUAL "MSVC" OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
+        # The linker writes a PDB for every compiler with the MSVC ABI.
+        if(QMSETUP_MSVC_ABI)
             install(FILES $<TARGET_PDB_FILE:${_target}>
                 DESTINATION ${_dest} OPTIONAL
             )

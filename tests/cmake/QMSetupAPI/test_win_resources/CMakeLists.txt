@@ -125,6 +125,19 @@ qmtest_file_contains("it names the application" "${_manifest}" "Plain")
 qmtest_file_contains("it asks for no more than it was started with" "${_manifest}" "asInvoker")
 qmtest_file_lacks("and says nothing about the code page" "${_manifest}" "activeCodePage")
 
+# A toolchain of the MSVC ABI under Ninja takes the manifest as a source, which CMake merges with
+# the manifest of the linker. Other toolchains embed the manifest through a resource script.
+if(NOT CMAKE_GENERATOR MATCHES "Visual Studio")
+    get_target_property(_plain_sources winplain SOURCES)
+    if(QMSETUP_MSVC_ABI)
+        qmtest_contains("the MSVC ABI takes the manifest as a source"
+            "${_plain_sources}" "${_manifest}")
+    else()
+        qmtest_contains("other toolchains take it through a resource script"
+            "${_plain_sources}" "${_manifest}.rc")
+    endif()
+endif()
+
 add_executable(winadmin src/app.c)
 qm_add_win_manifest(winadmin NAME "Admin" VERSION 1.0.0.0 UTF8 ADMIN OUTPUT_DIR "${_res_dir}")
 

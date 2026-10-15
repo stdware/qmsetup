@@ -6,6 +6,7 @@
 
 - `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`, which grants execute permission to every binary that qmsetup installs or deploys. It defaults to `OFF`.
 - `EXCLUDE` for `qm_deploy_directory`, which skips the dependencies whose paths match the given regular expressions.
+- `QMSETUP_MSVC_ABI`, which is `ON` if the C or the C++ compiler targets the MSVC ABI, clang with the GNU front end included.
 
 ### Changed
 
@@ -15,6 +16,7 @@
 
 - `qm_deploy_directory` on Linux and macOS now processes binaries installed without execute permission, and skips separate debug files.
 - `qm_deploy_directory` on macOS now passes a framework in the install tree to `qmcorecmd` as one item. The framework previously received an rpath that resolved its dependencies only through the rpaths of the application.
+- `qm_add_win_manifest` with clang with the GNU front end targeting the MSVC ABI now passes the manifest to the linker as it does with cl. The manifest previously went into a resource script, beside the manifest that the linker embeds by default.
 - `qm_deploy_directory` on Linux and macOS now searches the Qt library directory if qmake is known, as it searches the Qt binary directory on Windows. A Qt library that only a library outside Qt requires was previously not deployed.
 
 ## v1.1.2.0 (2026-08-20)

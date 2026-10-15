@@ -40,6 +40,25 @@ set(QMSETUP_IGNORE_STDERR 2> ${QMSETUP_NULL_FILE})
 set(QMSETUP_IGNORE_STDOUT_STDERR > ${QMSETUP_NULL_FILE} 2>&1)
 
 #[==[.rst:
+.. cmake:variable:: QMSETUP_MSVC_ABI
+
+  ``ON`` if the C or the C++ compiler targets the MSVC ABI, ``OFF`` otherwise. Set when
+  ``find_package(qmsetup)`` runs, which therefore follows the ``project()`` or the
+  ``enable_language()`` that enables the language.
+
+  CMake sets ``MSVC`` for cl and clang-cl, but not for clang with the GNU front end targeting
+  ``*-windows-msvc``, whose only sign is the simulated ID. That compiler links with the MSVC linker
+  or lld-link as cl does, and its linker writes PDBs and embeds manifests in the same way. The
+  modules test this variable for the linker and the binaries, and ``MSVC`` for the syntax of the
+  compiler options.
+#]==]
+if(MSVC OR CMAKE_C_SIMULATE_ID STREQUAL "MSVC" OR CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
+    set(QMSETUP_MSVC_ABI ON)
+else()
+    set(QMSETUP_MSVC_ABI OFF)
+endif()
+
+#[==[.rst:
 .. cmake:variable:: QMSETUP_CORECMD_EXECUTABLE
 
   Path of ``qmcorecmd``, which the modules invoke at build and install time. Taken from the
@@ -876,7 +895,7 @@ function(qm_add_win_manifest _target)
     set(_out_path "${_out_dir}/${_target}_manifest.exe.manifest")
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinManifest.manifest.in" ${_out_path} @ONLY)
 
-    if(MSVC)
+    if(QMSETUP_MSVC_ABI)
         if(CMAKE_GENERATOR MATCHES "Visual Studio")
             # The manifest goes to the linker as an input, and /manifestuac:no stops the linker
             # writing a UAC field of its own, this one carrying one already.
@@ -889,15 +908,17 @@ function(qm_add_win_manifest _target)
             # of .exe and .dll targets will be merged with linker-generated manifests and embedded in the binary.
 
             # NOTE: CMake will automatically generate a default manifest file and embed it into the binary file
-            # when we are using MSVC toolchain, so it will conflict with the one we embed in the RC file. So in
-            # this case, we just follow the CMake documentation, add the manifest file into the sources and let
-            # CMake handle it. What's more, CMake can automatically merge all manifest files so we can actually
-            # add multiple manifest files, eg. each manifest file contains a separate section.
+            # when we are using a toolchain of the MSVC ABI, so it will conflict with the one we embed in the RC
+            # file. So in this case, we just follow the CMake documentation, add the manifest file into the
+            # sources and let CMake handle it. What's more, CMake can automatically merge all manifest files so
+            # we can actually add multiple manifest files, eg. each manifest file contains a separate section.
+            # The option goes through LINKER:, because clang with the GNU front end passes a bare /option to
+            # the linker as an input file.
             target_sources(${_target} PRIVATE ${_out_path})
-            target_link_options(${_target} PRIVATE "/manifestuac:no")
+            target_link_options(${_target} PRIVATE "LINKER:/manifestuac:no")
         endif()
     else()
-        # For non-MSVC toolchains we can only embed the manifest file into the RC file, sadly we have
+        # For other toolchains we can only embed the manifest file into the RC file, sadly we have
         # to merge all manifest files into one by ourself if we have multiple of them, but luckily
         # CMake won't embed a default one so we don't need to worry about resource conflicts.
         set(_manifest_rc ${_out_path}.rc)
