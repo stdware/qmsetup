@@ -131,6 +131,14 @@ function(qm_compiler_eliminate_dead_code)
 
     add_compile_options(-ffunction-sections -fdata-sections)
 
+    # clang with the GNU front end targeting the MSVC ABI links with lld-link or link. Both ignore
+    # the options of the GNU linkers below with a warning, which also lets --icf=all pass
+    # check_linker_flag.
+    if(QMSETUP_MSVC_ABI)
+        add_link_options(LINKER:/OPT:REF LINKER:/OPT:ICF)
+        return()
+    endif()
+
     if(APPLE)
         add_link_options(-Wl,-dead_strip)
         return()
@@ -208,6 +216,17 @@ macro(qm_compiler_enable_secure_code)
         endif()
         if(MSVC_VERSION GREATER_EQUAL 1930) # Visual Studio 2022 version 17.0
             add_compile_options(-Qspectre-jmp)
+        endif()
+    elseif(QMSETUP_MSVC_ABI)
+        # clang with the GNU front end targeting the MSVC ABI, which rejects -mguard=cf for this
+        # target: the guards go to the compiler proper, as clang-cl passes /guard:cf and
+        # /guard:ehcont, and the linker takes the options of link. The Spectre mitigations of cl
+        # are not mirrored.
+        add_compile_options(-fstack-protector-strong "SHELL:-Xclang -cfguard")
+        add_link_options(LINKER:/DYNAMICBASE LINKER:/NXCOMPAT LINKER:/GUARD:CF LINKER:/CETCOMPAT)
+        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+            add_compile_options("SHELL:-Xclang -ehcontguard")
+            add_link_options(LINKER:/HIGHENTROPYVA LINKER:/GUARD:EHCONT)
         endif()
     elseif(MINGW)
         if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xClang")
