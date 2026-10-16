@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- `qm_add_win_rc` and `qm_add_win_rc_enhanced` now compile the resource again after an icon changes, under Ninja, the Makefiles and Visual Studio. The icon was previously compared with the resource script only at configure time, and a build after a changed icon did not configure.
 - `qm_deploy_directory` on Linux and macOS now processes binaries installed without execute permission, and skips separate debug files.
 - `qm_deploy_directory` on macOS now passes a framework in the install tree to `qmcorecmd` as one item. The framework previously received an rpath that resolved its dependencies only through the rpaths of the application.
 - `qm_add_win_manifest` with clang with the GNU front end targeting the MSVC ABI now passes the manifest to the linker as it does with cl. The manifest previously went into a resource script, beside the manifest that the linker embeds by default.

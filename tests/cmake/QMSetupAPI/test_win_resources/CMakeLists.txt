@@ -62,6 +62,17 @@ add_executable(winicon src/app.c)
 qm_add_win_rc(winicon ICON "${_icon_dir}/main.ico" OUTPUT_DIR "${_res_dir}")
 qmtest_file_contains("ICON reaches the resource" "${_res_dir}/winicon_res.rc" "main\\.ico")
 
+# The resource compiler reads the icon, which no generator records by itself. Ninja and the
+# Makefiles recompile the resource through OBJECT_DEPENDS, and every generator configures again
+# through CMAKE_CONFIGURE_DEPENDS.
+get_source_file_property(_icon_depends "${_res_dir}/winicon_res.rc" OBJECT_DEPENDS)
+qmtest_contains("the resource depends on the icon" "${_icon_depends}" "${_icon_dir}/main.ico")
+get_property(_configure_depends DIRECTORY PROPERTY CMAKE_CONFIGURE_DEPENDS)
+qmtest_contains("and a changed icon configures again"
+    "${_configure_depends}" "${_icon_dir}/main.ico")
+get_source_file_property(_bare_depends "${_res_dir}/winbare_res.rc" OBJECT_DEPENDS)
+qmtest_false("with no icon the resource depends on nothing more" "${_bare_depends}")
+
 # A library takes a resource as readily as an executable does.
 add_library(winrclib SHARED src/lib.c)
 qm_add_win_rc(winrclib NAME "A Test Library" VERSION 3.4.5.6 OUTPUT_DIR "${_res_dir}")
@@ -111,6 +122,11 @@ qm_add_win_rc_enhanced(winicons
 set(_rc3 "${_res_dir}/winicons_res.rc")
 qmtest_file_contains("the first icon is the first" "${_rc3}" "IDI_ICON1[ \t]+ICON[ \t]+\"[^\"]*main\\.ico\"")
 qmtest_file_contains("and the second the second" "${_rc3}" "IDI_ICON2[ \t]+ICON[ \t]+\"[^\"]*second\\.ico\"")
+
+get_source_file_property(_icons_depends "${_rc3}" OBJECT_DEPENDS)
+qmtest_contains("the resource depends on the first icon"
+    "${_icons_depends}" "${_icon_dir}/main.ico")
+qmtest_contains("and on the second" "${_icons_depends}" "${_icon_dir}/second.ico")
 
 # ------------------------------------------------------------------
 # qm_add_win_manifest

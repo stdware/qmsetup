@@ -700,6 +700,10 @@ endfunction()
         [ICON           ico]
         [OUTPUT_DIR     dir]
     )
+
+  The resource compiles again after ``ICON`` changes, under every generator: the icon becomes an
+  ``OBJECT_DEPENDS`` of the resource script and a ``CMAKE_CONFIGURE_DEPENDS`` of the current
+  directory.
 #]==]
 function(qm_add_win_rc _target)
     if(NOT WIN32)
@@ -738,11 +742,7 @@ function(qm_add_win_rc _target)
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 
-    if(FUNC_ICON)
-        if(${FUNC_ICON} IS_NEWER_THAN ${_out_path})
-            file(TOUCH_NOCREATE ${_out_path})
-        endif()
-    endif()
+    _qm_add_win_rc_icon_dependencies(${_target} ${_out_path} ${RC_ICON_PATH})
 endfunction()
 
 #[==[.rst:
@@ -765,6 +765,9 @@ endfunction()
         [ICONS             icon file paths]
         [OUTPUT_DIR        dir]
     )
+
+  The resource compiles again after any of ``ICONS`` changes, as with
+  :cmake:command:`qm_add_win_rc`.
 #]==]
 function(qm_add_win_rc_enhanced _target)
     if(NOT WIN32)
@@ -833,12 +836,14 @@ function(qm_add_win_rc_enhanced _target)
     configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
     target_sources(${_target} PRIVATE ${_out_path})
 
+    set(_icon_paths)
+
     foreach(_icon IN LISTS FUNC_ICONS)
-        if(${_icon} IS_NEWER_THAN ${_out_path})
-            file(TOUCH_NOCREATE ${_out_path})
-            break()
-        endif()
+        get_filename_component(_icon_path ${_icon} ABSOLUTE)
+        list(APPEND _icon_paths ${_icon_path})
     endforeach()
+
+    _qm_add_win_rc_icon_dependencies(${_target} ${_out_path} ${_icon_paths})
 endfunction()
 
 #[==[.rst:
@@ -1381,6 +1386,34 @@ endfunction()
 # ----------------------------------
 # Private functions
 # ----------------------------------
+
+#[[
+    Makes the resource script \a _rc of \a _target compile again after any of the icons in ARGN,
+    given as absolute paths, changes.
+
+      _qm_add_win_rc_icon_dependencies(<target> <rc> [icon...])
+
+    The resource compiler reads an icon that the script names, which neither Ninja nor the
+    Makefiles record as a dependency. Each icon is therefore an OBJECT_DEPENDS of the script, which
+    those generators honor without a configure. The generators of Visual Studio do not honor
+    OBJECT_DEPENDS, so each icon is also a CMAKE_CONFIGURE_DEPENDS of the directory: a changed icon
+    configures the tree again, and the script is then touched if an icon is newer than it.
+]] #
+function(_qm_add_win_rc_icon_dependencies _target _rc)
+    if(NOT ARGN)
+        return()
+    endif()
+
+    foreach(_icon IN LISTS ARGN)
+        if(${_icon} IS_NEWER_THAN ${_rc})
+            file(TOUCH_NOCREATE ${_rc})
+            break()
+        endif()
+    endforeach()
+
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${ARGN})
+    set_property(SOURCE ${_rc} TARGET_DIRECTORY ${_target} APPEND PROPERTY OBJECT_DEPENDS ${ARGN})
+endfunction()
 
 #[[
     Sets \a _out to the PERMISSIONS arguments of install(TARGETS) that grant execute permission,
