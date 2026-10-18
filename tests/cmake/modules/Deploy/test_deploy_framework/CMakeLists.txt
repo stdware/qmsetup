@@ -45,8 +45,8 @@ set_target_properties(qmtest_fw_loader PROPERTIES
 install(TARGETS qmtest_fw_app RUNTIME DESTINATION bin)
 install(TARGETS QmTestFw FRAMEWORK DESTINATION Frameworks)
 
-qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
+qm_deploy_directory(.
     EXTRA_SEARCHING_PATHS "${CMAKE_BINARY_DIR}/built"
-    LIBRARY_DIR "${CMAKE_INSTALL_PREFIX}/Frameworks"
+    LIBRARY_DIR Frameworks
     VERBOSE
 )

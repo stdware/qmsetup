@@ -68,10 +68,10 @@ install(TARGETS qmtest_qt_user
 
 # No search path names a Qt directory. The scripts derive the Qt directories
 # from qmake.
-qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
-    LIBRARY_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_libs"
+qm_deploy_directory(.
+    LIBRARY_DIR qmtest_libs
     QML "QtCore"
-    QML_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_qml"
+    QML_DIR qmtest_qml
     STANDARD
     VERBOSE
     COMMENT "Deploying the QML modules the installed binaries need"

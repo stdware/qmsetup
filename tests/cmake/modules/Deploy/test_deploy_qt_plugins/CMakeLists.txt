@@ -71,9 +71,9 @@ file(WRITE "${CMAKE_BINARY_DIR}/chosen.cmake"
 # Without VERBOSE, unlike the other deployments here. windeps.bat once wrote
 # "ECHO is off." in place of the absent -V, qmcorecmd failed on it, and the
 # install went on as if nothing had been deployed.
-qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
-    LIBRARY_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_libs"
-    PLUGIN_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_plugins"
+qm_deploy_directory(.
+    LIBRARY_DIR qmtest_libs
+    PLUGIN_DIR qmtest_plugins
     PLUGINS "${_named}"
     QT_PLUGINS
     QT_PLUGINS_EXCLUDE "${_excluded}"

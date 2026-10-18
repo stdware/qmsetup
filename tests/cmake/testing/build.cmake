@@ -19,8 +19,14 @@ foreach(_required QMTEST_PROJECT QMTEST_PROJECT_BUILD QMTEST_INSTALL_PREFIX)
     endif()
 endforeach()
 
+# The project is configured with a prefix that nothing is to be installed into, and installed with
+# --prefix, as a package is staged. An install rule that resolves its destination while
+# configuring writes into the configured prefix, and the check at the end reports it.
+set(_configured_prefix "${QMTEST_PROJECT_BUILD}-configured-prefix")
+
 file(REMOVE_RECURSE "${QMTEST_PROJECT_BUILD}")
 file(REMOVE_RECURSE "${QMTEST_INSTALL_PREFIX}")
+file(REMOVE_RECURSE "${_configured_prefix}")
 
 # Runs a step, and stops here rather than letting the checks report on a tree
 # that was never finished.
@@ -44,7 +50,7 @@ endfunction()
 set(_configure_args
     -S "${QMTEST_PROJECT}"
     -B "${QMTEST_PROJECT_BUILD}"
-    "-DCMAKE_INSTALL_PREFIX=${QMTEST_INSTALL_PREFIX}"
+    "-DCMAKE_INSTALL_PREFIX=${_configured_prefix}"
     "-DQMSETUP_API=${QMSETUP_API}"
     "-DQMTEST_HARNESS=${QMTEST_HARNESS}"
     "-DQMCORECMD=${QMCORECMD}"
@@ -88,7 +94,11 @@ if(NOT _code EQUAL 0)
     message(FATAL_ERROR "configuring failed:\n${_out}")
 endif()
 step("building" ${CMAKE_COMMAND} --build "${QMTEST_PROJECT_BUILD}" --config Release)
-step("installing" ${CMAKE_COMMAND} --install "${QMTEST_PROJECT_BUILD}" --config Release)
+step("installing" ${CMAKE_COMMAND} --install "${QMTEST_PROJECT_BUILD}" --config Release
+    --prefix "${QMTEST_INSTALL_PREFIX}")
+
+qmtest_not_exists("nothing is installed into the prefix of the configuration"
+    "${_configured_prefix}")
 
 # What the project says about the tree it left behind.
 set(_prefix "${QMTEST_INSTALL_PREFIX}")

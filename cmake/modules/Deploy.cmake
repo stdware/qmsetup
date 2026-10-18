@@ -191,6 +191,12 @@ endfunction()
         [COMMENT <comment>]
     )
 
+  A relative ``<install_dir>`` is relative to the install prefix, and a relative
+  ``LIBRARY_DIR``, ``PLUGIN_DIR`` or ``QML_DIR`` is relative to ``<install_dir>``. Both are
+  resolved while installing, so that ``cmake --install --prefix`` moves the deployment with
+  the other install rules. ``"${CMAKE_INSTALL_PREFIX}"`` is the prefix of the configuration
+  and does not follow ``--prefix``. ``.`` is the install prefix itself.
+
   ``PLUGINS``
     Plugins, in format of ``<category>/<name>``, looked for in the plugin directory of Qt
     and in ``EXTRA_PLUGIN_PATHS``. A plugin is not required to be one of Qt.
@@ -210,15 +216,15 @@ endfunction()
     The platforms, such as ``windows``, ``cocoa`` and ``xcb``, whose platform plugins
     ``QT_PLUGINS`` deploys, in place of those that Qt names. Required with a Qt older than 6.9.
   ``PLUGIN_DIR``
-    Qt plugins destination
+    Qt plugins destination, ``plugins`` by default
   ``EXTRA_PLUGIN_PATHS``
     Extra Qt plugins searching paths
   ``QML``
     Qt qml directories
   ``QML_DIR``
-    Qt qml destination
+    Qt qml destination, ``qml`` by default
   ``LIBRARY_DIR``
-    Library destination
+    Library destination, ``bin`` on Windows and ``lib`` on other systems by default
   ``EXTRA_LIBRARIES``
     Extra library names list to deploy
   ``EXTRA_SEARCHING_PATHS``
@@ -292,18 +298,15 @@ function(qm_deploy_directory _install_dir)
         _qm_qt_plugin_dirs(_qt_metadata qm_deploy_directory)
     endif()
 
-    # Set values
-    qm_set_value(_lib_dir FUNC_LIBRARY_DIR "${_install_dir}/${QMSETUP_SHARED_LIBRARY_CATEGORY}")
-    qm_set_value(_plugin_dir FUNC_PLUGIN_DIR "${_install_dir}/plugins")
-    qm_set_value(_qml_dir FUNC_QML_DIR "${_install_dir}/qml")
+    # Set values, resolved while installing
+    qm_set_value(_lib_dir FUNC_LIBRARY_DIR "${QMSETUP_SHARED_LIBRARY_CATEGORY}")
+    qm_set_value(_plugin_dir FUNC_PLUGIN_DIR "plugins")
+    qm_set_value(_qml_dir FUNC_QML_DIR "qml")
 
-    # Prepare commands
+    # Prepare commands. The directories precede these arguments in the command of the install
+    # rule.
     set(_args
-        -i "${_install_dir}"
         -m "${QMSETUP_CORECMD_EXECUTABLE}"
-        --plugindir "${_plugin_dir}"
-        --libdir "${_lib_dir}"
-        --qmldir "${_qml_dir}"
     )
     set(_searching_paths)
 
@@ -369,13 +372,15 @@ function(qm_deploy_directory _install_dir)
     # One copy per library rather than per place it was found in. The search
     # paths are in the order they are to be searched, so the first that has it
     # is the one meant, and the rest are shadowed the way a loader would shadow
-    # them.
+    # them. The destination is appended while installing, with the library directory.
+    set(_copies)
+
     foreach(_lib IN LISTS FUNC_EXTRA_LIBRARIES)
         foreach(_item IN LISTS _searching_paths)
             set(_path "${_item}/${_lib}")
 
             if((EXISTS ${_path}) AND(NOT IS_DIRECTORY ${_path}))
-                list(APPEND _args --copy ${_path} ${_lib_dir})
+                list(APPEND _copies ${_path})
                 break()
             endif()
         endforeach()
@@ -453,7 +458,7 @@ function(qm_deploy_directory _install_dir)
         include([==[${QMSETUP_MODULES_DIR}/modules/private/QtPlugins.cmake]==])
         qm_select_qt_plugins(_qt_plugins
             COMMAND \${_command}
-            WORKING_DIRECTORY [==[${_install_dir}]==]
+            WORKING_DIRECTORY \"\${_install_dir}\"
             CORECMD [==[${QMSETUP_CORECMD_EXECUTABLE}]==]
             SEARCHING_PATHS [==[${_qt_bin_dir};${_qt_lib_dir}]==]
             DESCRIPTIONS [==[${_descriptions}]==]
@@ -482,13 +487,30 @@ function(qm_deploy_directory _install_dir)
     # Bracket arguments, since what goes between them is text and nothing in it
     # is a variable reference or an escape. The list itself is expanded on the
     # way in, being what varies.
+    #
+    # The directories are resolved here rather than while configuring, against the install prefix
+    # that cmake --install --prefix may replace.
     install(CODE "
         ${_comment_code}
-        set(_command [==[${_script};${_args}]==])
+        get_filename_component(_install_dir [==[${_install_dir}]==] ABSOLUTE
+            BASE_DIR \"\${CMAKE_INSTALL_PREFIX}\")
+        get_filename_component(_lib_dir [==[${_lib_dir}]==] ABSOLUTE BASE_DIR \"\${_install_dir}\")
+        get_filename_component(_plugin_dir [==[${_plugin_dir}]==] ABSOLUTE
+            BASE_DIR \"\${_install_dir}\")
+        get_filename_component(_qml_dir [==[${_qml_dir}]==] ABSOLUTE BASE_DIR \"\${_install_dir}\")
+        set(_command [==[${_script}]==] -i \"\${_install_dir}\" --plugindir \"\${_plugin_dir}\"
+            --libdir \"\${_lib_dir}\" --qmldir \"\${_qml_dir}\")
+        list(APPEND _command [==[${_args}]==])
+
+        set(_copies [==[${_copies}]==])
+
+        foreach(_copy IN LISTS _copies)
+            list(APPEND _command --copy \"\${_copy}\" \"\${_lib_dir}\")
+        endforeach()
         ${_qt_plugins_code}
         execute_process(
             COMMAND \${_command}
-            WORKING_DIRECTORY [==[${_install_dir}]==]
+            WORKING_DIRECTORY \"\${_install_dir}\"
             COMMAND_ERROR_IS_FATAL ANY
         )
     ")

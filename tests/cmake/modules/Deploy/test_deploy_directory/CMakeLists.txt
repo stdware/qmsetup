@@ -142,12 +142,12 @@ set(QMSETUP_FORCE_EXECUTABLE_PERMISSIONS on)
 
 # PLUGINS with EXTRA_PLUGIN_PATHS asks for no qmake, which is what lets the
 # plugin half of this run without a Qt. QML is the part that cannot.
-qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
+qm_deploy_directory(.
     EXTRA_SEARCHING_PATHS "${CMAKE_BINARY_DIR}/built" "${CMAKE_BINARY_DIR}/prebuilt"
-    LIBRARY_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_libs"
+    LIBRARY_DIR qmtest_libs
     EXTRA_LIBRARIES "${_prebuilt_name}"
     PLUGINS "iconengines/qmtest_svgicon"
-    PLUGIN_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_plugins"
+    PLUGIN_DIR qmtest_plugins
     EXTRA_PLUGIN_PATHS "${CMAKE_BINARY_DIR}/qmtest_plugins"
     EXCLUDE "${_exclude}"
     STANDARD

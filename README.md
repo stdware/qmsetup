@@ -174,7 +174,7 @@ qm_add_copy_command(${PROJECT_NAME}
 ```cmake
 qm_import(Deploy)
 
-qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
+qm_deploy_directory(.
     COMMENT "Deploy project spectacularly"
     PLUGINS "iconengines/qsvgicon" "bearer/qgenericbearer"
     QML Qt QtQml
