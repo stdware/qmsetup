@@ -49,11 +49,11 @@ goto :parse_args
 :end_parse_args
 
 :: Check required arguments
-if not defined INPUT_DIR echo Error: Missing required argument 'INPUT_DIR' & call :usage & exit /b
-if not defined PLUGIN_DIR echo Error: Missing required argument 'PLUGIN_DIR' & call :usage & exit /b
-if not defined LIB_DIR echo Error: Missing required argument 'LIB_DIR' & call :usage & exit /b
-if not defined QML_DIR echo Error: Missing required argument 'QML_DIR' & call :usage & exit /b
-if not defined CORECMD_PATH echo Error: Missing required argument 'CORECMD_PATH' & call :usage & exit /b
+if not defined INPUT_DIR echo Error: Missing required argument 'INPUT_DIR' & call :usage & exit /b 1
+if not defined PLUGIN_DIR echo Error: Missing required argument 'PLUGIN_DIR' & call :usage & exit /b 1
+if not defined LIB_DIR echo Error: Missing required argument 'LIB_DIR' & call :usage & exit /b 1
+if not defined QML_DIR echo Error: Missing required argument 'QML_DIR' & call :usage & exit /b 1
+if not defined CORECMD_PATH echo Error: Missing required argument 'CORECMD_PATH' & call :usage & exit /b 1
 
 :: Normalize
 set "INPUT_DIR=!INPUT_DIR:/=\!"
@@ -84,7 +84,7 @@ set "PLUGIN_PATHS=!PLUGIN_PATHS! !EXTRA_PLUGIN_PATHS!"
 if not "%QML_REL_PATHS%"=="" (
     if "%QML_PATH%"=="" (
         echo Error: qmake path must be specified when QML paths are provided
-        exit /b
+        exit /b 1
     )
 )
 
@@ -102,7 +102,7 @@ for /L %%i in (1,1,%PLUGIN_COUNT%) do (
     echo !plugin_path! | findstr /R "[^/]*\/[^/]*" >nul
     if errorlevel 1 (
         echo Error: Invalid plugin format '!plugin_path!'. Expected format: ^<category^>/^<name^>
-        exit /b
+        exit /b 1
     )
 
     :: Extracts the category and name
@@ -119,7 +119,7 @@ for /L %%i in (1,1,%PLUGIN_COUNT%) do (
         call :search_plugin
         if not defined FOUND_PLUGINS (
             echo Error: Plugin '!plugin_path!' not found in any search paths.
-            exit /b
+            exit /b 1
         )
     )
 )
@@ -145,16 +145,18 @@ if defined LIST_SOURCES (
     echo -n >> %ARGS_FILE%
     echo --list >> %ARGS_FILE%
     echo source >> %ARGS_FILE%
-) else (
+) else if defined VERBOSE (
+    rem Only if set: echo of an empty variable writes ECHO is off., which is no argument
     echo !VERBOSE! >> %ARGS_FILE%
 )
 set "DEPLOY_CMD=!CORECMD_PATH! deploy @!ARGS_FILE! !ARGS_FILES!"
 call !DEPLOY_CMD!
 
-:: Check the deployment result
-if %errorlevel% neq 0 exit /b
+:: The code of qmcorecmd is the code of the script, and the arguments file is removed either way,
+:: so that it is not left in the install tree
+set "DEPLOY_RESULT=!errorlevel!"
 del %ARGS_FILE%
-exit /b
+exit /b !DEPLOY_RESULT!
 
 
 

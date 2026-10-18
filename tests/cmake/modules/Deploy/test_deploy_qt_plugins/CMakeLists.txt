@@ -68,6 +68,9 @@ list(GET _iconengines 0 _named)
 file(WRITE "${CMAKE_BINARY_DIR}/chosen.cmake"
     "set(_excluded [==[${_excluded}]==])\nset(_named [==[${_named}]==])\n")
 
+# Without VERBOSE, unlike the other deployments here. windeps.bat once wrote
+# "ECHO is off." in place of the absent -V, qmcorecmd failed on it, and the
+# install went on as if nothing had been deployed.
 qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
     LIBRARY_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_libs"
     PLUGIN_DIR "${CMAKE_INSTALL_PREFIX}/qmtest_plugins"
@@ -77,6 +80,5 @@ qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
     QT_PLUGINS_EXCLUDE_MODULES Qml Quick
     QT_PLUGINS_PLATFORMS ${_platforms}
     STANDARD
-    VERBOSE
     COMMENT "Deploying the Qt plugins the installed binaries need"
 )

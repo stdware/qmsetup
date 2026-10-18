@@ -18,6 +18,7 @@
 
 ### Fixed
 
+- `qm_deploy_directory` on Windows without `VERBOSE` now deploys. `windeps.bat` wrote `ECHO is off.` in place of the absent `-V`, which `qmcorecmd` could not open, and the failure was not passed on, so the install succeeded with nothing deployed. Every error of the script now fails the install, and the arguments file is no longer left in the install tree.
 - The batch scripts are checked out with CRLF line endings whatever `core.autocrlf` says, and the shell scripts with LF. cmd reads a batch file with LF line endings unreliably, and `windeps.bat` failed to parse its own arguments that way.
 - `qm_sync_include` with `INSTALL_DIR` now installs a header whose path contains a semicolon. The paths were previously taken from the messages of `-V` and split as a CMake list. They now come from `incsync --list mapping`.
 - `qmcorecmd copy` built with libc++ before LLVM 20 no longer refuses a destination outside the source on Windows if one of the two paths is written with `/` and the other with `\`. That libc++ compares the root directories of the two paths as written.
