@@ -20,6 +20,7 @@ set "PLUGINS=" & set /a "PLUGIN_COUNT=0"
 set "QML_REL_PATHS="
 set "ARGS=" & set /a "ARG_COUNT=0"
 set "ARGS_FILES="
+set "LIST_SOURCES="
 
 :: Parse command line
 :parse_args
@@ -38,6 +39,7 @@ if "%1"=="--args-file" call :push_args_file "%~2" & shift & shift & goto :parse_
 if "%1"=="-f" call :push_args -f & shift & goto :parse_args
 if "%1"=="-s" call :push_args -s & shift & goto :parse_args
 if "%1"=="-V" set "VERBOSE=-V" & shift & goto :parse_args
+if "%1"=="--list-sources" set "LIST_SOURCES=1" & shift & goto :parse_args
 if "%1"=="-h" call :usage & exit /b
 
 if "%1"=="-L" call :push_args -L %~2 & shift & shift & goto :parse_args
@@ -138,7 +140,14 @@ for /L %%i in (1,1,%ARG_COUNT%) do (
 )
 echo -o >> %ARGS_FILE%
 echo !LIB_DIR! >> %ARGS_FILE%
-echo !VERBOSE! >> %ARGS_FILE%
+:: With --list-sources nothing is copied, and stdout is the listing of qmcorecmd alone
+if defined LIST_SOURCES (
+    echo -n >> %ARGS_FILE%
+    echo --list >> %ARGS_FILE%
+    echo source >> %ARGS_FILE%
+) else (
+    echo !VERBOSE! >> %ARGS_FILE%
+)
 set "DEPLOY_CMD=!CORECMD_PATH! deploy @!ARGS_FILE! !ARGS_FILES!"
 call !DEPLOY_CMD!
 
@@ -280,7 +289,7 @@ if "%file:~-4%"==".dll" (
     call :push_args -c !file! !target_dir!
 ) else if "%file:~-4%"==".exe" (
     call :push_args -c !file! !target_dir!
-) else (
+) else if not defined LIST_SOURCES (
     if not exist "%target%" (
         mkdir "%target_dir%" >nul 2>&1
     )
@@ -302,6 +311,6 @@ echo                --plugindir ^<plugin_dir^> --libdir ^<lib_dir^> --qmldir ^<q
 echo               [--qmake ^<qmake_path^>] [--extra ^<extra_path^>]...
 echo               [--qml ^<qml_module^>]... [--plugin ^<plugin^>]... [--copy ^<src^> ^<dest^>]...
 echo               [-L ^<path^>]... [--args-file ^<file^>]...
-echo               [-f] [-s] [-V] [-h]
+echo               [-f] [-s] [-V] [--list-sources] [-h]
 exit /b
 :: ----------------------------------------------------------------------------------

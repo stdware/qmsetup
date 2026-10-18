@@ -47,6 +47,8 @@ endif()
 
 include_guard(DIRECTORY)
 
+include("${QMSETUP_MODULES_DIR}/modules/private/QtPlugins.cmake")
+
 #[==[.rst:
 .. cmake:command:: qm_win_applocal_deps
 
@@ -179,6 +181,7 @@ endfunction()
         [EXCLUDE <regex>...]
 
         [PLUGINS <plugin>...]
+        [QT_PLUGINS] [QT_PLUGINS_EXCLUDE <plugin>...] [QT_PLUGINS_EXCLUDE_MODULES <module>...]
         [PLUGIN_DIR <dir>]
 
         [QML <qml>...]
@@ -189,6 +192,24 @@ endfunction()
 
   ``PLUGINS``
     Qt plugins, in format of ``<category>/<name>``
+  ``QT_PLUGINS``
+    Also deploys the Qt plugins of every Qt module that the deployment requires, as
+    ``qm_get_qt_plugins`` lists them. Requires Qt 6. The modules are worked out
+    while installing, from the binaries under ``<install_dir>`` and what they require. Each
+    plugin is then resolved by itself, as windeployqt does, and a plugin that requires a further
+    module brings that module and its plugins.
+  ``QT_PLUGINS_EXCLUDE``
+    Plugins, as ``<category>/<name>``, that ``QT_PLUGINS`` leaves out. ``PLUGINS`` is not
+    affected.
+  ``QT_PLUGINS_EXCLUDE_MODULES``
+    Qt modules without the prefix, such as ``Qml`` and ``Quick``. ``QT_PLUGINS`` leaves out a
+    plugin that requires one of them, and therefore the modules that only that plugin requires.
+
+  Nothing is left out by default. windeployqt leaves out more by default, and the same choice
+  is ``QT_PLUGINS_EXCLUDE_MODULES Qml Quick`` for a program without QML, so that the input
+  context of the virtual keyboard does not bring Qt Quick along, and
+  ``QT_PLUGINS_EXCLUDE tls/qopensslbackend generic/qinsighttracker``. The first of these two
+  plugins loads OpenSSL at run time, which the deployment does not bring along.
   ``PLUGIN_DIR``
     Qt plugins destination
   ``EXTRA_PLUGIN_PATHS``
@@ -240,19 +261,25 @@ endfunction()
   :variable:`QMSETUP_FORCE_EXECUTABLE_PERMISSIONS` is on.
 #]==]
 function(qm_deploy_directory _install_dir)
-    set(options FORCE STANDARD VERBOSE)
+    set(options FORCE STANDARD VERBOSE QT_PLUGINS)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
-    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML EXTRA_SEARCHING_PATHS EXTRA_LIBRARIES EXCLUDE)
+    set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML EXTRA_SEARCHING_PATHS EXTRA_LIBRARIES EXCLUDE
+        QT_PLUGINS_EXCLUDE QT_PLUGINS_EXCLUDE_MODULES)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get qmake
-    if((FUNC_PLUGINS OR FUNC_QML) AND NOT DEFINED QT_QMAKE_EXECUTABLE)
+    if((FUNC_PLUGINS OR FUNC_QML OR FUNC_QT_PLUGINS) AND NOT DEFINED QT_QMAKE_EXECUTABLE)
         if(TARGET Qt${QT_VERSION_MAJOR}::qmake)
             qm_get_executable_location(Qt${QT_VERSION_MAJOR}::qmake _qmake_path)
             set(QT_QMAKE_EXECUTABLE "${_qmake_path}" CACHE FILEPATH "Path to qmake executable" FORCE)
-        elseif((FUNC_PLUGINS AND NOT FUNC_EXTRA_PLUGIN_PATHS) OR FUNC_QML)
+        elseif((FUNC_PLUGINS AND NOT FUNC_EXTRA_PLUGIN_PATHS) OR FUNC_QML OR FUNC_QT_PLUGINS)
             message(FATAL_ERROR "qm_deploy_directory: qmake not defined. Add find_package(Qt5 COMPONENTS Core) to CMake to enable.")
         endif()
+    endif()
+
+    # The metadata of Qt that the plugins are worked out from, read while installing
+    if(FUNC_QT_PLUGINS)
+        _qm_qt_plugin_dirs(_qt_metadata qm_deploy_directory)
     endif()
 
     # Set values
@@ -393,6 +420,47 @@ function(qm_deploy_directory _install_dir)
         set(_comment_code "message(STATUS [==[${FUNC_COMMENT}]==])")
     endif()
 
+    # The plugins of the Qt modules that the deployment requires, appended to the command as
+    # --plugin, see qm_select_qt_plugins(). The plugins of PLUGINS are left out, being deployed
+    # already.
+    set(_qt_plugins_code)
+
+    if(FUNC_QT_PLUGINS)
+        list(GET _qt_metadata 0 _descriptions)
+        list(GET _qt_metadata 1 _qt_plugin_dir)
+        list(GET _qt_metadata 2 _suffix)
+        list(GET _qt_metadata 3 _prefix)
+        list(GET _qt_metadata 4 _qt_bin_dir)
+        list(GET _qt_metadata 5 _qt_lib_dir)
+        set(_qt_plugins_verbose_code)
+
+        if(FUNC_VERBOSE)
+            set(_qt_plugins_verbose_code
+                "message(STATUS \"Qt plugins of \${_qt_plugins_MODULES}: \${_qt_plugins}\")")
+        endif()
+
+        set(_qt_plugins_code "
+        include([==[${QMSETUP_MODULES_DIR}/modules/private/QtPlugins.cmake]==])
+        qm_select_qt_plugins(_qt_plugins
+            COMMAND \${_command}
+            WORKING_DIRECTORY [==[${_install_dir}]==]
+            CORECMD [==[${QMSETUP_CORECMD_EXECUTABLE}]==]
+            SEARCHING_PATHS [==[${_qt_bin_dir};${_qt_lib_dir}]==]
+            DESCRIPTIONS [==[${_descriptions}]==]
+            PLUGINS_DIR [==[${_qt_plugin_dir}]==]
+            SUFFIX [==[${_suffix}]==]
+            PREFIX [==[${_prefix}]==]
+            EXCLUDE [==[${FUNC_QT_PLUGINS_EXCLUDE};${FUNC_PLUGINS}]==]
+            EXCLUDE_MODULES [==[${FUNC_QT_PLUGINS_EXCLUDE_MODULES}]==]
+        )
+        ${_qt_plugins_verbose_code}
+
+        foreach(_plugin IN LISTS _qt_plugins)
+            list(APPEND _command --plugin \${_plugin})
+        endforeach()
+        ")
+    endif()
+
     # Add install command
     #
     # The command is carried over as a list and rebuilt on the other side, so
@@ -406,6 +474,7 @@ function(qm_deploy_directory _install_dir)
     install(CODE "
         ${_comment_code}
         set(_command [==[${_script};${_args}]==])
+        ${_qt_plugins_code}
         execute_process(
             COMMAND \${_command}
             WORKING_DIRECTORY [==[${_install_dir}]==]

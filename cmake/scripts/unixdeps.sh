@@ -11,7 +11,7 @@ usage() {
     echo "                   --plugindir <plugin_dir> --libdir <lib_dir> --qmldir <qml_dir>"
     echo "                  [--qmake <qmake_path>] [--extra <extra_path>]..."
     echo "                  [--qml <qml_module>]... [--plugin <plugin>]... [--copy <src> <dest>]..."
-    echo "                  [--args-file <file>]... [-f] [-s] [-x] [-V] [-h]"
+    echo "                  [--args-file <file>]... [-f] [-s] [-x] [-V] [--list-sources] [-h]"
     echo "  -i <input_dir>              Directory containing binaries and libraries"
     echo "  -m <corecmd_path>           Path to corecmd"
     echo "  --plugindir <plugin_dir>    Output directory for plugins"
@@ -28,6 +28,7 @@ usage() {
     echo "  -s                          Ignore C/C++ runtime and system libraries"
     echo "  -x                          Grant execute permission to the binaries in the output directories"
     echo "  -V                          Show verbose output"
+    echo "  --list-sources              Copy nothing, and print each binary that would be deployed"
     echo "  -h                          Show this help message"
 }
 
@@ -37,6 +38,7 @@ QML_REL_PATHS=()
 ARGS=()
 VERBOSE=""
 FORCE_EXECUTABLE=""
+LIST_SOURCES=""
 PLUGINS=()
 FILES=""
 
@@ -58,6 +60,7 @@ while (( "$#" )); do
         -f|-s)             ARGS+=("$1"); shift;;
         -x)                FORCE_EXECUTABLE=1; shift;;
         -V)                VERBOSE="-V"; shift;;
+        --list-sources)    LIST_SOURCES=1; shift;;
         -h) usage; exit 0;;
         *) echo "Error: Unsupported argument $1"; usage; exit 1;;
     esac
@@ -225,14 +228,14 @@ handle_qml_file() {
     if [[ "$OSTYPE" == "msys"* ]] || [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin"* ]]; then
         if [[ "$file" == *.dll || "$file" == *.exe ]]; then
             ARGS+=("-c \"$file\" \"$target_dir\"")
-        else
+        elif [[ -z "$LIST_SOURCES" ]]; then
             mkdir -p "$target_dir"
             cp "$file" "$target"
         fi
     else
         if is_deployable_binary "$file"; then
             ARGS+=("-c \"$file\" \"$target_dir\"")
-        else
+        elif [[ -z "$LIST_SOURCES" ]]; then
             mkdir -p "$target_dir"
             cp "$file" "$target"
         fi
@@ -268,7 +271,13 @@ for qml_rel_path in "${QML_REL_PATHS[@]}"; do
     fi
 done
 
-# Build and execute the deploy command
+# Build and execute the deploy command. With --list-sources nothing is copied, and stdout is
+# the listing of qmcorecmd alone.
+if [[ -n "$LIST_SOURCES" ]]; then
+    LIST_CMD="$CORECMD_PATH deploy $FILES ${ARGS[@]} -o \"$LIB_DIR\" -n --list source"
+    eval $LIST_CMD
+    exit $?
+fi
 DEPLOY_CMD="$CORECMD_PATH deploy $FILES ${ARGS[@]} -o \"$LIB_DIR\" $VERBOSE"
 if [[ "$VERBOSE" == "-V" ]]; then
     echo "Executing: $DEPLOY_CMD"

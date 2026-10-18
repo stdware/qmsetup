@@ -53,6 +53,7 @@ set(_scripts
     modules/Preprocess/test_generate_config
     modules/Preprocess/test_sync_include
     modules/Preprocess/test_build_info
+    modules/private/QtPlugins/test_get_qt_modules
 )
 
 # ------------------------------------------------------------------
@@ -143,6 +144,16 @@ if(QT_FOUND)
     message(STATUS "qmsetup tests: Qt${QT_VERSION_MAJOR} ${QT_VERSION} at ${QT_DIR}")
     list(APPEND _configured_projects QMSetupAPI/test_qt_targets)
     list(APPEND _built_projects modules/QtLinguist/test_translation)
+
+    # The plugins are worked out from the module descriptions that Qt 6 installs,
+    # which Qt 5 does not.
+    if(QT_VERSION_MAJOR EQUAL 6)
+        list(APPEND _configured_projects modules/private/QtPlugins/test_get_qt_plugins)
+        list(APPEND _built_projects modules/Deploy/test_deploy_qt_plugins)
+    else()
+        message(STATUS "qmsetup tests: a Qt older than 6, so qm_get_qt_plugins and "
+            "QT_PLUGINS of qm_deploy_directory are left untested")
+    endif()
 
     # qm_install_qml_modules is built on qt_query_qml_module, which arrived in
     # Qt 6.5, so a Qt5 or an early Qt6 has nothing for it to call. The QML half
