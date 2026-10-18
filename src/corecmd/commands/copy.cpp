@@ -17,7 +17,7 @@ namespace {
     // Compared as paths rather than as text, so that a directory is not taken for one whose name
     // it merely begins with.
     bool isInside(const fs::path &dest, const fs::path &dir) {
-        const auto &relative = dest.lexically_relative(dir);
+        const auto &relative = stdc::path::lexically_relative(dest, dir);
         return !relative.empty() && *relative.begin() != fs::path("..");
     }
 

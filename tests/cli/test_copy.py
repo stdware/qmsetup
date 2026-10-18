@@ -1,5 +1,8 @@
 """`copy` copies files and directories, skipping what has not changed."""
 
+import os
+import unittest
+
 from testing.harness import QmTestCase
 
 
@@ -157,6 +160,15 @@ class TestRefusals(QmTestCase):
         self.write("d/x/a.txt", "a")
         self.assertOk(self.run_cmd("copy", "d", "d-elsewhere"))
         self.assertFile("d-elsewhere/d/x/a.txt")
+
+    @unittest.skipUnless(os.name == "nt", "only Windows has two separators")
+    def test_a_destination_written_with_the_other_separator_is_not(self):
+        """The source is made absolute with backslashes and the destination is
+        written with slashes. libc++ before LLVM 20 compares the root
+        directories as written, and the destination then read as inside."""
+        self.write("d/x/a.txt", "a")
+        self.assertOk(self.run_cmd("copy", "d", self.path("elsewhere").as_posix()))
+        self.assertFile("elsewhere/d/x/a.txt")
 
     def test_an_empty_source_is_refused(self):
         self.mkdir("dest")
