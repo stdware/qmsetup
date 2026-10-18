@@ -27,6 +27,8 @@ set(_src "${CMAKE_BINARY_DIR}/src")
 file(WRITE "${_src}/foo.h" "// foo")
 file(WRITE "${_src}/sub/bar.h" "// bar")
 file(WRITE "${_src}/sub/baz_p.h" "// private baz")
+# A semicolon in the path, which a CMake list would split
+file(WRITE "${_src}/semi;colon/qux.h" "// qux")
 file(WRITE "${_src}/notaheader.txt" "// not a header")
 
 qm_sync_include("${_src}" "${CMAKE_BINARY_DIR}/include/QmTest"

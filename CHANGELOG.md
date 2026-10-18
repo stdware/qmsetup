@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- `qm_sync_include` with `INSTALL_DIR` now installs a header whose path contains a semicolon. The paths were previously taken from the messages of `-V` and split as a CMake list. They now come from `incsync --list mapping`.
 - `qmcorecmd copy` built with libc++ before LLVM 20 no longer refuses a destination outside the source on Windows if one of the two paths is written with `/` and the other with `\`. That libc++ compares the root directories of the two paths as written.
 - `qm_add_win_rc` and `qm_add_win_rc_enhanced` now compile the resource again after an icon changes, under Ninja, the Makefiles and Visual Studio. The icon was previously compared with the resource script only at configure time, and a build after a changed icon did not configure.
 - `qm_deploy_directory` on Linux and macOS now processes binaries installed without execute permission, and skips separate debug files.

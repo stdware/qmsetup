@@ -144,7 +144,7 @@ Builds an include directory out of a source tree. Headers are found wherever the
 
 Timestamps decide whether to write, so running it again does nothing. Without `-f` whatever was already in the destination stays, which is what `qm_sync_include` relies on when it decides not to run the command at all.
 
-`--list` names every header that the reorganization maps, whether or not its target is up to date.
+`--list` names every header that the reorganization maps, whether or not its target is up to date. `qm_sync_include` installs the headers from `-n --list mapping`.
 
 ## deploy
 

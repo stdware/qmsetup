@@ -143,41 +143,48 @@ function(qm_sync_include _src_dir _dest_dir)
         if(FUNC_INSTALL_DIR)
             set(_install_dir ${FUNC_INSTALL_DIR})
 
-            # Get command output only and use file(INSTALL) to install files
+            # The mapping of the headers, which file(INSTALL) then installs
             #
             # The command is carried over as a list and rebuilt on the other
             # side, so that a path with a space or a quote in it stays one
             # argument. Bracket arguments, since what goes between them is text
             # and nothing in it is a variable reference or an escape.
+            #
+            # Each line of --list mapping is a source and a target, separated
+            # by a tab and ended by a newline, which is the stable format of
+            # qmcorecmd. The lines are taken one by one rather than as a CMake
+            # list, which would split a path that holds a semicolon.
             install(CODE "
                 get_filename_component(_install_dir [==[${_install_dir}]==] ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
-                set(_command [==[${QMSETUP_CORECMD_EXECUTABLE};incsync;-n;${_args};${_src_dir}]==])
+                set(_command [==[${QMSETUP_CORECMD_EXECUTABLE};incsync;-n;--list;mapping;${_args};${_src_dir}]==])
 
                 execute_process(
                     COMMAND \${_command} \${_install_dir}
                     WORKING_DIRECTORY [==[${CMAKE_CURRENT_SOURCE_DIR}]==]
-                    OUTPUT_VARIABLE _output_contents
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    OUTPUT_VARIABLE _rest
                     COMMAND_ERROR_IS_FATAL ANY
                 )
-                string(REPLACE \"\\n\" \";\" _lines \"\${_output_contents}\")
 
-                foreach(_line IN LISTS _lines)
-                    string(REGEX MATCH \"from \\\"([^\\\"]*)\\\" to \\\"([^\\\"]*)\\\"\" _matched \"\${_line}\")
-
-                    # A line that says something else is passed over rather than acted
-                    # on. CMAKE_MATCH_1 and CMAKE_MATCH_2 keep whatever the last match
-                    # put there, so reading them regardless would install the header
-                    # before this one a second time. Every line the tool prints in this
-                    # mode is of the shape below, so this is a guard rather than
-                    # something that has been seen to happen.
-                    if(NOT _matched)
-                        continue()
+                while(NOT \"\${_rest}\" STREQUAL \"\")
+                    string(FIND \"\${_rest}\" \"\\n\" _end)
+                    if(_end EQUAL -1)
+                        message(FATAL_ERROR \"qm_sync_include: the listing of qmcorecmd ends without a newline: \${_rest}\")
                     endif()
+                    string(SUBSTRING \"\${_rest}\" 0 \${_end} _line)
+                    math(EXPR _end \"\${_end} + 1\")
+                    string(SUBSTRING \"\${_rest}\" \${_end} -1 _rest)
 
-                    get_filename_component(_target_path \"\${CMAKE_MATCH_2}\" DIRECTORY)
-                    file(INSTALL \"\${CMAKE_MATCH_1}\" DESTINATION \"\${_target_path}\")
-                endforeach()
+                    string(FIND \"\${_line}\" \"\\t\" _tab)
+                    if(_tab EQUAL -1)
+                        message(FATAL_ERROR \"qm_sync_include: a line of the listing of qmcorecmd has no tab: \${_line}\")
+                    endif()
+                    string(SUBSTRING \"\${_line}\" 0 \${_tab} _source)
+                    math(EXPR _tab \"\${_tab} + 1\")
+                    string(SUBSTRING \"\${_line}\" \${_tab} -1 _target)
+
+                    get_filename_component(_target_dir \"\${_target}\" DIRECTORY)
+                    file(INSTALL \"\${_source}\" DESTINATION \"\${_target_dir}\")
+                endwhile()
             ")
         endif()
     else()
