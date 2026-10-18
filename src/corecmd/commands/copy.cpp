@@ -24,8 +24,7 @@ namespace {
 }
 
 int cmd_copy(const cli::ParseResult &result) {
-    bool force = isForceSet(result);
-    bool verbose = isVerboseSet(result);
+    const auto &options = CommonOptions::instance();
 
     std::set<fs::path> files;
     std::set<fs::path> directories;
@@ -87,13 +86,14 @@ int cmd_copy(const cli::ParseResult &result) {
     };
 
     for (const auto &item : std::as_const(files)) {
-        Utils::copyFile(item, dest, {}, force, verbose);
+        Utils::copyFile(item, dest, {}, options.force, options.verbose);
     }
     for (const auto &item : std::as_const(directories)) {
-        Utils::copyDirectory(item, item, dest / item.filename(), force, verbose, excludeFunc);
+        Utils::copyDirectory(item, item, dest / item.filename(), options.force, options.verbose,
+                             excludeFunc);
     }
     for (const auto &item : std::as_const(directoryContents)) {
-        Utils::copyDirectory(item, item, dest, force, verbose, excludeFunc);
+        Utils::copyDirectory(item, item, dest, options.force, options.verbose, excludeFunc);
     }
 
     return 0;

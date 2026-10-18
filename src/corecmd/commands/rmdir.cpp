@@ -7,7 +7,7 @@
 #include <utility>
 
 int cmd_rmdir(const cli::ParseResult &result) {
-    bool verbose = isVerboseSet(result);
+    const auto &options = CommonOptions::instance();
 
     std::vector<fs::path> dirs;
     {
@@ -22,7 +22,7 @@ int cmd_rmdir(const cli::ParseResult &result) {
         if (!fs::is_directory(item)) {
             continue;
         }
-        Utils::removeEmptyDirectories(item, verbose);
+        Utils::removeEmptyDirectories(item, options.verbose);
     }
     return 0;
 }

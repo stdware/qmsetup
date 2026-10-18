@@ -30,29 +30,6 @@ int cmd_deploy(const cli::ParseResult &result);
 
 /// @}
 
-/// \name The options more than one command declares
-///
-/// Read the same way by all of them, so that a command line means one thing.
-/// @{
-
-inline bool isForceSet(const cli::ParseResult &result) {
-    return result.option("-f").has_value();
-}
-
-inline bool isDryRunSet(const cli::ParseResult &result) {
-    return result.option("-n").has_value();
-}
-
-inline bool isVerboseSet(const cli::ParseResult &result) {
-    return result.option("-V").has_value();
-}
-
-inline bool isStandardSet(const cli::ParseResult &result) {
-    return result.option("-s").has_value();
-}
-
-/// @}
-
 /// \name Reading what was given
 ///
 /// A parse result answers with \c std::optional, since a value that is not there and a value
@@ -106,5 +83,33 @@ inline std::string givenValue(const cli::OptionResult &given, int index = 0, int
 }
 
 /// @}
+
+/// The options more than one command declares.
+///
+/// Read once, by the pre handler of the root command, so that a command line means one thing
+/// in every command. An option that the command does not declare reads as absent.
+struct CommonOptions {
+    bool force = false;    ///< \c -f
+    bool dryRun = false;   ///< \c -n
+    bool verbose = false;  ///< \c -V, or \c -n
+    bool standard = false; ///< \c -s
+
+    /// Returns the options that read() read.
+    static CommonOptions &instance() {
+        static CommonOptions options;
+        return options;
+    }
+
+    /// Reads the options of \a result into instance().
+    ///
+    /// There is nothing else for a dry run to do, so it reports what it found.
+    static void read(const cli::ParseResult &result) {
+        auto &options = instance();
+        options.force = result.option("-f").has_value();
+        options.dryRun = result.option("-n").has_value();
+        options.standard = result.option("-s").has_value();
+        options.verbose = options.dryRun || result.option("-V").has_value();
+    }
+};
 
 #endif // COMMANDS_H

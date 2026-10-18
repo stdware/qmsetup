@@ -16,10 +16,7 @@
 using stdc::u8printf;
 
 int cmd_incsync(const cli::ParseResult &result) {
-    bool dryrun = isDryRunSet(result);
-    bool verbose = dryrun || isVerboseSet(result);
-    bool force = isForceSet(result);
-    bool standard = isStandardSet(result);
+    const auto &options = CommonOptions::instance();
     bool copy = result.option("-c").has_value();
     bool all = !result.option("--not-all").has_value();
 
@@ -39,7 +36,7 @@ int cmd_incsync(const cli::ParseResult &result) {
         includes.reserve(cnt + 1);
 
         // Add standard
-        if (standard) {
+        if (options.standard) {
             includes.emplace_back(_TSTR(R"(.*?_p\..+$)"), _TSTR("private"));
         }
 
@@ -60,7 +57,7 @@ int cmd_incsync(const cli::ParseResult &result) {
     }
 
     // Remove target directory if needed
-    if (!dryrun && fs::exists(dest) && force) {
+    if (!options.dryRun && fs::exists(dest) && options.force) {
         fs::remove_all(dest);
     }
 
@@ -96,12 +93,12 @@ int cmd_incsync(const cli::ParseResult &result) {
             const fs::path &targetDir = subdir.empty() ? dest : (dest / subdir);
 
             auto targetPath = targetDir / path.filename();
-            if (verbose) {
+            if (options.verbose) {
                 u8printf("Sync: from \"%s\" to \"%s\"\n", tstr2str(path).data(),
-                       tstr2str(targetPath).data());
+                         tstr2str(targetPath).data());
             }
 
-            if (dryrun)
+            if (options.dryRun)
                 continue;
 
             if (fs::exists(targetPath) &&
@@ -150,4 +147,3 @@ int cmd_incsync(const cli::ParseResult &result) {
 
     return 0;
 }
-

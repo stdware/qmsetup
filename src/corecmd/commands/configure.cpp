@@ -25,9 +25,7 @@ static std::vector<std::string> defaultWarningLines() {
 }
 
 int cmd_configure(const cli::ParseResult &result) {
-    bool dryrun = isDryRunSet(result);
-    bool force = isForceSet(result);
-    bool verbose = dryrun || isVerboseSet(result);
+    const auto &options = CommonOptions::instance();
 
     const auto &projectName = optionValue(result, "-p");
     const auto &fileName = fs::absolute(str2tstr(argumentValue(result, 0)));
@@ -111,7 +109,7 @@ int cmd_configure(const cli::ParseResult &result) {
 
     // Calculate hash
     std::string hash;
-    if (!force) {
+    if (!options.force) {
         uint8_t buf[32];
         calc_sha_256(buf, definitions.data(), definitions.size());
 
@@ -175,14 +173,14 @@ int cmd_configure(const cli::ParseResult &result) {
         content = ss.str();
     }
 
-    if (dryrun) {
+    if (options.dryRun) {
         u8printf("%s", content.data());
         return 0;
     }
 
     // Read file
     do {
-        if (force)
+        if (options.force)
             break;
 
         // Check if file exists and has the same hash
@@ -223,7 +221,7 @@ int cmd_configure(const cli::ParseResult &result) {
         inFile.close();
 
         if (matched) {
-            if (verbose) {
+            if (options.verbose) {
                 stdc::console::printf(stdc::console::bold, stdc::console::yellow,
                                       stdc::console::nocolor, "Content matched. (%s)\n",
                                       hash.data());
@@ -249,7 +247,7 @@ int cmd_configure(const cli::ParseResult &result) {
         outFile << content;
         outFile.close();
 
-        if (verbose) {
+        if (options.verbose) {
             if (!hash.empty()) {
                 u8printf("SHA256: %s\n", hash.data());
             }

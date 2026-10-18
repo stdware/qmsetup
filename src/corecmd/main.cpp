@@ -138,6 +138,10 @@ int main(int argc, char *argv[]) {
     });
     rootCommand.addVersionOption(TOOL_VERSION);
     rootCommand.addHelpOption(true, true);
+    rootCommand.setPreHandler([](const cli::ParseResult &result) {
+        CommonOptions::read(result);
+        return 0;
+    });
 
     cli::CommandCatalogue cc;
     cc.addCommands("Filesystem Commands", {"copy", "rmdir", "touch"});

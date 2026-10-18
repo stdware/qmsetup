@@ -21,12 +21,7 @@ namespace {
 
     Deploy::Request readRequest(const cli::ParseResult &result) {
         Deploy::Request request;
-
-        request.dryrun = isDryRunSet(result);
-        // There is nothing else for a dry run to do, so it says what it found.
-        request.verbose = request.dryrun || isVerboseSet(result);
-        request.force = isForceSet(result);
-        request.standard = isStandardSet(result);
+        static_cast<CommonOptions &>(request) = CommonOptions::instance();
 
         request.dest = fs::current_path();
         if (auto given = result.option("-o"); given) {
@@ -176,7 +171,7 @@ int cmd_deploy(const cli::ParseResult &result) {
     const auto request = readRequest(result);
     const auto dependencies = resolveGraph(request);
 
-    if (request.dryrun) {
+    if (request.dryRun) {
         return 0;
     }
 

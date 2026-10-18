@@ -8,13 +8,8 @@
 // or deploy_unix.cpp, exactly one of which is built.
 namespace Deploy {
 
-    /// What a deploy command line came to.
-    struct Request {
-        bool dryrun = false;
-        bool verbose = false;
-        bool force = false;
-        bool standard = false;
-
+    /// What a deploy command line came to, the common options included.
+    struct Request : CommonOptions {
         /// Where the dependencies go.
         fs::path dest;
 
