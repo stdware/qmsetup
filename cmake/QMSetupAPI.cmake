@@ -701,9 +701,9 @@ endfunction()
         [OUTPUT_DIR     dir]
     )
 
-  The resource compiles again after ``ICON`` changes, under every generator: the icon becomes an
-  ``OBJECT_DEPENDS`` of the resource script and a ``CMAKE_CONFIGURE_DEPENDS`` of the current
-  directory.
+  The resource compiles again after ``ICON`` changes, at the next build and under every
+  generator, without a configure. ``ICON`` may be the output of a custom command of the current
+  directory, which the build then runs first.
 #]==]
 function(qm_add_win_rc _target)
     if(NOT WIN32)
@@ -739,10 +739,9 @@ function(qm_add_win_rc _target)
 
     qm_set_value(_out_dir FUNC_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
     set(_out_path "${_out_dir}/${_target}_res.rc")
-    configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" ${_out_path} @ONLY)
-    target_sources(${_target} PRIVATE ${_out_path})
-
-    _qm_add_win_rc_icon_dependencies(${_target} ${_out_path} ${RC_ICON_PATH})
+    configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource.rc.in" "${_out_path}.configured"
+        @ONLY)
+    _qm_add_win_rc_source(${_target} "${_out_path}.configured" ${_out_path} ${RC_ICON_PATH})
 endfunction()
 
 #[==[.rst:
@@ -766,8 +765,8 @@ endfunction()
         [OUTPUT_DIR        dir]
     )
 
-  The resource compiles again after any of ``ICONS`` changes, as with
-  :cmake:command:`qm_add_win_rc`.
+  The resource compiles again after any of ``ICONS`` changes, and an icon may be the output of a
+  custom command, as with :cmake:command:`qm_add_win_rc`.
 #]==]
 function(qm_add_win_rc_enhanced _target)
     if(NOT WIN32)
@@ -833,8 +832,8 @@ function(qm_add_win_rc_enhanced _target)
 
     qm_set_value(_out_dir FUNC_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
     set(_out_path "${_out_dir}/${_target}_res.rc")
-    configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource2.rc.in" ${_out_path} @ONLY)
-    target_sources(${_target} PRIVATE ${_out_path})
+    configure_file("${QMSETUP_MODULES_DIR}/windows/WinResource2.rc.in" "${_out_path}.configured"
+        @ONLY)
 
     set(_icon_paths)
 
@@ -843,7 +842,7 @@ function(qm_add_win_rc_enhanced _target)
         list(APPEND _icon_paths ${_icon_path})
     endforeach()
 
-    _qm_add_win_rc_icon_dependencies(${_target} ${_out_path} ${_icon_paths})
+    _qm_add_win_rc_source(${_target} "${_out_path}.configured" ${_out_path} ${_icon_paths})
 endfunction()
 
 #[==[.rst:
@@ -1388,31 +1387,30 @@ endfunction()
 # ----------------------------------
 
 #[[
-    Makes the resource script \a _rc of \a _target compile again after any of the icons in ARGN,
-    given as absolute paths, changes.
+    Adds the resource script \a _rc to \a _target, made while building as a copy of
+    \a _configured whenever it or any of the icons in ARGN, given as absolute paths, changes.
 
-      _qm_add_win_rc_icon_dependencies(<target> <rc> [icon...])
+      _qm_add_win_rc_source(<target> <configured> <rc> [icon...])
 
-    The resource compiler reads an icon that the script names, which neither Ninja nor the
-    Makefiles record as a dependency. Each icon is therefore an OBJECT_DEPENDS of the script, which
-    those generators honor without a configure. The generators of Visual Studio do not honor
-    OBJECT_DEPENDS, so each icon is also a CMAKE_CONFIGURE_DEPENDS of the directory: a changed icon
-    configures the tree again, and the script is then touched if an icon is newer than it.
+    The resource compiler reads an icon that the script names, which no generator records as a
+    dependency of the script. The script is therefore the output of a custom command that
+    depends on the icons, so that a changed icon writes the script again and every generator
+    compiles it again at the next build, without a configure. The generators of Visual Studio do
+    not honor OBJECT_DEPENDS, which the script once had for the icons, and a changed icon then
+    configured the tree again. An icon may be the output of a custom command of the directory.
+
+    The values of the script are written while configuring, so that no value passes through a
+    command line. The copy is touched, because a copy may keep the time of its source, and a
+    script older than an icon would be made at every build.
 ]] #
-function(_qm_add_win_rc_icon_dependencies _target _rc)
-    if(NOT ARGN)
-        return()
-    endif()
-
-    foreach(_icon IN LISTS ARGN)
-        if(${_icon} IS_NEWER_THAN ${_rc})
-            file(TOUCH_NOCREATE ${_rc})
-            break()
-        endif()
-    endforeach()
-
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${ARGN})
-    set_property(SOURCE ${_rc} TARGET_DIRECTORY ${_target} APPEND PROPERTY OBJECT_DEPENDS ${ARGN})
+function(_qm_add_win_rc_source _target _configured _rc)
+    add_custom_command(OUTPUT ${_rc}
+        COMMAND ${CMAKE_COMMAND} -E copy ${_configured} ${_rc}
+        COMMAND ${CMAKE_COMMAND} -E touch ${_rc}
+        DEPENDS ${_configured} ${ARGN}
+        VERBATIM
+    )
+    target_sources(${_target} PRIVATE ${_rc})
 endfunction()
 
 #[[

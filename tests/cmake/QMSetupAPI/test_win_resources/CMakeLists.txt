@@ -5,6 +5,8 @@
 #
 # The resource and the manifest are configured rather than built, so what they
 # say can be read straight off the file and nothing needs a resource compiler.
+# The resource script is written while building, as a copy of the configured
+# script beside it, which is the file read here. test_win_rc_icon builds one.
 
 cmake_minimum_required(VERSION 3.19)
 project(qmtest_win_resources C)
@@ -33,13 +35,13 @@ qm_add_win_rc(winapp
 )
 
 set(_rc "${_res_dir}/winapp_res.rc")
-qmtest_exists("OUTPUT_DIR is where the resource goes" "${_rc}")
-qmtest_file_contains("the name is in it" "${_rc}" "A Test Application")
-qmtest_file_contains("the description too" "${_rc}" "Something to read the resource of")
-qmtest_file_contains("and the copyright" "${_rc}" "Copyright nobody")
+qmtest_exists("OUTPUT_DIR is where the resource goes" "${_rc}.configured")
+qmtest_file_contains("the name is in it" "${_rc}.configured" "A Test Application")
+qmtest_file_contains("the description too" "${_rc}.configured" "Something to read the resource of")
+qmtest_file_contains("and the copyright" "${_rc}.configured" "Copyright nobody")
 # A version resource wants four numbers with commas, not the string form.
-qmtest_file_contains("the version is four numbers" "${_rc}" "1,2,3,4")
-qmtest_file_contains("and the string form is there as well" "${_rc}" "1\\.2\\.3\\.4")
+qmtest_file_contains("the version is four numbers" "${_rc}.configured" "1,2,3,4")
+qmtest_file_contains("and the string form is there as well" "${_rc}.configured" "1\\.2\\.3\\.4")
 
 get_target_property(_sources winapp SOURCES)
 qmtest_contains("the resource is compiled into the target" "${_sources}" "${_rc}")
@@ -47,36 +49,34 @@ qmtest_contains("the resource is compiled into the target" "${_sources}" "${_rc}
 # A version with fewer components is filled out, the same as anywhere else.
 add_executable(winshort src/app.c)
 qm_add_win_rc(winshort VERSION 2.0 OUTPUT_DIR "${_res_dir}")
-qmtest_file_contains("a short version is filled out" "${_res_dir}/winshort_res.rc" "2,0,0,0")
+qmtest_file_contains("a short version is filled out" "${_res_dir}/winshort_res.rc.configured" "2,0,0,0")
 
 # Nothing given, so the target names itself.
 add_executable(winbare src/app.c)
 qm_add_win_rc(winbare OUTPUT_DIR "${_res_dir}")
-qmtest_file_contains("the target names itself" "${_res_dir}/winbare_res.rc" "winbare")
+qmtest_file_contains("the target names itself" "${_res_dir}/winbare_res.rc.configured" "winbare")
 
 # An icon is a line in the resource, and no icon is that line commented out
 # rather than left half written.
-qmtest_file_lacks("with no icon nothing points at one" "${_res_dir}/winbare_res.rc" "\n[^/\n]*IDI_ICON1")
+qmtest_file_lacks("with no icon nothing points at one" "${_res_dir}/winbare_res.rc.configured" "\n[^/\n]*IDI_ICON1")
 
 add_executable(winicon src/app.c)
 qm_add_win_rc(winicon ICON "${_icon_dir}/main.ico" OUTPUT_DIR "${_res_dir}")
-qmtest_file_contains("ICON reaches the resource" "${_res_dir}/winicon_res.rc" "main\\.ico")
+qmtest_file_contains("ICON reaches the resource" "${_res_dir}/winicon_res.rc.configured" "main\\.ico")
 
-# The resource compiler reads the icon, which no generator records by itself. Ninja and the
-# Makefiles recompile the resource through OBJECT_DEPENDS, and every generator configures again
-# through CMAKE_CONFIGURE_DEPENDS.
-get_source_file_property(_icon_depends "${_res_dir}/winicon_res.rc" OBJECT_DEPENDS)
-qmtest_contains("the resource depends on the icon" "${_icon_depends}" "${_icon_dir}/main.ico")
+# The resource compiler reads the icon, which no generator records by itself. The script is
+# therefore written while building by a command that depends on the icon, and a changed icon
+# configures nothing. test_win_rc_icon checks the rebuild.
+get_source_file_property(_icon_generated "${_res_dir}/winicon_res.rc" GENERATED)
+qmtest_true("the resource is written while building" "${_icon_generated}")
 get_property(_configure_depends DIRECTORY PROPERTY CMAKE_CONFIGURE_DEPENDS)
-qmtest_contains("and a changed icon configures again"
+qmtest_lacks("and a changed icon configures nothing"
     "${_configure_depends}" "${_icon_dir}/main.ico")
-get_source_file_property(_bare_depends "${_res_dir}/winbare_res.rc" OBJECT_DEPENDS)
-qmtest_false("with no icon the resource depends on nothing more" "${_bare_depends}")
 
 # A library takes a resource as readily as an executable does.
 add_library(winrclib SHARED src/lib.c)
 qm_add_win_rc(winrclib NAME "A Test Library" VERSION 3.4.5.6 OUTPUT_DIR "${_res_dir}")
-qmtest_file_contains("a library takes one too" "${_res_dir}/winrclib_res.rc" "A Test Library")
+qmtest_file_contains("a library takes one too" "${_res_dir}/winrclib_res.rc.configured" "A Test Library")
 
 get_target_property(_sources winrclib SOURCES)
 qmtest_contains("and compiles it in" "${_sources}" "${_res_dir}/winrclib_res.rc")
@@ -97,7 +97,7 @@ qm_add_win_rc_enhanced(winrich
     OUTPUT_DIR "${_res_dir}"
 )
 
-set(_rc2 "${_res_dir}/winrich_res.rc")
+set(_rc2 "${_res_dir}/winrich_res.rc.configured")
 qmtest_file_contains("the company is in it" "${_rc2}" "Nobody Ltd")
 qmtest_file_contains("the internal name too" "${_rc2}" "richer")
 qmtest_file_contains("the trademark" "${_rc2}" "None at all")
@@ -108,7 +108,7 @@ qmtest_file_contains("an executable says it is one" "${_rc2}" "VFT_APP")
 
 add_library(winrichlib SHARED src/lib.c)
 qm_add_win_rc_enhanced(winrichlib VERSION 1.0.0.0 OUTPUT_DIR "${_res_dir}")
-qmtest_file_contains("and a library says it is one" "${_res_dir}/winrichlib_res.rc" "VFT_DLL")
+qmtest_file_contains("and a library says it is one" "${_res_dir}/winrichlib_res.rc.configured" "VFT_DLL")
 
 # This one takes any number of icons, numbered in the order they were given,
 # the first being the one Windows shows for the file.
@@ -119,14 +119,12 @@ qm_add_win_rc_enhanced(winicons
     OUTPUT_DIR "${_res_dir}"
 )
 
-set(_rc3 "${_res_dir}/winicons_res.rc")
+set(_rc3 "${_res_dir}/winicons_res.rc.configured")
 qmtest_file_contains("the first icon is the first" "${_rc3}" "IDI_ICON1[ \t]+ICON[ \t]+\"[^\"]*main\\.ico\"")
 qmtest_file_contains("and the second the second" "${_rc3}" "IDI_ICON2[ \t]+ICON[ \t]+\"[^\"]*second\\.ico\"")
 
-get_source_file_property(_icons_depends "${_rc3}" OBJECT_DEPENDS)
-qmtest_contains("the resource depends on the first icon"
-    "${_icons_depends}" "${_icon_dir}/main.ico")
-qmtest_contains("and on the second" "${_icons_depends}" "${_icon_dir}/second.ico")
+get_source_file_property(_icons_generated "${_res_dir}/winicons_res.rc" GENERATED)
+qmtest_true("this resource is written while building as well" "${_icons_generated}")
 
 # ------------------------------------------------------------------
 # qm_add_win_manifest

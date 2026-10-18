@@ -96,6 +96,8 @@ endif()
 
 if(WIN32)
     list(APPEND _built_projects modules/Deploy/test_win_applocal_deps)
+    # Built, because the resource compiles again only in a build after its icon changes
+    list(APPEND _built_projects QMSetupAPI/test_win_rc_icon)
 
     # qm_create_win_shortcut turns its script into a shortcut with cscript, and
     # does it at build time, so a machine that will not run one cannot build the
