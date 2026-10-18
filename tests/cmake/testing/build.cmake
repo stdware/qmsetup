@@ -24,11 +24,20 @@ file(REMOVE_RECURSE "${QMTEST_INSTALL_PREFIX}")
 
 # Runs a step, and stops here rather than letting the checks report on a tree
 # that was never finished.
+#
+# The output of installing is printed even if the step succeeds, because the
+# install rules are what most of these projects test, and a check that fails
+# is otherwise left without what the rules said. CTest shows it only for a
+# test that fails.
 function(step _what)
     execute_process(COMMAND ${ARGN} RESULT_VARIABLE _code OUTPUT_VARIABLE _out ERROR_VARIABLE _out)
 
     if(NOT _code EQUAL 0)
         message(FATAL_ERROR "${_what} failed:\n${_out}")
+    endif()
+
+    if(_what STREQUAL "installing")
+        message(STATUS "installing:\n${_out}")
     endif()
 endfunction()
 
