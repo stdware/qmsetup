@@ -33,12 +33,34 @@ install(TARGETS qmtest_widgets_user
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+# Qt 6.9 is the first to set the directory of the module descriptions and to
+# name its platforms in them. An older Qt is told both, as its caller would.
+set(_platforms)
+
+if(Qt6_VERSION VERSION_LESS 6.9)
+    set(QT6_INSTALL_DESCRIPTIONSDIR modules)
+
+    if(WIN32)
+        set(_platforms windows)
+    elseif(APPLE)
+        set(_platforms cocoa)
+    else()
+        set(_platforms xcb)
+    endif()
+endif()
+
+set(_platform_args)
+
+if(_platforms)
+    set(_platform_args PLATFORMS ${_platforms})
+endif()
+
 # The first image format plugin is left out, and the first icon engine plugin
 # is named by hand, both chosen here because the plugins differ between builds.
-qm_get_qt_plugins(_imageformats MODULES Gui)
+qm_get_qt_plugins(_imageformats MODULES Gui ${_platform_args})
 list(FILTER _imageformats INCLUDE REGEX "^imageformats/")
 list(GET _imageformats 0 _excluded)
-qm_get_qt_plugins(_iconengines MODULES Gui)
+qm_get_qt_plugins(_iconengines MODULES Gui ${_platform_args})
 list(FILTER _iconengines INCLUDE REGEX "^iconengines/")
 list(GET _iconengines 0 _named)
 
@@ -53,6 +75,7 @@ qm_deploy_directory("${CMAKE_INSTALL_PREFIX}"
     QT_PLUGINS
     QT_PLUGINS_EXCLUDE "${_excluded}"
     QT_PLUGINS_EXCLUDE_MODULES Qml Quick
+    QT_PLUGINS_PLATFORMS ${_platforms}
     STANDARD
     VERBOSE
     COMMENT "Deploying the Qt plugins the installed binaries need"

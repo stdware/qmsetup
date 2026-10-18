@@ -1,6 +1,7 @@
 # qm_get_qt_plugins, against a real Qt 6.
 #
-# Registered only where tests/cmake/CMakeLists.txt found a Qt 6. Nothing is
+# Registered only where tests/cmake/CMakeLists.txt found a Qt 6, which older
+# than 6.9 is given what it does not describe. Nothing is
 # built: the function reads the module descriptions and the plugin directories
 # of the installation, and what it returns is a list to read back.
 #
@@ -17,7 +18,23 @@ include(${QMTEST_HARNESS})
 qm_import(private/QtPlugins)
 qm_find_qt(Core)
 
-qm_get_qt_plugins(_plugins MODULES Gui Widgets)
+# Qt 6.9 is the first to set the directory of the module descriptions and to
+# name its platforms in them. An older Qt is told both, as its caller would.
+set(_platform_args)
+
+if(Qt6_VERSION VERSION_LESS 6.9)
+    set(QT6_INSTALL_DESCRIPTIONSDIR modules)
+
+    if(WIN32)
+        set(_platform_args PLATFORMS windows)
+    elseif(APPLE)
+        set(_platform_args PLATFORMS cocoa)
+    else()
+        set(_platform_args PLATFORMS xcb)
+    endif()
+endif()
+
+qm_get_qt_plugins(_plugins MODULES Gui Widgets ${_platform_args})
 
 set(_platforms ${_plugins})
 list(FILTER _platforms INCLUDE REGEX "^platforms/")
@@ -47,7 +64,7 @@ qm_get_qt_plugins(_core MODULES Core)
 qmtest_equal("Core declares no plugin type" "${_core}" "")
 
 list(GET _imageformats 0 _excluded)
-qm_get_qt_plugins(_without MODULES Gui Widgets EXCLUDE ${_excluded})
+qm_get_qt_plugins(_without MODULES Gui Widgets EXCLUDE ${_excluded} ${_platform_args})
 qmtest_lacks("EXCLUDE leaves a plugin out" "${_without}" "${_excluded}")
 list(LENGTH _plugins _all)
 list(LENGTH _without _rest)

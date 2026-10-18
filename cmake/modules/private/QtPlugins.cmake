@@ -5,6 +5,11 @@
     modules/<module>.json lists the plugin types of each module, and the plugins of a type are the
     plugins in the directory of that type. Qt's own deployment reads the same files.
 
+    Qt 6.9 or later is supported. Qt 6.9 is the first to set QT6_INSTALL_DESCRIPTIONSDIR and to
+    name the platform plugins of the platform in Gui.json, under qpa. With an older Qt 6, the
+    caller confirms that the module descriptions list plugin_types, sets
+    QT6_INSTALL_DESCRIPTIONSDIR, and names the platforms with PLATFORMS.
+
     Deploy.cmake includes this file for QT_PLUGINS of qm_deploy_directory, whose install rule
     includes it as well, because an install rule runs as a script of its own. The directories of
     Qt default to those of the Qt 6 that the project found. The install rule passes every one of
@@ -23,7 +28,9 @@ include_guard(GLOBAL)
 ]] #
 function(_qm_qt_plugin_dirs _out _caller)
     if(NOT QT6_INSTALL_PREFIX OR NOT QT6_INSTALL_DESCRIPTIONSDIR OR NOT QT6_INSTALL_PLUGINS)
-        message(FATAL_ERROR "${_caller}: the Qt plugins require Qt 6, found before the call.")
+        message(FATAL_ERROR "${_caller}: the Qt plugins require Qt 6.9 or later, found before the "
+            "call. With an older Qt 6, set QT6_INSTALL_DESCRIPTIONSDIR to the directory of its "
+            "module descriptions, and name the platforms with PLATFORMS.")
     endif()
 
     if(WIN32)
@@ -155,6 +162,7 @@ endfunction()
     qm_get_qt_plugins(<output_var>
         MODULES <module>...
         [EXCLUDE <plugin>...]
+        [PLATFORMS <platform>...]
         [DESCRIPTIONS <dir>]
         [PLUGINS_DIR <dir>]
         [SUFFIX <suffix> [PREFIX <prefix>]]
@@ -167,6 +175,10 @@ endfunction()
         Qt modules without the prefix, such as Gui and Widgets
     EXCLUDE
         Plugins, as <category>/<name>, to leave out
+    PLATFORMS
+        The platforms whose platform plugins are selected, such as windows, cocoa and xcb, in
+        place of those that the description of Gui names under qpa. Required with a Qt older
+        than 6.9, whose description of Gui names none.
     DESCRIPTIONS
         The module descriptions, modules/ of the Qt 6 found by default
     PLUGINS_DIR
@@ -176,20 +188,25 @@ endfunction()
         lib with .dylib or .so elsewhere, of the platform of the project by default
 
     Every plugin of each plugin type of the modules is selected, except the platform plugins, of
-    which only those that the description of Gui names for the platform are selected, such as
-    platforms/qwindows. A debug plugin beside its release plugin is not selected: <name>d on
-    Windows and <name>_debug on macOS. A type without a directory has no plugins. The
-    dependencies of a plugin are not examined. QT_PLUGINS of qm_deploy_directory examines them.
+    which only those of the platforms are selected, such as platforms/qwindows. A debug plugin
+    beside its release plugin is not selected: <name>d on Windows and <name>_debug on macOS. A
+    type without a directory has no plugins. The dependencies of a plugin are not examined.
+    QT_PLUGINS of qm_deploy_directory examines them. A warning is issued if the platform plugins
+    are required and no platform is known.
 ]=] #
 function(qm_get_qt_plugins _out)
     set(options)
     set(oneValueArgs DESCRIPTIONS PLUGINS_DIR SUFFIX PREFIX)
-    set(multiValueArgs MODULES EXCLUDE)
+    set(multiValueArgs MODULES EXCLUDE PLATFORMS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     _qm_qt_plugin_defaults(qm_get_qt_plugins)
     set(_types)
     set(_platforms)
+
+    foreach(_platform IN LISTS FUNC_PLATFORMS)
+        list(APPEND _platforms "q${_platform}")
+    endforeach()
 
     foreach(_module IN LISTS FUNC_MODULES)
         set(_file "${FUNC_DESCRIPTIONS}/${_module}.json")
@@ -214,7 +231,7 @@ function(qm_get_qt_plugins _out)
 
         string(JSON _count ERROR_VARIABLE _error LENGTH "${_json}" qpa platforms)
 
-        if(_error STREQUAL "NOTFOUND" AND _count GREATER 0)
+        if(NOT FUNC_PLATFORMS AND _error STREQUAL "NOTFOUND" AND _count GREATER 0)
             math(EXPR _last "${_count} - 1")
 
             foreach(_index RANGE ${_last})
@@ -226,6 +243,11 @@ function(qm_get_qt_plugins _out)
 
     list(REMOVE_DUPLICATES _types)
     set(_plugins)
+
+    if("platforms" IN_LIST _types AND NOT _platforms)
+        message(WARNING "qm_get_qt_plugins: no platform plugin is selected, because the "
+            "description of Gui names no platform. Name the platforms with PLATFORMS.")
+    endif()
 
     foreach(_type IN LISTS _types)
         file(GLOB _files LIST_DIRECTORIES false
@@ -277,6 +299,7 @@ endfunction()
         SEARCHING_PATHS <dir>...
         [EXCLUDE <plugin>...]
         [EXCLUDE_MODULES <module>...]
+        [PLATFORMS <platform>...]
         [DESCRIPTIONS <dir>]
         [PLUGINS_DIR <dir>]
         [SUFFIX <suffix> [PREFIX <prefix>]]
@@ -296,7 +319,7 @@ endfunction()
         The directories of the Qt libraries that a plugin requires
     EXCLUDE_MODULES
         Qt modules without the prefix. A plugin that requires one of them is left out.
-    EXCLUDE, DESCRIPTIONS, PLUGINS_DIR, SUFFIX, PREFIX
+    EXCLUDE, PLATFORMS, DESCRIPTIONS, PLUGINS_DIR, SUFFIX, PREFIX
         As for qm_get_qt_plugins()
 
     The modules that the binaries require come from the listing of the script and from the Qt
@@ -310,13 +333,17 @@ endfunction()
 function(qm_select_qt_plugins _out)
     set(options)
     set(oneValueArgs WORKING_DIRECTORY CORECMD DESCRIPTIONS PLUGINS_DIR SUFFIX PREFIX)
-    set(multiValueArgs COMMAND SEARCHING_PATHS EXCLUDE EXCLUDE_MODULES)
+    set(multiValueArgs COMMAND SEARCHING_PATHS EXCLUDE EXCLUDE_MODULES PLATFORMS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     _qm_qt_plugin_defaults(qm_select_qt_plugins)
     set(_where DESCRIPTIONS "${FUNC_DESCRIPTIONS}")
     set(_plugin_where ${_where} PLUGINS_DIR "${FUNC_PLUGINS_DIR}" SUFFIX "${FUNC_SUFFIX}"
         PREFIX "${FUNC_PREFIX}")
+
+    if(FUNC_PLATFORMS)
+        list(APPEND _plugin_where PLATFORMS ${FUNC_PLATFORMS})
+    endif()
 
     execute_process(
         COMMAND ${FUNC_COMMAND} --list-sources

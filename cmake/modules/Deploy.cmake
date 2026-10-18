@@ -182,6 +182,7 @@ endfunction()
 
         [PLUGINS <plugin>...]
         [QT_PLUGINS] [QT_PLUGINS_EXCLUDE <plugin>...] [QT_PLUGINS_EXCLUDE_MODULES <module>...]
+        [QT_PLUGINS_PLATFORMS <platform>...]
         [PLUGIN_DIR <dir>]
 
         [QML <qml>...]
@@ -195,7 +196,7 @@ endfunction()
     and in ``EXTRA_PLUGIN_PATHS``. A plugin is not required to be one of Qt.
   ``QT_PLUGINS``
     Also deploys the Qt plugins of every Qt module that the deployment requires, as
-    ``qm_get_qt_plugins`` lists them. Requires Qt 6. The modules are worked out
+    ``qm_get_qt_plugins`` lists them. The modules are worked out
     while installing, from the binaries under ``<install_dir>`` and what they require. Each
     plugin is then resolved by itself, as windeployqt does, and a plugin that requires a further
     module brings that module and its plugins.
@@ -205,6 +206,9 @@ endfunction()
   ``QT_PLUGINS_EXCLUDE_MODULES``
     Qt modules without the prefix, such as ``Qml`` and ``Quick``. ``QT_PLUGINS`` leaves out a
     plugin that requires one of them, and therefore the modules that only that plugin requires.
+  ``QT_PLUGINS_PLATFORMS``
+    The platforms, such as ``windows``, ``cocoa`` and ``xcb``, whose platform plugins
+    ``QT_PLUGINS`` deploys, in place of those that Qt names. Required with a Qt older than 6.9.
   ``PLUGIN_DIR``
     Qt plugins destination
   ``EXTRA_PLUGIN_PATHS``
@@ -225,6 +229,11 @@ endfunction()
     only that dependency requires are skipped with it. Leading and trailing blanks
     of an expression are not preserved.
 
+  ``QT_PLUGINS`` supports Qt 6.9 or later, which describes the plugin types of each module
+  and the platform plugins of the platform in the module descriptions that it installs. With
+  an older Qt 6, the caller confirms that its module descriptions list ``plugin_types``, sets
+  ``QT6_INSTALL_DESCRIPTIONSDIR`` to their directory, usually ``modules``, and names the
+  platforms with ``QT_PLUGINS_PLATFORMS``.
   Nothing is left out by default. windeployqt leaves out more by default, and the same choice
   is ``QT_PLUGINS_EXCLUDE_MODULES Qml Quick`` for a program without QML, so that the input
   context of the virtual keyboard does not bring Qt Quick along, and
@@ -265,7 +274,7 @@ function(qm_deploy_directory _install_dir)
     set(options FORCE STANDARD VERBOSE QT_PLUGINS)
     set(oneValueArgs LIBRARY_DIR PLUGIN_DIR QML_DIR COMMENT)
     set(multiValueArgs EXTRA_PLUGIN_PATHS PLUGINS QML EXTRA_SEARCHING_PATHS EXTRA_LIBRARIES EXCLUDE
-        QT_PLUGINS_EXCLUDE QT_PLUGINS_EXCLUDE_MODULES)
+        QT_PLUGINS_EXCLUDE QT_PLUGINS_EXCLUDE_MODULES QT_PLUGINS_PLATFORMS)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     # Get qmake
@@ -453,6 +462,7 @@ function(qm_deploy_directory _install_dir)
             PREFIX [==[${_prefix}]==]
             EXCLUDE [==[${FUNC_QT_PLUGINS_EXCLUDE};${FUNC_PLUGINS}]==]
             EXCLUDE_MODULES [==[${FUNC_QT_PLUGINS_EXCLUDE_MODULES}]==]
+            PLATFORMS [==[${FUNC_QT_PLUGINS_PLATFORMS}]==]
         )
         ${_qt_plugins_verbose_code}
 
