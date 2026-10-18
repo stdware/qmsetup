@@ -46,10 +46,12 @@ def find_executable() -> Path:
 class Result:
     """What one run of the tool did."""
 
-    def __init__(self, args: list[str], code: int, out: str):
+    def __init__(self, args: list[str], code: int, out: str, err: str = ""):
         self.args = args
         self.code = code
         self.out = out
+        # Empty unless run_split() kept stderr apart from out
+        self.err = err
 
     @property
     def ok(self) -> bool:
@@ -64,6 +66,7 @@ class Result:
             f"\n  $ qmcorecmd {printable}\n"
             f"  [exit {self.code}]\n"
             + "".join(f"  | {line}\n" for line in self.out.splitlines())
+            + "".join(f"  ! {line}\n" for line in self.err.splitlines())
         )
 
 
@@ -126,6 +129,24 @@ class QmTestCase(unittest.TestCase):
         # The tool speaks UTF-8 whatever the console is set to.
         out = completed.stdout.decode("utf-8", errors="replace")
         return Result(argv, completed.returncode, out)
+
+    def run_split(self, *args: str) -> Result:
+        """Runs the tool as run_cmd() does, with stdout in ``out`` and stderr in ``err``.
+
+        For a listing, which is stdout alone. Read as bytes and split on ``\\n``,
+        so that a line keeps a tab and never gains a carriage return.
+        """
+        argv = [str(a) for a in args]
+        completed = subprocess.run(
+            [str(self.executable), *argv],
+            cwd=self.sandbox,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=60,
+        )
+        out = completed.stdout.decode("utf-8", errors="replace")
+        err = completed.stderr.decode("utf-8", errors="replace")
+        return Result(argv, completed.returncode, out, err)
 
     # Assertions
 

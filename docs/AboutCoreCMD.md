@@ -20,6 +20,16 @@ Every subcommand takes `-h` for its own help and `-V` to say what it is doing. W
 
 An argument may sit anywhere among the options. `qmcorecmd copy -V a b`, `qmcorecmd copy a -V b` and `qmcorecmd copy a b -V` are the same command line.
 
+**The messages of `-V` are for reading, not for parsing.** Their wording may change in any release. A program that reads what `incsync` or `deploy` did uses `--list` instead, whose format is stable:
+
+| `--list <mode>` | Each line |
+|---|---|
+| `source` | The absolute path of a source file |
+| `target` | The absolute path of its target |
+| `mapping` | The source and the target, separated by a tab |
+
+Each line ends with `\n` on every platform, the separator is `/`, and the encoding is UTF-8. With `--list`, stdout carries the listing only, and the messages of `-V` go to stderr. `--list` does not imply `-n`: the command still writes, and `-n --list` lists without writing. A dry run without `--list` implies `-V`, and with `--list` the listing takes the place of the report.
+
 ---
 
 ## copy
@@ -122,6 +132,7 @@ Builds an include directory out of a source tree. Headers are found wherever the
 | `-c, --copy` | Copy the headers instead of pointing at them |
 | `-n, --dry-run` | Print what would happen |
 | `-f, --force` | Clear the destination first |
+| `--list <mode>` | Print each header and its target, see above |
 
 **By default nothing is copied.** What lands in `<dest>` is a one line stub holding a relative `#include` of the real header, with forward slashes whatever the platform. Editing the header in its own directory is then the only place it is edited, and the include directory never goes stale. `-c` copies instead, which is what an install wants.
 
@@ -132,6 +143,8 @@ Builds an include directory out of a source tree. Headers are found wherever the
 `--not-all` drops whatever no pattern claimed, rather than putting it at the top level. Note what that means alongside `-s` and nothing else: the private headers are claimed and the public ones are not, so `-s --not-all` gives an include directory holding `private/` and nothing besides.
 
 Timestamps decide whether to write, so running it again does nothing. Without `-f` whatever was already in the destination stays, which is what `qm_sync_include` relies on when it decides not to run the command at all.
+
+`--list` names every header that the reorganization maps, whether or not its target is up to date.
 
 ## deploy
 
@@ -150,6 +163,7 @@ Works out what shared libraries the named binaries need, finds them, and copies 
 | `-s, --standard` | Leave the C and C++ runtime and the system libraries alone |
 | `-n, --dry-run` | Print what was resolved and copy nothing |
 | `-f, --force` | Overwrite what is already in the output directory |
+| `--list <mode>` | Print each file deployed and its target, see above |
 
 How a dependency is discovered is not the same anywhere. Windows reads the import table of the PE file. macOS asks `otool`. Linux asks `patchelf` for the binary's own `DT_NEEDED` and `ldd` for what those names resolve to, which is why it is the direct dependencies that are followed rather than the flattened list a loader would report.
 
@@ -164,6 +178,8 @@ Where they are looked for follows from that. Everywhere, the directory each name
 `-s` leaves out what every machine already has. On Windows nothing under the system directories is ever deployed whether or not `-s` was given, and `-s` additionally drops the MSVC runtime. On Unix nothing is filtered until `-s` says so, and a deployment without it drags the C library along.
 
 Every library deployed must have a different file name, since they all land in the one directory.
+
+`--list` names the files of `-c`, then the dependencies in the order of the resolution, whether or not their targets are up to date. The target of each is its directory and its file name. On Linux a library reached through a symbolic link is listed under the name of the link, and the file that the link names is copied beside it without an entry of its own. A binary that already lies in the output directory is listed with itself as the target and is not copied.
 
 ### An example
 

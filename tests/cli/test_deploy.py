@@ -359,3 +359,68 @@ class TestResolutionDetails(DeployTestCase):
         self.assertOk(r)
         self.assertOut(r, "Copy: from")
         self.assertOut(r, self.layout.name("sdk_lib"))
+
+
+# ---------------------------------------------------------------------------
+# The listing of --list, which is stdout alone
+# ---------------------------------------------------------------------------
+
+
+class TestListing(DeployTestCase):
+    needs_resolution = True
+
+    def deployment(self, *extra: str) -> list[str]:
+        """The program with a plugin of the framework, as a deployment names them."""
+        return [
+            "deploy", self.layout.path("app_exe"),
+            "-c", self.layout.path("sdk_plugin"), "plugins",
+            *self.search_paths(), "-o", "out", "-s", *extra,
+        ]
+
+    def entries(self, result) -> list[str]:
+        """The lines of the listing, each of which ends with a newline alone."""
+        self.assertOk(result)
+        self.assertTrue(result.out.endswith("\n"), msg=str(result))
+        self.assertNotIn("\r", result.out, msg=str(result))
+        return result.out[:-1].split("\n")
+
+    def test_the_targets_are_what_the_deployment_copies(self):
+        """On Linux a link also leaves the file it names, which the listing does not name."""
+        r = self.run_split(*self.deployment("--list", "target"))
+        targets = self.entries(r)
+        for target in targets:
+            self.assertTrue(Path(target).is_absolute(), msg=target)
+            self.assertNotIn("\\", target)
+            self.assertTrue(Path(target).exists(), msg=target)
+        listed = {Path(t).name for t in targets if Path(t).parent.name == "out"}
+        self.assertIn(self.layout.name("sdk_lib"), listed, msg=str(r))
+        self.assertLessEqual(listed, self.deployed("out"), msg=str(r))
+        self.assertIn(
+            str(self.path("plugins").resolve() / self.layout.name("sdk_plugin")),
+            {str(Path(t).resolve()) for t in targets},
+        )
+
+    def test_a_dry_run_lists_the_sources_and_copies_nothing(self):
+        before = self.snapshot()
+        r = self.run_split(*self.deployment("-n", "--list", "source"))
+        sources = self.entries(r)
+        self.assertEqual(self.snapshot(), before)
+        self.assertIn(self.layout.name("sdk_lib"), {Path(s).name for s in sources})
+        for source in sources:
+            self.assertTrue(Path(source).is_file() or Path(source).is_dir(), msg=source)
+        self.assertNotIn("Resolve:", r.out)
+
+    def test_the_mapping_pairs_each_source_with_its_target(self):
+        r = self.run_split(*self.deployment("-n", "--list", "mapping"))
+        for line in self.entries(r):
+            source, target = line.split("\t")
+            self.assertEqual(Path(source).name, Path(target).name, msg=line)
+
+    def test_the_log_goes_to_stderr_with_a_listing(self):
+        r = self.run_split(*self.deployment("-n", "-V", "--list", "source"))
+        self.entries(r)
+        self.assertNotIn("Resolve:", r.out)
+        self.assertIn("Resolve:", r.err)
+
+    def test_an_unknown_mode_is_refused(self):
+        self.assertRefused(self.run_cmd(*self.deployment("--list", "everything")))

@@ -16,8 +16,6 @@
 
 #include "utils/utils.h"
 
-using stdc::u8printf;
-
 namespace {
 
     // Copies a library and the symlink that named it, and answers with the real file. A shared
@@ -37,9 +35,9 @@ namespace {
 
     void fixRPaths(const fs::path &file, const std::vector<std::string> &paths, bool verbose) {
         if (verbose) {
-            u8printf("Fix rpath: \"%s\"\n", file.string().data());
+            Utils::printLog("Fix rpath: \"%s\"\n", file.string().data());
             for (const auto &path : paths) {
-                u8printf("    %s\n", path.data());
+                Utils::printLog("    %s\n", path.data());
             }
         }
         Utils::setFileRPaths(file, paths);
@@ -171,23 +169,24 @@ namespace {
 
         if (lipoInfo.find(arch) == std::string::npos) {
             if (verbose) {
-                u8printf("Warning: Universal binary \"%s\" does not contain %s architecture\n",
-                         file.string().data(), arch.data());
+                Utils::printLog(
+                    "Warning: Universal binary \"%s\" does not contain %s architecture\n",
+                    file.string().data(), arch.data());
             }
             return;
         }
 
         try {
             if (verbose) {
-                u8printf("Strip universal binary: \"%s\" (keep %s)\n", file.string().data(),
-                         arch.data());
+                Utils::printLog("Strip universal binary: \"%s\" (keep %s)\n", file.string().data(),
+                                arch.data());
             }
             std::ignore = Utils::executeCommand(
                 "lipo", {file.string(), "-thin", arch, "-output", file.string()});
         } catch (const std::exception &e) {
             if (verbose) {
-                u8printf("Warning: Failed to strip universal binary \"%s\": %s\n",
-                         file.string().data(), e.what());
+                Utils::printLog("Warning: Failed to strip universal binary \"%s\": %s\n",
+                                file.string().data(), e.what());
             }
         }
     }
@@ -214,9 +213,9 @@ namespace {
         }
 
         if (verbose) {
-            u8printf("Normalize dependencies: \"%s\"\n", file.string().data());
+            Utils::printLog("Normalize dependencies: \"%s\"\n", file.string().data());
             for (const auto &item : std::as_const(normalized)) {
-                u8printf("    %s\n", item.first.data());
+                Utils::printLog("    %s\n", item.first.data());
             }
         }
 
@@ -228,7 +227,7 @@ namespace {
             return std::string(stdc::str::trim(Utils::executeCommand("uname", {"-m"})));
         } catch (const std::exception &e) {
             if (verbose) {
-                u8printf("Warning: Failed to get current architecture: %s\n", e.what());
+                Utils::printLog("Warning: Failed to get current architecture: %s\n", e.what());
             }
         }
         return {};

@@ -13,8 +13,6 @@
 #include <stdcorelib/path.h>
 #include <stdcorelib/str.h>
 
-using stdc::u8printf;
-
 int cmd_incsync(const cli::ParseResult &result) {
     const auto &options = CommonOptions::instance();
     bool copy = result.option("-c").has_value();
@@ -94,9 +92,11 @@ int cmd_incsync(const cli::ParseResult &result) {
 
             auto targetPath = targetDir / path.filename();
             if (options.verbose) {
-                u8printf("Sync: from \"%s\" to \"%s\"\n", tstr2str(path).data(),
-                         tstr2str(targetPath).data());
+                Utils::printLog("Sync: from \"%s\" to \"%s\"\n", tstr2str(path).data(),
+                                tstr2str(targetPath).data());
             }
+            // Every header that the reorganization maps, whether or not its target is up to date
+            Listing::print(options.list, path, targetPath);
 
             if (options.dryRun)
                 continue;

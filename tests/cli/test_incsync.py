@@ -222,3 +222,51 @@ class TestDryRunForceAndVerbosity(IncsyncTestCase):
         self.assertOk(self.run_cmd("incsync", "src", "include"))
         self.assertOk(self.run_cmd("incsync", "src", "include"))
         self.assertFile("include/foo.h")
+
+
+class TestListing(IncsyncTestCase):
+    """--list prints one line per header on stdout, ended by a newline alone."""
+
+    def entries(self, result) -> list[str]:
+        self.assertOk(result)
+        self.assertTrue(result.out.endswith("\n"), msg=str(result))
+        self.assertNotIn("\r", result.out, msg=str(result))
+        return result.out[:-1].split("\n")
+
+    def test_the_mapping_names_each_header_and_its_target(self):
+        r = self.run_split("incsync", "src", "include", "-s", "-n", "--list", "mapping")
+        pairs = dict(line.split("\t") for line in self.entries(r))
+        include = self.path("include").resolve()
+        found = {
+            Path(source).resolve().relative_to(self.path("src").resolve()).as_posix():
+                Path(target).resolve().relative_to(include).as_posix()
+            for source, target in pairs.items()
+        }
+        self.assertEqual(found, {
+            "foo.h": "foo.h",
+            "bar.hpp": "bar.hpp",
+            "sub/baz.h": "baz.h",
+            "sub/qux_p.h": "private/qux_p.h",
+        })
+        self.assertNoDir("include")
+
+    def test_the_sources_and_the_targets_are_listed_alone(self):
+        sources = self.entries(self.run_split("incsync", "src", "include", "-n", "--list", "source"))
+        targets = self.entries(self.run_split("incsync", "src", "include", "-n", "--list", "target"))
+        self.assertIn("foo.h", {Path(s).name for s in sources})
+        self.assertEqual({Path(s).name for s in sources}, {Path(t).name for t in targets})
+        for path in sources + targets:
+            self.assertTrue(Path(path).is_absolute(), msg=path)
+            self.assertNotIn("\\", path)
+
+    def test_a_listing_is_printed_while_the_headers_are_written(self):
+        r = self.run_split("incsync", "src", "include", "--list", "target")
+        self.assertIn(str(self.path("include/foo.h").resolve()),
+                      {str(Path(t).resolve()) for t in self.entries(r)})
+        self.assertFile("include/foo.h")
+
+    def test_the_log_goes_to_stderr_with_a_listing(self):
+        r = self.run_split("incsync", "src", "include", "-n", "-V", "--list", "source")
+        self.entries(r)
+        self.assertNotIn("Sync: from", r.out)
+        self.assertIn("Sync: from", r.err)

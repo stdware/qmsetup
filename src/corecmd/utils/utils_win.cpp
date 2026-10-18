@@ -7,7 +7,11 @@
 
 #include <delayimp.h>
 
+#include <fcntl.h>
+#include <io.h>
+
 #include <algorithm>
+#include <cstdio>
 #include <sstream>
 #include <filesystem>
 #include <stdexcept>
@@ -18,6 +22,12 @@
 namespace fs = std::filesystem;
 
 namespace Utils {
+
+    // In text mode the C runtime writes each \n as \r\n.
+    void setStdoutBinary() {
+        std::fflush(stdout);
+        ::_setmode(::_fileno(stdout), _O_BINARY);
+    }
 
     bool isLink(const fs::path &path) {
         // The reparse point attribute rather than whatever the standard library makes of it.

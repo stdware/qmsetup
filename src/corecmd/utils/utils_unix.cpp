@@ -18,6 +18,10 @@ namespace fs = std::filesystem;
 
 namespace Utils {
 
+    // Unix writes \n as it is.
+    void setStdoutBinary() {
+    }
+
     bool isLink(const fs::path &path) {
         std::error_code ec;
         return fs::is_symlink(path, ec);

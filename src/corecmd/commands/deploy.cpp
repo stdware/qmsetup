@@ -11,8 +11,6 @@
 #include <stdcorelib/str.h>
 #include <stdcorelib/stlextra/algorithms.h>
 
-using stdc::u8printf;
-
 namespace {
 
     fs::path absoluteOf(const std::string &value) {
@@ -95,14 +93,14 @@ namespace {
             std::set<TString> found;
             for (const auto &path : std::as_const(paths)) {
                 if (request.verbose) {
-                    u8printf("Resolve: \"%s\"\n", tstr2str(path).data());
+                    Utils::printLog("Resolve: \"%s\"\n", tstr2str(path).data());
                 }
 
                 std::vector<std::string> unparsed;
                 for (const auto &item :
                      Deploy::resolveDependencies(Deploy::toResolvable(path), request, &unparsed)) {
                     if (request.verbose) {
-                        u8printf("    %s\n", tstr2str(item).data());
+                        Utils::printLog("    %s\n", tstr2str(item).data());
                     }
                     found.insert(item);
                 }
@@ -113,8 +111,8 @@ namespace {
                         widest = std::max(widest, item.size());
                     }
                     for (const auto &item : std::as_const(unparsed)) {
-                        u8printf("    %s%s[Not Found]\n", item.data(),
-                                 std::string(widest + 4 - item.size(), ' ').data());
+                        Utils::printLog("    %s%s[Not Found]\n", item.data(),
+                                        std::string(widest + 4 - item.size(), ' ').data());
                     }
                 }
             }
@@ -165,12 +163,28 @@ namespace {
         return dependencies;
     }
 
+    // Each entry is a file that the deployment assigns a target, whether or not the target is
+    // already up to date: the files of -c, then the dependencies. The target is the directory
+    // and the file name on every platform. On Linux the target of a symbolic link is a link of
+    // that name, beside the copy of the file that the link names.
+    void printListing(const Deploy::Request &request, const std::vector<fs::path> &dependencies) {
+        for (const auto &pair : std::as_const(request.extraFiles)) {
+            Listing::print(request.list, pair.first, pair.second / pair.first.filename());
+        }
+        for (const auto &file : std::as_const(dependencies)) {
+            Listing::print(request.list, file, request.dest / file.filename());
+        }
+    }
+
 }
 
 int cmd_deploy(const cli::ParseResult &result) {
     const auto request = readRequest(result);
     const auto dependencies = resolveGraph(request);
 
+    if (request.list != Listing::None) {
+        printListing(request, dependencies);
+    }
     if (request.dryRun) {
         return 0;
     }

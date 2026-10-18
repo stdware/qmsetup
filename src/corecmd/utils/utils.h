@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <stdcorelib/stdc_global.h>
+
 // Everything that is not a command. The commands are under commands/ and what they have in
 // common is in commands.h, which knows about a command line. Nothing here does.
 //
@@ -83,6 +85,23 @@ namespace Utils {
 
     /// What the last system call had to say, for a message that would otherwise carry a number.
     std::string sysErrorMessage(int code = errno);
+
+    /// @}
+
+    /// \name Output
+    ///
+    /// The messages of \c -V. They are written to stdout, or to stderr if a command prints a
+    /// listing on stdout, so that stdout carries the listing only.
+    /// @{
+
+    /// Sets stdout to write \c \\n unchanged, which Windows otherwise writes as \c \\r\\n.
+    void setStdoutBinary();
+
+    /// Sets whether printLog() writes to stderr instead of stdout.
+    void setLogToStderr(bool toStderr);
+
+    /// Prints a message of \c -V, formatted as by \c printf.
+    int printLog(const char *fmt, ...) STDC_PRINTF_FORMAT(1, 2);
 
     /// @}
 

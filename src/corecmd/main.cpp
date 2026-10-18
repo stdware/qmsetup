@@ -19,6 +19,11 @@
 
 static const cli::Option verboseOption({"-V", "--verbose"}, "Print more information");
 
+static const cli::Option listOption =
+    cli::Option({"--list"}, "Print only the files processed, one per line")
+        .arg(cli::Argument("mode", "source, target, or mapping of source and target")
+                 .expect({"source", "target", "mapping"}));
+
 int main(int argc, char *argv[]) {
     cli::Command copyCommand = []() {
         cli::Command command("copy", "Copy files or directories if different");
@@ -93,6 +98,7 @@ int main(int argc, char *argv[]) {
             cli::Option({"-n", "--dry-run"}, "Print reorganizing details only"),
             cli::Option({"-f", "--force"}, "Force deleting existing directory"),
         });
+        command.addOption(listOption);
         command.addOption(verboseOption);
         command.setHandler(cmd_incsync);
         return command;
@@ -121,6 +127,7 @@ int main(int argc, char *argv[]) {
             cli::Option({"-n", "--dry-run"}, "Print dependencies only"),
             cli::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
+        command.addOption(listOption);
         command.addOption(verboseOption);
         command.setHandler(cmd_deploy);
         return command;

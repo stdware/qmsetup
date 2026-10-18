@@ -1,14 +1,13 @@
 #include "utils.h"
 
 #include <algorithm>
+#include <cstdarg>
 #include <ctime>
 #include <system_error>
 
 #include <stdcorelib/console.h>
 #include <stdcorelib/path.h>
 #include <stdcorelib/support/popen.h>
-
-using stdc::u8printf;
 
 std::string tstr2str(const TString &str) {
     return stdc::path::to_utf8(str);
@@ -27,6 +26,24 @@ namespace Utils {
         // carries them wherever it is printed.
         s.resize(std::strftime(s.data(), s.size(), "%Y-%m-%d %H:%M:%S", std::localtime(&t2)));
         return s;
+    }
+
+    namespace {
+
+        bool g_logToStderr = false;
+
+    }
+
+    void setLogToStderr(bool toStderr) {
+        g_logToStderr = toStderr;
+    }
+
+    int printLog(const char *fmt, ...) {
+        va_list args;
+        va_start(args, fmt);
+        const int result = stdc::console::u8vfprintf(g_logToStderr ? stderr : stdout, fmt, args);
+        va_end(args);
+        return result;
     }
 
     std::string sysErrorMessage(int code) {
@@ -48,8 +65,8 @@ namespace Utils {
 
         if (!symlinkContent.empty()) {
             if (verbose) {
-                u8printf("Link: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
-                       tstr2str(symlinkContent).data());
+                printLog("Link: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
+                         tstr2str(symlinkContent).data());
             }
 
             if (fs::exists(target))
@@ -57,7 +74,8 @@ namespace Utils {
             fs::create_symlink(symlinkContent, target);
         } else {
             if (verbose) {
-                u8printf("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(), tstr2str(target).data());
+                printLog("Copy: from \"%s\" to \"%s\"\n", tstr2str(file).data(),
+                         tstr2str(target).data());
             }
             fs::copy(file, dest, fs::copy_options::overwrite_existing);
             Utils::syncFileTime(target, file); // Sync time for each file
@@ -135,7 +153,7 @@ namespace Utils {
         // Remove self if empty
         if (isEmpty) {
             if (verbose) {
-                u8printf("Remove: \"%s\"\n", tstr2str(path).data());
+                printLog("Remove: \"%s\"\n", tstr2str(path).data());
             }
             fs::remove(path);
         }

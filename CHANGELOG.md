@@ -7,6 +7,7 @@
 - `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`, which grants execute permission to every binary that qmsetup installs or deploys. It defaults to `OFF`.
 - `EXCLUDE` for `qm_deploy_directory`, which skips the dependencies whose paths match the given regular expressions.
 - `QMSETUP_MSVC_ABI`, which is `ON` if the C or the C++ compiler targets the MSVC ABI, clang with the GNU front end included.
+- `--list <source|target|mapping>` for `qmcorecmd deploy` and `incsync`, which prints each file and its target on stdout in a stable format, one line ended by `\n` per file. The messages of `-V` then go to stderr. See `docs/AboutCoreCMD.md`.
 
 ### Changed
 
