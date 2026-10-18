@@ -191,7 +191,8 @@ endfunction()
     )
 
   ``PLUGINS``
-    Qt plugins, in format of ``<category>/<name>``
+    Plugins, in format of ``<category>/<name>``, looked for in the plugin directory of Qt
+    and in ``EXTRA_PLUGIN_PATHS``. A plugin is not required to be one of Qt.
   ``QT_PLUGINS``
     Also deploys the Qt plugins of every Qt module that the deployment requires, as
     ``qm_get_qt_plugins`` lists them. Requires Qt 6. The modules are worked out
@@ -204,12 +205,6 @@ endfunction()
   ``QT_PLUGINS_EXCLUDE_MODULES``
     Qt modules without the prefix, such as ``Qml`` and ``Quick``. ``QT_PLUGINS`` leaves out a
     plugin that requires one of them, and therefore the modules that only that plugin requires.
-
-  Nothing is left out by default. windeployqt leaves out more by default, and the same choice
-  is ``QT_PLUGINS_EXCLUDE_MODULES Qml Quick`` for a program without QML, so that the input
-  context of the virtual keyboard does not bring Qt Quick along, and
-  ``QT_PLUGINS_EXCLUDE tls/qopensslbackend generic/qinsighttracker``. The first of these two
-  plugins loads OpenSSL at run time, which the deployment does not bring along.
   ``PLUGIN_DIR``
     Qt plugins destination
   ``EXTRA_PLUGIN_PATHS``
@@ -229,6 +224,12 @@ endfunction()
     path, written with forward slashes, contains a match, and the libraries that
     only that dependency requires are skipped with it. Leading and trailing blanks
     of an expression are not preserved.
+
+  Nothing is left out by default. windeployqt leaves out more by default, and the same choice
+  is ``QT_PLUGINS_EXCLUDE_MODULES Qml Quick`` for a program without QML, so that the input
+  context of the virtual keyboard does not bring Qt Quick along, and
+  ``QT_PLUGINS_EXCLUDE tls/qopensslbackend generic/qinsighttracker``. The first of these two
+  plugins loads OpenSSL at run time, which the deployment does not bring along.
 
   What it gathers is the release flavour of everything, and that is decided in
   the scripts underneath rather than here. A plugin is looked for by the name it
