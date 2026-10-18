@@ -60,7 +60,9 @@ jobs:
       - uses: ./.github/actions/setup
 
       # Qt, for qm_find_qt and everything built on it. 6.5 or newer, since
-      # qm_install_qml_modules calls qt_query_qml_module and that arrived then.
+      # qm_install_qml_modules calls qt_query_qml_module and that arrived then,
+      # and 6.9 or newer for QT_PLUGINS of qm_deploy_directory, which reads the
+      # platforms that only 6.9 describes. 6.11.1 is the Qt of helloutau.
       #
       # No modules asked for. Declarative and the Linguist tools come with the
       # base install for Qt 6, and naming something aqt does not know is a job
@@ -69,7 +71,7 @@ jobs:
       # the count the run reports is what says which of them ran.
       - uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.1'
+          version: '6.11.1'
           arch: ${{ matrix.qt_arch }}
           cache: true
 
@@ -98,6 +100,7 @@ jobs:
         shell: bash
         run: |
           expected="test_qt_targets test_translation test_install_qml_modules test_deploy_qml"
+          expected="$expected test_get_qt_plugins test_deploy_qt_plugins"
 
           if [ "$RUNNER_OS" != "Windows" ]; then
             expected="$expected test_create_protobuf"
