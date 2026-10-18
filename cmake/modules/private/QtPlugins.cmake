@@ -18,6 +18,12 @@
 
 include_guard(GLOBAL)
 
+# An install rule runs as a script without cmake_minimum_required, whose policies before CMake 4.0
+# are the old behavior. The conditions here therefore avoid what the policies change: a constant
+# such as TRUE as a condition (CMP0012), IN_LIST (CMP0057), and a quoted operand that could be read
+# as the name of a variable (CMP0054). while(TRUE) once read TRUE as the name of a variable, and
+# the selection of the plugins never ran.
+
 #[[
     Sets <out> to the directory of the module descriptions, the directory of the plugins, the
     suffix and the prefix of the file name of a plugin, and the binary and the library
@@ -113,8 +119,11 @@ function(qm_get_qt_modules _out _listing)
 
     set(_modules)
 
-    # Line by line rather than as a CMake list, which would split a path at a semicolon
-    while(NOT "${_listing}" STREQUAL "")
+    # Line by line rather than as a CMake list, which would split a path at a semicolon. The rest
+    # is measured before any continue(), which would otherwise skip the measuring.
+    string(LENGTH "${_listing}" _rest)
+
+    while(_rest GREATER 0)
         string(FIND "${_listing}" "\n" _end)
 
         if(_end EQUAL -1)
@@ -126,6 +135,7 @@ function(qm_get_qt_modules _out _listing)
             string(SUBSTRING "${_listing}" ${_end} -1 _listing)
         endif()
 
+        string(LENGTH "${_listing}" _rest)
         get_filename_component(_name "${_file}" NAME)
 
         if(_name MATCHES "^(lib)?Qt6([A-Za-z0-9]+)(\\.|$)")
@@ -217,10 +227,10 @@ function(qm_get_qt_plugins _out)
 
         file(READ "${_file}" _json)
 
-        # ERROR_VARIABLE holds NOTFOUND if there is no error.
+        # ERROR_VARIABLE holds NOTFOUND, which is false, if there is no error.
         string(JSON _count ERROR_VARIABLE _error LENGTH "${_json}" plugin_types)
 
-        if(_error STREQUAL "NOTFOUND" AND _count GREATER 0)
+        if(NOT _error AND _count GREATER 0)
             math(EXPR _last "${_count} - 1")
 
             foreach(_index RANGE ${_last})
@@ -231,7 +241,7 @@ function(qm_get_qt_plugins _out)
 
         string(JSON _count ERROR_VARIABLE _error LENGTH "${_json}" qpa platforms)
 
-        if(NOT FUNC_PLATFORMS AND _error STREQUAL "NOTFOUND" AND _count GREATER 0)
+        if(NOT FUNC_PLATFORMS AND NOT _error AND _count GREATER 0)
             math(EXPR _last "${_count} - 1")
 
             foreach(_index RANGE ${_last})
@@ -243,8 +253,10 @@ function(qm_get_qt_plugins _out)
 
     list(REMOVE_DUPLICATES _types)
     set(_plugins)
+    string(COMPARE EQUAL "${FUNC_SUFFIX}" ".dll" _windows)
+    list(FIND _types platforms _index)
 
-    if("platforms" IN_LIST _types AND NOT _platforms)
+    if(NOT _index EQUAL -1 AND NOT _platforms)
         message(WARNING "qm_get_qt_plugins: no platform plugin is selected, because the "
             "description of Gui names no platform. Name the platforms with PLATFORMS.")
     endif()
@@ -252,6 +264,7 @@ function(qm_get_qt_plugins _out)
     foreach(_type IN LISTS _types)
         file(GLOB _files LIST_DIRECTORIES false
             "${FUNC_PLUGINS_DIR}/${_type}/${FUNC_PREFIX}*${FUNC_SUFFIX}")
+        string(COMPARE EQUAL "${_type}" platforms _platform_type)
 
         foreach(_file IN LISTS _files)
             get_filename_component(_name "${_file}" NAME)
@@ -263,7 +276,7 @@ function(qm_get_qt_plugins _out)
 
             # Matched first, because ${CMAKE_MATCH_1} in the same condition is expanded before the
             # match runs and holds the previous match.
-            if(FUNC_SUFFIX STREQUAL ".dll" AND _name MATCHES "^(.+)d$")
+            if(_windows AND _name MATCHES "^(.+)d$")
                 if(EXISTS "${FUNC_PLUGINS_DIR}/${_type}/${CMAKE_MATCH_1}.dll")
                     continue()
                 endif()
@@ -273,11 +286,17 @@ function(qm_get_qt_plugins _out)
                 continue()
             endif()
 
-            if(_type STREQUAL "platforms" AND NOT _name IN_LIST _platforms)
-                continue()
+            if(_platform_type)
+                list(FIND _platforms "${_name}" _index)
+
+                if(_index EQUAL -1)
+                    continue()
+                endif()
             endif()
 
-            if("${_type}/${_name}" IN_LIST FUNC_EXCLUDE)
+            list(FIND FUNC_EXCLUDE "${_type}/${_name}" _index)
+
+            if(NOT _index EQUAL -1)
                 continue()
             endif()
 
@@ -369,14 +388,10 @@ function(qm_select_qt_plugins _out)
 
     set(_examined ${FUNC_EXCLUDE})
     set(_selected)
+    qm_get_qt_plugins(_candidates MODULES ${_used} EXCLUDE ${_examined} ${_plugin_where})
 
-    while(TRUE)
-        qm_get_qt_plugins(_candidates MODULES ${_used} EXCLUDE ${_examined} ${_plugin_where})
-
-        if(NOT _candidates)
-            break()
-        endif()
-
+    # Until the plugins selected require no module whose plugins were not examined
+    while(_candidates)
         foreach(_plugin IN LISTS _candidates)
             list(APPEND _examined "${_plugin}")
             string(FIND "${_plugin}" "/" _slash)
@@ -402,7 +417,9 @@ function(qm_select_qt_plugins _out)
             set(_blocked)
 
             foreach(_module IN LISTS _needed)
-                if(_module IN_LIST FUNC_EXCLUDE_MODULES)
+                list(FIND FUNC_EXCLUDE_MODULES "${_module}" _index)
+
+                if(NOT _index EQUAL -1)
                     set(_blocked on)
                 endif()
             endforeach()
@@ -415,6 +432,8 @@ function(qm_select_qt_plugins _out)
             list(APPEND _used ${_needed})
             list(REMOVE_DUPLICATES _used)
         endforeach()
+
+        qm_get_qt_plugins(_candidates MODULES ${_used} EXCLUDE ${_examined} ${_plugin_where})
     endwhile()
 
     list(SORT _selected)

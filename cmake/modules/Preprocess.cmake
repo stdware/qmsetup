@@ -153,7 +153,10 @@ function(qm_sync_include _src_dir _dest_dir)
             # Each line of --list mapping is a source and a target, separated
             # by a tab and ended by a newline, which is the stable format of
             # qmcorecmd. The lines are taken one by one rather than as a CMake
-            # list, which would split a path that holds a semicolon.
+            # list, which would split a path that holds a semicolon. The loop
+            # compares a length rather than a quoted string, because the install
+            # rule runs without the policies of the project, and before CMake 4.0
+            # a quoted operand could be read as the name of a variable (CMP0054).
             install(CODE "
                 get_filename_component(_install_dir [==[${_install_dir}]==] ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
                 set(_command [==[${QMSETUP_CORECMD_EXECUTABLE};incsync;-n;--list;mapping;${_args};${_src_dir}]==])
@@ -165,7 +168,9 @@ function(qm_sync_include _src_dir _dest_dir)
                     COMMAND_ERROR_IS_FATAL ANY
                 )
 
-                while(NOT \"\${_rest}\" STREQUAL \"\")
+                string(LENGTH \"\${_rest}\" _left)
+
+                while(_left GREATER 0)
                     string(FIND \"\${_rest}\" \"\\n\" _end)
                     if(_end EQUAL -1)
                         message(FATAL_ERROR \"qm_sync_include: the listing of qmcorecmd ends without a newline: \${_rest}\")
@@ -173,6 +178,7 @@ function(qm_sync_include _src_dir _dest_dir)
                     string(SUBSTRING \"\${_rest}\" 0 \${_end} _line)
                     math(EXPR _end \"\${_end} + 1\")
                     string(SUBSTRING \"\${_rest}\" \${_end} -1 _rest)
+                    string(LENGTH \"\${_rest}\" _left)
 
                     string(FIND \"\${_line}\" \"\\t\" _tab)
                     if(_tab EQUAL -1)
