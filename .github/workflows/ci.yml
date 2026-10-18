@@ -69,10 +69,15 @@ jobs:
       # that fails, where something missing is only a test that does not
       # register. Each of these tests asks the configure for what it needs, so
       # the count the run reports is what says which of them ran.
+      #
+      # aqtinstall 3.3.0, the latest release, finds no Qt 6.11 for Windows. Its
+      # support arrived in miurahr/aqtinstall#1000, merged after that release, so
+      # a commit of master is installed until the next release, as in helloutau.
       - uses: jurplel/install-qt-action@v4
         with:
           version: '6.11.1'
           arch: ${{ matrix.qt_arch }}
+          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@076e1659807d0b362a3ed684d54c2e9c775eb9c7'
           cache: true
 
       # QMSETUP_STATIC_RUNTIME is off, though it is on by default. Turning it on adds /MT to
