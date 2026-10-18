@@ -87,7 +87,7 @@ Writes a header of `#define` lines, guarded, with a hash of what went into it.
 | `-p, --project <name>` | Put a project name in front of the include guard |
 | `-w, --warning [<file>]` | Write a do-not-edit notice at the top, from `<file>` if given |
 | `-f, --force` | Leave the hash out and write every time |
-| `-d, --dryrun` | Print what would be written and write nothing |
+| `-n, --dry-run` | Print what would be written and write nothing |
 
 The three spellings of a definition:
 
@@ -118,9 +118,9 @@ Builds an include directory out of a source tree. Headers are found wherever the
 | `-i, --include <regex> <subdir>` | Put what matches into a subdirectory. May be repeated |
 | `-e, --exclude <regex>` | Leave out anything that matches |
 | `-s, --standard` | Send the private headers to `private/` |
-| `-n, --not-all` | Drop whatever no pattern claimed |
+| `--not-all` | Drop whatever no pattern claimed |
 | `-c, --copy` | Copy the headers instead of pointing at them |
-| `-d, --dryrun` | Print what would happen |
+| `-n, --dry-run` | Print what would happen |
 | `-f, --force` | Clear the destination first |
 
 **By default nothing is copied.** What lands in `<dest>` is a one line stub holding a relative `#include` of the real header, with forward slashes whatever the platform. Editing the header in its own directory is then the only place it is edited, and the include directory never goes stale. `-c` copies instead, which is what an install wants.
@@ -129,7 +129,7 @@ Builds an include directory out of a source tree. Headers are found wherever the
 
 `-i` takes two arguments, a pattern and the subdirectory that what matches it goes into, and may be given once for each subdirectory wanted. `-s` is shorthand for the public and private convention, sending a header whose name ends in `_p` to `private/`.
 
-`-n` drops whatever no pattern claimed, rather than putting it at the top level. Note what that means alongside `-s` and nothing else: the private headers are claimed and the public ones are not, so `-s -n` gives an include directory holding `private/` and nothing besides.
+`--not-all` drops whatever no pattern claimed, rather than putting it at the top level. Note what that means alongside `-s` and nothing else: the private headers are claimed and the public ones are not, so `-s --not-all` gives an include directory holding `private/` and nothing besides.
 
 Timestamps decide whether to write, so running it again does nothing. Without `-f` whatever was already in the destination stays, which is what `qm_sync_include` relies on when it decides not to run the command at all.
 
@@ -148,7 +148,7 @@ Works out what shared libraries the named binaries need, finds them, and copies 
 | `-L, --linkdir <dir>` | Another directory to look in. May be repeated |
 | `-e, --exclude <regex>` | Do not deploy anything matching, nor go on through it |
 | `-s, --standard` | Leave the C and C++ runtime and the system libraries alone |
-| `-d, --dryrun` | Print what was resolved and copy nothing |
+| `-n, --dry-run` | Print what was resolved and copy nothing |
 | `-f, --force` | Overwrite what is already in the output directory |
 
 How a dependency is discovered is not the same anywhere. Windows reads the import table of the PE file. macOS asks `otool`. Linux asks `patchelf` for the binary's own `DT_NEEDED` and `ldd` for what those names resolve to, which is why it is the direct dependencies that are followed rather than the flattened list a loader would report.

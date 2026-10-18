@@ -230,14 +230,14 @@ class TestTheWalkGoesThroughABundle(FrameworkTestCase):
     def test_every_one_of_them_is_resolved_in_turn(self):
         """Each thing found is then resolved itself, so there is a line for the
         application and one for each of the three behind it."""
-        r = self.deploy("-s", "-d", "-V")
+        r = self.deploy("-s", "-n", "-V")
         self.assertOk(r)
         resolved = [line for line in r.out.splitlines() if line.startswith("Resolve:")]
         self.assertEqual(len(resolved), 4, msg=str(r))
 
     def test_the_one_in_the_middle_is_resolved_as_the_library_inside_it(self):
         """A bundle has nothing to read. What the walk opens is the library."""
-        r = self.deploy("-s", "-d", "-V")
+        r = self.deploy("-s", "-n", "-V")
         self.assertOk(r)
         self.assertOut(r, f"{self.LIB}.framework/Versions/A/{self.LIB}")
 
@@ -325,7 +325,7 @@ class TestAFrameworkNothingLinks(FrameworkTestCase):
 
 class TestTheGraphThroughAFramework(FrameworkTestCase):
     def test_a_dry_run_reports_the_framework_and_writes_nothing(self):
-        r = self.deploy("-s", "-d")
+        r = self.deploy("-s", "-n")
         self.assertOk(r)
         self.assertOut(r, f"{self.LIB}.framework")
         self.assertFalse(self.out.exists(), msg=f"tree: {self.tree()}")

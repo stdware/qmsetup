@@ -116,7 +116,7 @@ class TestClassifying(IncsyncTestCase):
         self.assertFile("include/foo.h")
 
     def test_not_all_drops_whatever_no_pattern_claimed(self):
-        self.assertOk(self.run_cmd("incsync", "src", "include", "-s", "-n"))
+        self.assertOk(self.run_cmd("incsync", "src", "include", "-s", "--not-all"))
         self.assertFile("include/private/qux_p.h")
         self.assertNoFile("include/foo.h")
         self.assertNoFile("include/bar.hpp")
@@ -190,7 +190,7 @@ class TestAcrossDrives(IncsyncTestCase):
 
 class TestDryRunForceAndVerbosity(IncsyncTestCase):
     def test_dryrun_writes_nothing(self):
-        r = self.run_cmd("incsync", "src", "include", "-d")
+        r = self.run_cmd("incsync", "src", "include", "-n")
         self.assertOk(r)
         self.assertOut(r, "Sync: from")
         self.assertNoDir("include")

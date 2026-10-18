@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
             cli::Option({"-p", "--project"}, "Set project name").arg("name"),
             cli::Option({"-w", "--warning"}, "Generate warning text").arg("file", false),
             cli::Option({"-f", "--force"}, "Skip calculating hash and overwrite always"),
-            cli::Option({"-d", "--dryrun"}, "Print contents only"),
+            cli::Option({"-n", "--dry-run"}, "Print contents only"),
         });
         command.addOption(verboseOption);
         command.setHandler(cmd_configure);
@@ -88,9 +88,9 @@ int main(int argc, char *argv[]) {
                 .multi(),
             cli::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             cli::Option({"-s", "--standard"}, "Add standard public-private name pattern"),
-            cli::Option({"-n", "--not-all"}, "Ignore unclassified files"),
+            cli::Option({"--not-all"}, "Ignore unclassified files"),
             cli::Option({"-c", "--copy"}, "Copy files rather than indirect reference"),
-            cli::Option({"-d", "--dryrun"}, "Print reorganizing details only"),
+            cli::Option({"-n", "--dry-run"}, "Print reorganizing details only"),
             cli::Option({"-f", "--force"}, "Force deleting existing directory"),
         });
         command.addOption(verboseOption);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
                 .shortMatch(cli::Option::ShortMatchSingleChar),
             cli::Option({"-e", "--exclude"}, "Exclude a path pattern").arg("regex").multi(),
             cli::Option({"-s", "--standard"}, "Ignore C/C++ runtime and system libraries"),
-            cli::Option({"-d", "--dryrun"}, "Print dependencies only"),
+            cli::Option({"-n", "--dry-run"}, "Print dependencies only"),
             cli::Option({"-f", "--force"}, "Force overwrite existing files"),
         });
         command.addOption(verboseOption);

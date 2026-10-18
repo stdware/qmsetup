@@ -29,7 +29,7 @@ class TestUnknownNames(QmTestCase):
         self.assertRefused(self.run_cmd("copy", "--notanoption", "a", "b"))
 
     def test_an_option_belonging_to_another_command_is_unknown_here(self):
-        self.assertRefused(self.run_cmd("configure", "out.h", "--linkdir", "somewhere", "-d"))
+        self.assertRefused(self.run_cmd("configure", "out.h", "--linkdir", "somewhere", "-n"))
 
 
 class TestNothingOnTheLine(QmTestCase):
@@ -54,7 +54,7 @@ class TestMissingArguments(QmTestCase):
         self.assertRefused(self.run_cmd("incsync", "src"))
 
     def test_configure_with_only_an_option_is_refused(self):
-        self.assertRefused(self.run_cmd("configure", "-d"))
+        self.assertRefused(self.run_cmd("configure", "-n"))
 
     def test_touch_with_only_an_option_is_refused(self):
         self.assertRefused(self.run_cmd("touch", "-V"))
@@ -74,7 +74,7 @@ class TestArgumentCounts(QmTestCase):
         self.assertRefused(self.run_cmd("incsync", "src", "dest", "-i", "onlyregex"))
 
     def test_an_option_given_more_often_than_it_may_be_is_refused(self):
-        self.assertRefused(self.run_cmd("configure", "out.h", "-p", "one", "-p", "two", "-d"))
+        self.assertRefused(self.run_cmd("configure", "out.h", "-p", "one", "-p", "two", "-n"))
 
 
 class TestFailuresFromTheWork(QmTestCase):

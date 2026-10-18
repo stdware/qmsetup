@@ -168,11 +168,11 @@
         },
         {
             "name": "a dry run writes nothing",
-            "why": "--dryrun resolves everything and touches nothing, plugins included.",
+            "why": "--dry-run resolves everything and touches nothing, plugins included.",
             "args": [
                 "deploy", "{app_exe}", "{app_lib}", "{app_leaf}", "{app_plugin}", "{app_plugin_sdk}",
                 "-c", "{sdk_plugin_alone}", "{dir.app_sdk_plugins}",
-                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s", "-d"
+                "-L", "{dir.sdk_bin}", "-o", "{dir.app_bin}", "-s", "-n"
             ],
             "resolves": ["sdk_lib", "sdk_leaf", "sdk_alone"],
             "unchanged": true,

@@ -105,7 +105,7 @@ function(qm_sync_include _src_dir _dest_dir)
         endif()
 
         if(FUNC_NO_ALL)
-            list(APPEND _args -n)
+            list(APPEND _args --not-all)
         endif()
 
         set(_even off)
@@ -151,7 +151,7 @@ function(qm_sync_include _src_dir _dest_dir)
             # and nothing in it is a variable reference or an escape.
             install(CODE "
                 get_filename_component(_install_dir [==[${_install_dir}]==] ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
-                set(_command [==[${QMSETUP_CORECMD_EXECUTABLE};incsync;-d;${_args};${_src_dir}]==])
+                set(_command [==[${QMSETUP_CORECMD_EXECUTABLE};incsync;-n;${_args};${_src_dir}]==])
 
                 execute_process(
                     COMMAND \${_command} \${_install_dir}

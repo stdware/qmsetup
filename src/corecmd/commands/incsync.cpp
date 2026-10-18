@@ -21,7 +21,7 @@ int cmd_incsync(const cli::ParseResult &result) {
     bool force = isForceSet(result);
     bool standard = isStandardSet(result);
     bool copy = result.option("-c").has_value();
-    bool all = !result.option("-n").has_value();
+    bool all = !result.option("--not-all").has_value();
 
     const fs::path &src =
         stdc::path::clean_path(fs::absolute(str2tstr(argumentValue(result, 0))));

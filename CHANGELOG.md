@@ -10,6 +10,7 @@
 
 ### Changed
 
+- The dry run of `qmcorecmd configure`, `incsync` and `deploy` is now `-n, --dry-run`, the names that GNU make, rsync and Git use, in place of `-d, --dryrun`. `--not-all` of `incsync` no longer has the short name `-n`. The former names are no longer accepted.
 - The `<proj>_add_*` commands in `cmake/buildsystem` no longer grant execute permission to the installed binaries unless `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS` is on.
 
 ### Fixed

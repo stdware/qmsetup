@@ -40,7 +40,7 @@ inline bool isForceSet(const cli::ParseResult &result) {
 }
 
 inline bool isDryRunSet(const cli::ParseResult &result) {
-    return result.option("-d").has_value();
+    return result.option("-n").has_value();
 }
 
 inline bool isVerboseSet(const cli::ParseResult &result) {

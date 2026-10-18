@@ -58,7 +58,7 @@ def resolution_problem(executable: str, fixture_dir: str) -> str:
             [
                 executable, "deploy", layout.path("app_exe"),
                 "-L", layout.directory("sdk_bin"),
-                "-d", "-V",
+                "-n", "-V",
             ],
             cwd=sandbox,
             stdout=subprocess.PIPE,
@@ -257,7 +257,7 @@ class TestDeployCommandLine(DeployTestCase):
         self.assertOut(r, "deploy")
 
     def test_an_option_without_a_file_is_refused(self):
-        self.assertRefused(self.run_cmd("deploy", "-d"))
+        self.assertRefused(self.run_cmd("deploy", "-n"))
 
     def test_an_unknown_option_is_refused(self):
         self.assertRefused(
@@ -266,12 +266,12 @@ class TestDeployCommandLine(DeployTestCase):
 
     def test_a_file_that_is_not_a_binary_is_refused(self):
         self.write("notabinary.txt", "not a binary at all")
-        self.assertRefused(self.run_cmd("deploy", "notabinary.txt", "-d"))
+        self.assertRefused(self.run_cmd("deploy", "notabinary.txt", "-n"))
 
     def test_a_copy_source_that_is_not_a_binary_is_refused(self):
         self.write("notabinary.txt", "not a binary at all")
         self.assertRefused(
-            self.run_cmd("deploy", self.layout.path("app_exe"), "-c", "notabinary.txt", "out", "-d")
+            self.run_cmd("deploy", self.layout.path("app_exe"), "-c", "notabinary.txt", "out", "-n")
         )
 
     def test_a_search_path_may_be_joined_to_its_option(self):
@@ -279,23 +279,23 @@ class TestDeployCommandLine(DeployTestCase):
         joined = self.run_cmd(
             "deploy", self.layout.path("app_exe"),
             f"-L{self.layout.directory('sdk_bin')}",
-            "-d", "-V",
+            "-n", "-V",
         )
         separate = self.run_cmd(
-            "deploy", self.layout.path("app_exe"), *self.search_paths(), "-d", "-V"
+            "deploy", self.layout.path("app_exe"), *self.search_paths(), "-n", "-V"
         )
         self.assertOk(joined)
         self.assertEqual(joined.out, separate.out)
 
     def test_a_dry_run_reports_without_being_asked_to(self):
         """There is nothing else for a dry run to do, so it implies --verbose."""
-        r = self.run_cmd("deploy", self.layout.path("app_exe"), "-d")
+        r = self.run_cmd("deploy", self.layout.path("app_exe"), "-n")
         self.assertOk(r)
         self.assertOut(r, "Resolve:")
 
     def test_several_binaries_may_be_named_at_once(self):
         r = self.run_cmd(
-            "deploy", *self.program(), *self.search_paths(), "-d", "-V"
+            "deploy", *self.program(), *self.search_paths(), "-n", "-V"
         )
         self.assertOk(r)
         self.assertOut(r, "Resolve:")
@@ -317,7 +317,7 @@ class TestResolutionDetails(DeployTestCase):
         platform happens to have resolved alongside them.
         """
         r = self.run_cmd(
-            "deploy", self.layout.path("app_exe"), *self.search_paths(), "-s", "-d", "-V"
+            "deploy", self.layout.path("app_exe"), *self.search_paths(), "-s", "-n", "-V"
         )
         self.assertOk(r)
         resolved = [line for line in r.out.splitlines() if line.startswith("Resolve:")]
@@ -327,7 +327,7 @@ class TestResolutionDetails(DeployTestCase):
     def test_a_library_beside_the_binary_needs_no_search_path(self):
         """The directory a named binary sits in is searched without being asked,
         which is why the program's own libraries need no -L."""
-        r = self.run_cmd("deploy", self.layout.path("app_exe"), "-d", "-V")
+        r = self.run_cmd("deploy", self.layout.path("app_exe"), "-n", "-V")
         self.assertOk(r)
         self.assertResolved(r, "app_lib")
 
