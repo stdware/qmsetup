@@ -1,0 +1,6 @@
+# cmd reads a batch file with LF line endings unreliably: a goto or a call can miss its label.
+# windeps.bat failed that way to parse its own arguments.
+*.bat text eol=crlf
+
+# bash rejects a script with CRLF line endings.
+*.sh text eol=lf
