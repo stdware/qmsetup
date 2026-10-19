@@ -42,6 +42,35 @@ foreach(_module Core Gui Widgets)
 endforeach()
 
 # ------------------------------------------------------------------
+# The libraries of the system on Linux
+# ------------------------------------------------------------------
+
+# With STANDARD a library under a library directory of the system, such as libGL of the
+# graphics driver and libxcb, which QtGui and the platform plugin require, is left to the
+# machine. The ICU that Qt installs beside its libraries is deployed, because other systems
+# lack its version.
+if(CMAKE_HOST_UNIX AND NOT CMAKE_HOST_APPLE)
+    set(_system)
+    set(_icu)
+
+    foreach(_item IN LISTS _deployed)
+        if(_item MATCHES "^lib(GL|EGL|GLX|OpenGL|xcb)[.-]")
+            list(APPEND _system "${_item}")
+        elseif(_item MATCHES "^libicuuc[.]so")
+            set(_icu on)
+        endif()
+    endforeach()
+
+    qmtest_false("no library of the system is deployed" "${_system}")
+
+    file(GLOB _qt_icu "${_qt_library_dir}/libicuuc.so*")
+
+    if(_qt_icu)
+        qmtest_true("the ICU of Qt is deployed" "${_icu}")
+    endif()
+endif()
+
+# ------------------------------------------------------------------
 # The plugins of those modules
 # ------------------------------------------------------------------
 

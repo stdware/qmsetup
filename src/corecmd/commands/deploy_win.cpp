@@ -67,7 +67,8 @@ namespace Deploy {
         return {names.begin(), names.end()};
     }
 
-    bool isSystemLibrary(const TString &fileName, bool standard) {
+    bool isSystemLibrary(const fs::path &path, const TString &fileName, bool standard) {
+        std::ignore = path;
         // Never deployed, asked for or not. An api-ms-win or ext-ms-win name is an API set rather
         // than a file, and resolves to something under the system directory anyway.
         if (isUnderSystemDirectory(fileName) ||

@@ -251,7 +251,8 @@ namespace Deploy {
         return path;
     }
 
-    bool isSystemLibrary(const TString &fileName, bool standard) {
+    bool isSystemLibrary(const fs::path &path, const TString &fileName, bool standard) {
+        std::ignore = path;
         // Nothing is filtered until --standard says so.
         if (!standard) {
             return false;
@@ -374,17 +375,40 @@ namespace Deploy {
         return path;
     }
 
-    bool isSystemLibrary(const TString &fileName, bool standard) {
+    // Returns whether path is under a library directory of the system: /lib, /lib32, /lib64,
+    // /libx32 or their counterparts under /usr, with their subdirectories, such as the
+    // directories of the architectures of Debian. /usr/local holds what the user installed and
+    // is not one.
+    bool isUnderSystemDirectory(const fs::path &path) {
+        static const char *const directories[] = {"/lib",     "/lib32",     "/lib64",
+                                                  "/libx32",  "/usr/lib",   "/usr/lib32",
+                                                  "/usr/lib64", "/usr/libx32"};
+        for (const auto directory : directories) {
+            const auto relative = stdc::path::lexically_relative(path, directory);
+            if (!relative.empty() && *relative.begin() != "..") {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool isSystemLibrary(const fs::path &path, const TString &fileName, bool standard) {
         // Nothing is filtered until --standard says so.
         if (!standard) {
             return false;
+        }
+        // A library of the system, such as libGL of the graphics driver or libxcb, is provided
+        // by every machine, and the one of the machine has to be used. The libraries that Qt
+        // for Linux installs beside itself are not of the system, its ICU among them, whose
+        // version other systems lack. The ICU was once passed over by its name.
+        if (isUnderSystemDirectory(path)) {
+            return true;
         }
         return stdc::str::starts_with(fileName, "libstdc++") ||
                stdc::str::starts_with(fileName, "libgcc") ||
                stdc::str::starts_with(fileName, "libglib") ||
                stdc::str::starts_with(fileName, "libpthread") ||
                stdc::str::starts_with(fileName, "libgthread") ||
-               stdc::str::starts_with(fileName, "libicu") ||
                stdc::str::starts_with(fileName, "libc.so") ||
                stdc::str::starts_with(fileName, "libc-") ||
                stdc::str::starts_with(fileName, "libdl.so") ||

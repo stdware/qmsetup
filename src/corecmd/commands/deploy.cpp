@@ -144,7 +144,7 @@ namespace {
                 }
 
                 const TString fileName = stdc::str::to_lower(TString(path.filename()));
-                if (Deploy::isSystemLibrary(fileName, request.standard) ||
+                if (Deploy::isSystemLibrary(path, fileName, request.standard) ||
                     stdc::contains(visited, fileName)) {
                     continue;
                 }

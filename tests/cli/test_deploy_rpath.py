@@ -39,7 +39,6 @@ RUNTIME_PREFIXES = (
     "libgcc",
     "libglib",
     "libgthread",
-    "libicu",
     "libm.so",
     "libm-",
     "libpthread",

@@ -64,9 +64,10 @@ qm_get_qt_plugins(_iconengines MODULES Gui ${_platform_args})
 list(FILTER _iconengines INCLUDE REGEX "^iconengines/")
 list(GET _iconengines 0 _named)
 
-# check.cmake reads which plugins were chosen
+# check.cmake reads which plugins were chosen, and the library directory of Qt
 file(WRITE "${CMAKE_BINARY_DIR}/chosen.cmake"
-    "set(_excluded [==[${_excluded}]==])\nset(_named [==[${_named}]==])\n")
+    "set(_excluded [==[${_excluded}]==])\nset(_named [==[${_named}]==])\n"
+    "set(_qt_library_dir [==[${QT6_INSTALL_PREFIX}/${QT6_INSTALL_LIBS}]==])\n")
 
 # Without VERBOSE, unlike the other deployments here. windeps.bat once wrote
 # "ECHO is off." in place of the absent -V, qmcorecmd failed on it, and the

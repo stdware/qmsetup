@@ -48,14 +48,18 @@ namespace Deploy {
     std::vector<fs::path> resolveDependencies(const fs::path &file, const Request &request,
                                               std::vector<std::string> *unparsed);
 
-    /// Whether the machine already has this one, so that a deployment passes it over.
+    /// Returns whether the machine already has the library at \a path, so that a deployment
+    /// passes it over.
     ///
-    /// Windows never deploys what is under its system directories, whether or not \c --standard
-    /// was asked for, and \c --standard drops the MSVC runtime as well. Unix filters nothing
-    /// until \c --standard says so.
+    /// Windows never deploys a library under its system directories, whether or not
+    /// \c --standard is given, and \c --standard drops the MSVC runtime as well. Unix filters
+    /// nothing without \c --standard. With it, Linux passes over a library under a library
+    /// directory of the system and the C and C++ runtimes, and macOS the C++ runtime and
+    /// libSystem.
     ///
-    /// \param fileName lower cased, so anything matched against it has to be lower case too
-    bool isSystemLibrary(const TString &fileName, bool standard);
+    /// \param fileName the file name of \a path, lower cased, so anything matched against it has
+    /// to be lower case too
+    bool isSystemLibrary(const fs::path &path, const TString &fileName, bool standard);
 
     /// Told about each dependency as it is accepted, for whatever a platform has to remember.
     ///
