@@ -198,8 +198,10 @@ function(qm_add_copy_command _target)
             get_filename_component(_build_dir \"${_dest}\" ABSOLUTE BASE_DIR \"${_dest_base}\")
             file(RELATIVE_PATH _rel_path \"${QMSETUP_BUILD_DIR}\" \${_build_dir})
 
-            # Calculate real install directory
-            get_filename_component(_dest \"${FUNC_INSTALL_DIR}/\${_rel_path}\" ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
+            # Calculate real install directory. A relative prefix of cmake --install --prefix is
+            # relative to the current directory, and the copy runs in the source directory.
+            get_filename_component(_install_prefix \"\${CMAKE_INSTALL_PREFIX}\" ABSOLUTE)
+            get_filename_component(_dest \"${FUNC_INSTALL_DIR}/\${_rel_path}\" ABSOLUTE BASE_DIR \"\${_install_prefix}\")
     
             execute_process(
                 COMMAND \${CMAKE_COMMAND}

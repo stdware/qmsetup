@@ -18,6 +18,7 @@
 
 ### Fixed
 
+- `qm_deploy_directory`, `qm_add_copy_command`, `qm_sync_include` and `qm_setup_doxygen` now install into a relative prefix of `cmake --install --prefix`, which CMake resolves against the current directory. The destination was previously resolved against the directory in which the command of the install rule runs, and `qm_deploy_directory` found no binary to deploy.
 - `qm_deploy_directory` now resolves its directories while installing, a relative `<install_dir>` against the install prefix, so that `cmake --install --prefix` moves the deployment with the other install rules. The directories were previously fixed while configuring, and the deployment went into the configured prefix. `"${CMAKE_INSTALL_PREFIX}"` still names the configured prefix, and `.` names the install prefix. A relative `LIBRARY_DIR`, `PLUGIN_DIR` or `QML_DIR` remains relative to `<install_dir>`.
 - `qm_deploy_directory` on Windows without `VERBOSE` now deploys. `windeps.bat` wrote `ECHO is off.` in place of the absent `-V`, which `qmcorecmd` could not open, and the failure was not passed on, so the install succeeded with nothing deployed. Every error of the script now fails the install, and the arguments file is no longer left in the install tree.
 - The batch scripts are checked out with CRLF line endings whatever `core.autocrlf` says, and the shell scripts with LF. cmd reads a batch file with LF line endings unreliably, and `windeps.bat` failed to parse its own arguments that way.

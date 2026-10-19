@@ -489,11 +489,14 @@ function(qm_deploy_directory _install_dir)
     # way in, being what varies.
     #
     # The directories are resolved here rather than while configuring, against the install prefix
-    # that cmake --install --prefix may replace.
+    # that cmake --install --prefix may replace. A relative prefix of --prefix is relative to the
+    # current directory, as CMake installs the files, and is made absolute first: the script runs
+    # in the install directory, where a relative install directory named a directory inside it.
     install(CODE "
         ${_comment_code}
+        get_filename_component(_install_prefix \"\${CMAKE_INSTALL_PREFIX}\" ABSOLUTE)
         get_filename_component(_install_dir [==[${_install_dir}]==] ABSOLUTE
-            BASE_DIR \"\${CMAKE_INSTALL_PREFIX}\")
+            BASE_DIR \"\${_install_prefix}\")
         get_filename_component(_lib_dir [==[${_lib_dir}]==] ABSOLUTE BASE_DIR \"\${_install_dir}\")
         get_filename_component(_plugin_dir [==[${_plugin_dir}]==] ABSOLUTE
             BASE_DIR \"\${_install_dir}\")

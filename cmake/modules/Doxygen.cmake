@@ -302,7 +302,10 @@ function(qm_setup_doxygen _target)
 
         install(CODE "
             message(STATUS \"Installing HTML documentation\")
-            get_filename_component(_install_dir \"${_install_dir}\" ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
+            # A relative prefix of cmake --install --prefix is relative to the current directory,
+            # and the command runs in the source directory.
+            get_filename_component(_install_prefix \"\${CMAKE_INSTALL_PREFIX}\" ABSOLUTE)
+            get_filename_component(_install_dir \"${_install_dir}\" ABSOLUTE BASE_DIR \"\${_install_prefix}\")
             file(MAKE_DIRECTORY \${_install_dir})
             execute_process(
                 COMMAND ${_install_command_quoted}

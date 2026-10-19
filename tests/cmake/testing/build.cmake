@@ -30,20 +30,11 @@ file(REMOVE_RECURSE "${_configured_prefix}")
 
 # Runs a step, and stops here rather than letting the checks report on a tree
 # that was never finished.
-#
-# The output of installing is printed even if the step succeeds, because the
-# install rules are what most of these projects test, and a check that fails
-# is otherwise left without what the rules said. CTest shows it only for a
-# test that fails.
 function(step _what)
     execute_process(COMMAND ${ARGN} RESULT_VARIABLE _code OUTPUT_VARIABLE _out ERROR_VARIABLE _out)
 
     if(NOT _code EQUAL 0)
         message(FATAL_ERROR "${_what} failed:\n${_out}")
-    endif()
-
-    if(_what STREQUAL "installing")
-        message(STATUS "installing:\n${_out}")
     endif()
 endfunction()
 
@@ -94,8 +85,28 @@ if(NOT _code EQUAL 0)
     message(FATAL_ERROR "configuring failed:\n${_out}")
 endif()
 step("building" ${CMAKE_COMMAND} --build "${QMTEST_PROJECT_BUILD}" --config Release)
-step("installing" ${CMAKE_COMMAND} --install "${QMTEST_PROJECT_BUILD}" --config Release
-    --prefix "${QMTEST_INSTALL_PREFIX}")
+# With a relative --prefix, from the parent of the prefix, so that an install rule that resolves
+# its destination against the prefix is seen to accept a relative one, which CMake resolves
+# against the current directory.
+#
+# The output of installing is printed even if the step succeeds, because the install rules are
+# what most of these projects test, and a check that fails is otherwise left without what the
+# rules printed. CTest shows the output only for a test that fails.
+get_filename_component(_prefix_parent "${QMTEST_INSTALL_PREFIX}" DIRECTORY)
+get_filename_component(_prefix_name "${QMTEST_INSTALL_PREFIX}" NAME)
+execute_process(
+    COMMAND ${CMAKE_COMMAND} --install "${QMTEST_PROJECT_BUILD}" --config Release
+        --prefix "${_prefix_name}"
+    WORKING_DIRECTORY "${_prefix_parent}"
+    RESULT_VARIABLE _code
+    OUTPUT_VARIABLE _out
+    ERROR_VARIABLE _out
+)
+
+if(NOT _code EQUAL 0)
+    message(FATAL_ERROR "installing failed:\n${_out}")
+endif()
+message(STATUS "installing:\n${_out}")
 
 qmtest_not_exists("nothing is installed into the prefix of the configuration"
     "${_configured_prefix}")

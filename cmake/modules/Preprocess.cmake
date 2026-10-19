@@ -156,9 +156,12 @@ function(qm_sync_include _src_dir _dest_dir)
             # list, which would split a path that holds a semicolon. The loop
             # compares a length rather than a quoted string, because the install
             # rule runs without the policies of the project, and before CMake 4.0
-            # a quoted operand could be read as the name of a variable (CMP0054).
+            # a quoted operand could be read as the name of a variable (CMP0054). A relative
+            # prefix of cmake --install --prefix is relative to the current directory, and
+            # qmcorecmd runs in the source directory, so the prefix is made absolute first.
             install(CODE "
-                get_filename_component(_install_dir [==[${_install_dir}]==] ABSOLUTE BASE_DIR \${CMAKE_INSTALL_PREFIX})
+                get_filename_component(_install_prefix \"\${CMAKE_INSTALL_PREFIX}\" ABSOLUTE)
+                get_filename_component(_install_dir [==[${_install_dir}]==] ABSOLUTE BASE_DIR \"\${_install_prefix}\")
                 set(_command [==[${QMSETUP_CORECMD_EXECUTABLE};incsync;-n;--list;mapping;${_args};${_src_dir}]==])
 
                 execute_process(
