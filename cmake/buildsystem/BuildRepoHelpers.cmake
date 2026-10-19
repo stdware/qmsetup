@@ -337,6 +337,32 @@ function(${_F}_add_application _target)
             ${_permissions}
         )
 
+        # cmake --install copies a bundle whole from the build, together with the archives of the
+        # static libraries, which are built into Contents/Frameworks of the bundle as the other
+        # libraries are. An archive is a development file, which is installed only with
+        # <proj>_DEVEL, and codesign rejects a bundle that holds one. The archives are therefore
+        # removed right after the copy, ahead of a later install rule that signs the bundle, such
+        # as qm_deploy_directory. A file is taken for an archive by its name and by the report of
+        # file, which names an archive of a universal binary as well, whose magic number is that
+        # of every universal binary.
+        if(APPLE AND ${_V}_MACOSX_BUNDLE_NAME AND NOT ${_V}_DEVEL)
+            set(_bundle "${_install_runtime_dir}/${${_V}_MACOSX_BUNDLE_NAME}.app")
+            install(CODE "
+                get_filename_component(_install_prefix \"\${CMAKE_INSTALL_PREFIX}\" ABSOLUTE)
+                get_filename_component(_bundle [==[${_bundle}]==] ABSOLUTE
+                    BASE_DIR \"\${_install_prefix}\")
+                file(GLOB_RECURSE _archives \"\$ENV{DESTDIR}\${_bundle}/*.a\")
+                foreach(_archive IN LISTS _archives)
+                    execute_process(COMMAND file -b \"\${_archive}\"
+                        OUTPUT_VARIABLE _type COMMAND_ERROR_IS_FATAL ANY)
+                    if(_type MATCHES \"ar archive\")
+                        message(STATUS \"Removing the archive: \${_archive}\")
+                        file(REMOVE \"\${_archive}\")
+                    endif()
+                endforeach()
+            ")
+        endif()
+
         if(NOT FUNC_NO_INSTALL_PDB AND ${_V}_INSTALL_PDB)
             _repo_install_pdb(${_target} ${_install_pdb_dir})
         endif()

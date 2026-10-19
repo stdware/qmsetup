@@ -89,9 +89,10 @@ set(_built_projects
     modules/private/Generate/test_binary_resource
 )
 
-# Frameworks exist only on Apple platforms.
+# Frameworks and bundles exist only on Apple platforms.
 if(APPLE)
     list(APPEND _built_projects modules/Deploy/test_deploy_framework)
+    list(APPEND _built_projects buildsystem/BuildRepoHelpers/test_bundle_archives)
 endif()
 
 if(WIN32)
