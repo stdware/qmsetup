@@ -51,10 +51,11 @@ endif()
         <proj>_INSTALL_NAME: string, default: ${PROJECT_NAME}
         <proj>_INSTALL_VERSION: string, default: ${PROJECT_VERSION}
         <proj>_INSTALL_NAMESPACE: string, default: ${<proj>_INSTALL_NAME}
-        <proj>_INSTALL_CONFIG_TEMPLATE: string, default: ${<proj>_INSTALL_NAME}Config.cmake.in
+        <proj>_INSTALL_CONFIG_TEMPLATE: string, default: as qm_basic_install chooses it
         <proj>_INSTALL_PDB: boolean, default: false
         <proj>_INSTALL_DIR_USE_DEBUG_PREFIX: boolean, default: false
-        <proj>_EXPORT: string, default: ${PROJECT_NAME}
+        <proj>_EXPORT: string, default: ${<proj>_INSTALL_NAME}Targets, or <lowercase-name>-targets
+            with a lower case config template
         <proj>_BUILD_BASE_DIR: string, default: ${QMSETUP_BUILD_DIR}
         <proj>_INSTALL_BASE_DIR: string, default: .
         <proj>_CONFIG_HEADER_PATH: string, default: null
@@ -151,10 +152,24 @@ macro(${_F}_init_buildsystem)
     _repo_set_option(${_V}_INSTALL_NAMESPACE ${${_V}_INSTALL_NAME})
 
     # Set install config template
-    _repo_set_option(${_V}_INSTALL_CONFIG_TEMPLATE ${CMAKE_CURRENT_LIST_DIR}/${${_V}_INSTALL_NAME}Config.cmake.in)
+    _qm_default_config_template(_default_config_template "${CMAKE_CURRENT_LIST_DIR}" "${${_V}_INSTALL_NAME}")
+    _repo_set_option(${_V}_INSTALL_CONFIG_TEMPLATE ${_default_config_template})
 
-    # Export targets
-    _repo_set_option(${_V}_EXPORT ${${_V}_INSTALL_NAME}Targets)
+    # Export targets, in the spelling of the config template
+    _qm_package_config_file_names(_default_config_file _default_version_file
+        "${${_V}_INSTALL_CONFIG_TEMPLATE}" "${${_V}_INSTALL_NAME}")
+    string(TOLOWER "${${_V}_INSTALL_NAME}" _default_lower_name)
+
+    if(_default_config_file STREQUAL "${_default_lower_name}-config.cmake")
+        _repo_set_option(${_V}_EXPORT ${_default_lower_name}-targets)
+    else()
+        _repo_set_option(${_V}_EXPORT ${${_V}_INSTALL_NAME}Targets)
+    endif()
+
+    unset(_default_config_template)
+    unset(_default_config_file)
+    unset(_default_version_file)
+    unset(_default_lower_name)
 
     # Set output directories
     _repo_set_option(${_V}_BUILD_BASE_DIR ${QMSETUP_BUILD_DIR})
@@ -744,6 +759,7 @@ endfunction()
     <proj>_install(
         [NO_EXPORT]
         [NO_INCLUDE]
+        [<arguments of qm_basic_install>...]
     )
 ]] #
 function(${_F}_install)
@@ -762,6 +778,7 @@ function(${_F}_install)
                 NAMESPACE ${${_V}_INSTALL_NAMESPACE}::
                 EXPORT ${${_V}_EXPORT}
                 WRITE_CONFIG_OPTIONS NO_CHECK_REQUIRED_COMPONENTS_MACRO
+                ${FUNC_UNPARSED_ARGUMENTS}
             )
         endif()
 

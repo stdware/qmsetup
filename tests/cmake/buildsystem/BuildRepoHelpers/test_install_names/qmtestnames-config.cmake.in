@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+# A marker, so that a test can tell this template from the one generated when
+# no template is given.
+set(QMTEST_NAMES_TEMPLATE on)
+
+include("${CMAKE_CURRENT_LIST_DIR}/qmtestnames-targets.cmake")

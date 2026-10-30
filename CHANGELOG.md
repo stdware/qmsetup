@@ -4,6 +4,7 @@
 
 ### Added
 
+- `VERSION_TEMPLATE` for `qm_basic_install`, which configures the package version file from a template in place of the file that `write_basic_package_version_file` writes.
 - `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`, which grants execute permission to every binary that qmsetup installs or deploys. It defaults to `OFF`.
 - `EXCLUDE` for `qm_deploy_directory`, which skips the dependencies whose paths match the given regular expressions.
 - `QMSETUP_MSVC_ABI`, which is `ON` if the C or the C++ compiler targets the MSVC ABI, clang with the GNU front end included.
@@ -13,6 +14,9 @@
 
 ### Changed
 
+- `qm_basic_install` names the package files after the spelling of the config template. A template named `<lowercase-name>-config.cmake.in` produces `<lowercase-name>-config.cmake` and `<lowercase-name>-config-version.cmake`, the other form that `find_package` searches for, where `<lowercase-name>` is the package name in lower case. Any other template produces `<name>Config.cmake` and `<name>ConfigVersion.cmake` as before. Without `CONFIG_TEMPLATE`, `qm_basic_install` takes `<lowercase-name>-config.cmake.in` of the current list directory if that file exists and `<name>Config.cmake.in` does not.
+- `<proj>_init_buildsystem` takes `<lowercase-name>-config.cmake.in` of the current list directory as the default of `<proj>_INSTALL_CONFIG_TEMPLATE` under the same condition, and then names the export set `<lowercase-name>-targets` in place of `<name>Targets`.
+- `<proj>_install` forwards the arguments it does not parse to `qm_basic_install`, such as `COMPATIBILITY` and `VERSION_TEMPLATE`.
 - The dry run of `qmcorecmd configure`, `incsync` and `deploy` is now `-n, --dry-run`, the names that GNU make, rsync and Git use, in place of `-d, --dryrun`. `--not-all` of `incsync` no longer has the short name `-n`. The former names are no longer accepted.
 - The `<proj>_add_*` commands in `cmake/buildsystem` no longer grant execute permission to the installed binaries unless `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS` is on.
 

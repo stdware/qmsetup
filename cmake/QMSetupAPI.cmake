@@ -1242,6 +1242,7 @@ endfunction()
         [COMPATIBILITY <compatibility>]
         [INSTALL_DIR <dir>]
         [CONFIG_TEMPLATE <file>]
+        [VERSION_TEMPLATE <file>]
         [NAMESPACE <namespace>]
         [EXPORT <sets...>]
 
@@ -1250,10 +1251,18 @@ endfunction()
     )
 
   Include ``GNUInstallDirs``, ``CMakePackageConfigHelpers`` before calling this function.
+
+  A template named ``<lowercase-name>-config.cmake.in`` gives ``<lowercase-name>-config.cmake``
+  and ``<lowercase-name>-config-version.cmake``, any other ``<name>Config.cmake`` and
+  ``<name>ConfigVersion.cmake``. The default template is the lower case one of the current list
+  directory if ``<name>Config.cmake.in`` is absent there.
+
+  ``VERSION_TEMPLATE`` is configured with ``@ONLY`` as the version file in place of
+  ``write_basic_package_version_file``.
 #]==]
 function(qm_basic_install)
     set(options)
-    set(oneValueArgs NAME VERSION COMPATIBILITY INSTALL_DIR CONFIG_TEMPLATE NAMESPACE)
+    set(oneValueArgs NAME VERSION COMPATIBILITY INSTALL_DIR CONFIG_TEMPLATE VERSION_TEMPLATE NAMESPACE)
     set(multiValueArgs WRITE_VERSION_OPTIONS WRITE_CONFIG_OPTIONS EXPORT)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -1263,7 +1272,14 @@ function(qm_basic_install)
     qm_set_value(_version FUNC_VERSION PROJECT_VERSION "0.0.0.0")
     qm_set_value(_compatibility FUNC_COMPATIBILITY AnyNewerVersion)
     qm_set_value(_install_dir FUNC_INSTALL_DIR "${_lib_dir}/cmake/${_name}")
-    qm_set_value(_config_template FUNC_CONFIG_TEMPLATE "${CMAKE_CURRENT_LIST_DIR}/${_name}Config.cmake.in")
+
+    if(FUNC_CONFIG_TEMPLATE)
+        set(_config_template "${FUNC_CONFIG_TEMPLATE}")
+    else()
+        _qm_default_config_template(_config_template "${CMAKE_CURRENT_LIST_DIR}" "${_name}")
+    endif()
+
+    _qm_package_config_file_names(_config_file _version_file "${_config_template}" "${_name}")
 
     set(_namespace)
 
@@ -1293,32 +1309,62 @@ function(qm_basic_install)
             string(APPEND _config_content "include(\"\${CMAKE_CURRENT_LIST_DIR}/${_item}\")\n")
         endforeach()
 
-        set(_config_template "${CMAKE_CURRENT_BINARY_DIR}/${_name}Config.cmake.in")
+        set(_config_template "${CMAKE_CURRENT_BINARY_DIR}/${_config_file}.in")
         file(WRITE ${_config_template} ${_config_content})
     endif()
 
     # Add version file
-    write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/${_name}ConfigVersion.cmake"
-        VERSION ${_version}
-        COMPATIBILITY ${_compatibility}
-        ${FUNC_WRITE_VERSION_OPTIONS}
-    )
+    if(FUNC_VERSION_TEMPLATE)
+        get_filename_component(_version_template "${FUNC_VERSION_TEMPLATE}" ABSOLUTE)
+        configure_file("${_version_template}" "${CMAKE_CURRENT_BINARY_DIR}/${_version_file}" @ONLY)
+    else()
+        write_basic_package_version_file(
+            "${CMAKE_CURRENT_BINARY_DIR}/${_version_file}"
+            VERSION ${_version}
+            COMPATIBILITY ${_compatibility}
+            ${FUNC_WRITE_VERSION_OPTIONS}
+        )
+    endif()
 
     # Add configuration file
     configure_package_config_file(
         ${_config_template}
-        "${CMAKE_CURRENT_BINARY_DIR}/${_name}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${_config_file}"
         INSTALL_DESTINATION ${_install_dir}
         ${FUNC_WRITE_CONFIG_OPTIONS}
     )
 
     # Install cmake files
     install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/${_name}Config.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/${_name}ConfigVersion.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${_config_file}"
+        "${CMAKE_CURRENT_BINARY_DIR}/${_version_file}"
         DESTINATION ${_install_dir}
     )
+endfunction()
+
+# Sets the names of the package files of <name> in the spelling of <template>.
+function(_qm_package_config_file_names _config_var _version_var _template _name)
+    get_filename_component(_template_name "${_template}" NAME)
+    string(TOLOWER "${_name}" _lower_name)
+
+    if(_template_name STREQUAL "${_lower_name}-config.cmake.in")
+        set(${_config_var} "${_lower_name}-config.cmake" PARENT_SCOPE)
+        set(${_version_var} "${_lower_name}-config-version.cmake" PARENT_SCOPE)
+    else()
+        set(${_config_var} "${_name}Config.cmake" PARENT_SCOPE)
+        set(${_version_var} "${_name}ConfigVersion.cmake" PARENT_SCOPE)
+    endif()
+endfunction()
+
+# Sets <var> to the config template of <name> in <dir>, <name>Config.cmake.in if both exist.
+function(_qm_default_config_template _var _dir _name)
+    string(TOLOWER "${_name}" _lower_name)
+
+    if(EXISTS "${_dir}/${_lower_name}-config.cmake.in" AND NOT EXISTS "${_dir}/${_name}Config.cmake.in")
+        set(${_var} "${_dir}/${_lower_name}-config.cmake.in" PARENT_SCOPE)
+    else()
+        set(${_var} "${_dir}/${_name}Config.cmake.in" PARENT_SCOPE)
+    endif()
 endfunction()
 
 #[==[.rst:

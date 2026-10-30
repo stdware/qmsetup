@@ -40,3 +40,26 @@ qm_basic_install(
     COMPATIBILITY SameMajorVersion
     CONFIG_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/QmTestTemplatedConfig.cmake.in"
 )
+
+# A template spelled in lower case, the other form that find_package searches for. The name is in
+# mixed case, so that the package files show it lowered.
+qm_basic_install(
+    NAME QmTestLower
+    VERSION 1.2.3
+    CONFIG_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/qmtestlower-config.cmake.in"
+)
+
+# No template given, with the lower case template of the name in the current list directory.
+qm_basic_install(
+    NAME QmTestFound
+    VERSION 4.5.6
+)
+
+# A version file configured from a template in place of the one that
+# write_basic_package_version_file writes. The template reads a variable of the caller.
+set(QMTEST_VERSIONED_VERSION 7.7.7.7)
+qm_basic_install(
+    NAME QmTestVersioned
+    VERSION 7.7.7.7
+    VERSION_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/QmTestVersionedConfigVersion.cmake.in"
+)

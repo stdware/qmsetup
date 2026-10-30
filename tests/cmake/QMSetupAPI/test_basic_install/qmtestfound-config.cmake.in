@@ -1,0 +1,5 @@
+@PACKAGE_INIT@
+
+# A marker, so that a test can tell that this template was taken without being
+# named.
+set(QMTEST_FOUND_TEMPLATE on)

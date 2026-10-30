@@ -87,6 +87,7 @@ set(_built_projects
     modules/Preprocess/test_sync_include_install
     modules/Deploy/test_deploy_directory
     modules/private/Generate/test_binary_resource
+    buildsystem/BuildRepoHelpers/test_install_names
 )
 
 # Frameworks and bundles exist only on Apple platforms.

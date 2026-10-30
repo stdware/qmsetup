@@ -1,0 +1,4 @@
+# A marker, so that a test can tell this version file from the one that
+# write_basic_package_version_file writes.
+set(QMTEST_VERSION_FROM_A_TEMPLATE on)
+set(PACKAGE_VERSION "@QMTEST_VERSIONED_VERSION@")

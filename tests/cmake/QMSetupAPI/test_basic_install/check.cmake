@@ -77,3 +77,37 @@ if(_version_file)
     qmtest_file_lacks("and the default compares differently"
         "${_version_file}" "PACKAGE_FIND_VERSION_MAJOR")
 endif()
+
+# The one given a template spelled in lower case
+the_one_file(_lower "qmtestlower-config.cmake")
+the_one_file(_lower_version "qmtestlower-config-version.cmake")
+the_one_file(_lower_pascal "QmTestLowerConfig.cmake")
+qmtest_true("a lower case template gives a lower case configuration" "${_lower}")
+qmtest_true("and a lower case version file" "${_lower_version}")
+qmtest_false("and no PascalCase configuration" "${_lower_pascal}")
+
+if(_lower)
+    qmtest_file_contains("the lower case template is what was expanded" "${_lower}" "QMTEST_LOWER_TEMPLATE")
+endif()
+
+if(_lower_version)
+    qmtest_file_contains("the lower case version file carries the version" "${_lower_version}" "1\\.2\\.3")
+endif()
+
+# The one whose lower case template lies in the list directory
+the_one_file(_found "qmtestfound-config.cmake")
+qmtest_true("without CONFIG_TEMPLATE the lower case template of the name is taken" "${_found}")
+
+if(_found)
+    qmtest_file_contains("and expanded" "${_found}" "QMTEST_FOUND_TEMPLATE")
+endif()
+
+# The one given a version template
+the_one_file(_versioned "QmTestVersionedConfigVersion.cmake")
+qmtest_true("a package with a version template is installed" "${_versioned}")
+
+if(_versioned)
+    qmtest_file_contains("VERSION_TEMPLATE is what was configured" "${_versioned}" "QMTEST_VERSION_FROM_A_TEMPLATE")
+    qmtest_file_contains("with its variables replaced" "${_versioned}" "7\\.7\\.7\\.7")
+    qmtest_file_lacks("rather than the file that would have been written" "${_versioned}" "PACKAGE_VERSION_COMPATIBLE")
+endif()
