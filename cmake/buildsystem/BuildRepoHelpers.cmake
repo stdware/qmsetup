@@ -53,6 +53,7 @@ endif()
         <proj>_INSTALL_NAMESPACE: string, default: ${<proj>_INSTALL_NAME}
         <proj>_INSTALL_CONFIG_TEMPLATE: string, default: as qm_basic_install chooses it
         <proj>_INSTALL_PDB: boolean, default: false
+        <proj>_PLUGIN_TYPE: SHARED or MODULE, the library type of <proj>_add_plugin, default: SHARED
         <proj>_INSTALL_DIR_USE_DEBUG_PREFIX: boolean, default: false
         <proj>_EXPORT: string, default: ${<proj>_INSTALL_NAME}Targets, or <lowercase-name>-targets
             with a lower case config template
@@ -390,6 +391,7 @@ endfunction()
     Add an application plugin.
 
     <proj>_add_plugin(<target>
+        [SHARED | MODULE]
         [CATEGORY category]
         [QT_AUTOGEN]
         [NO_EXPORT]
@@ -403,13 +405,28 @@ endfunction()
     )
 ]] #
 function(${_F}_add_plugin _target)
-    set(options NO_EXPORT NO_INSTALL NO_INSTALL_ARCHIVE NO_INSTALL_PDB)
+    set(options SHARED MODULE NO_EXPORT NO_INSTALL NO_INSTALL_ARCHIVE NO_INSTALL_PDB)
     set(oneValueArgs CATEGORY RUNTIME_DIRECTORY LIBRARY_DIRECTORY ARCHIVE_DIRECTORY PDB_DIRECTORY)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
+    # The keyword of the call takes precedence over the default of the repository
+    if(FUNC_SHARED AND FUNC_MODULE)
+        message(FATAL_ERROR "${_F}_add_plugin: ${_target} is given both SHARED and MODULE")
+    elseif(FUNC_SHARED)
+        set(_library_type SHARED)
+    elseif(FUNC_MODULE)
+        set(_library_type MODULE)
+    elseif(NOT DEFINED ${_V}_PLUGIN_TYPE OR "${${_V}_PLUGIN_TYPE}" STREQUAL "")
+        set(_library_type SHARED)
+    elseif("${${_V}_PLUGIN_TYPE}" MATCHES "^(SHARED|MODULE)$")
+        set(_library_type ${${_V}_PLUGIN_TYPE})
+    else()
+        message(FATAL_ERROR "${_V}_PLUGIN_TYPE is ${${_V}_PLUGIN_TYPE}, which is neither SHARED nor MODULE")
+    endif()
+
     set(_extra_args)
-    _repo_add_library_internal(${_target} Plugin _extra_args SHARED ${FUNC_UNPARSED_ARGUMENTS})
+    _repo_add_library_internal(${_target} Plugin _extra_args ${_library_type} ${FUNC_UNPARSED_ARGUMENTS})
 
     if(_extra_args)
         cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} ${_extra_args})
@@ -1071,7 +1088,7 @@ endfunction()
     )
 ]] #
 function(_repo_add_library_internal _target _type _extra_args_ref)
-    set(options STATIC SHARED INTERFACE QT_AUTOGEN)
+    set(options STATIC SHARED MODULE INTERFACE QT_AUTOGEN)
     set(oneValueArgs MACRO_PREFIX LIBRARY_MACRO STATIC_MACRO)
     set(multiValueArgs)
     cmake_parse_arguments(FUNC "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -1095,6 +1112,8 @@ function(_repo_add_library_internal _target _type _extra_args_ref)
 
     if(FUNC_SHARED)
         add_library(${_target} SHARED)
+    elseif(FUNC_MODULE)
+        add_library(${_target} MODULE)
     elseif(FUNC_INTERFACE)
         set(_scope INTERFACE)
         set(_interface on)

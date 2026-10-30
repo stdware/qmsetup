@@ -4,6 +4,7 @@
 
 ### Added
 
+- `SHARED` and `MODULE` for `<proj>_add_plugin`, and `<proj>_PLUGIN_TYPE` as the default of a repository, which select the library type of a plugin. The default remains `SHARED`. A `MODULE` plugin has no import library, so nothing installs one beside it.
 - `VERSION_TEMPLATE` for `qm_basic_install`, which configures the package version file from a template in place of the file that `write_basic_package_version_file` writes.
 - `QMSETUP_FORCE_EXECUTABLE_PERMISSIONS`, which grants execute permission to every binary that qmsetup installs or deploys. It defaults to `OFF`.
 - `EXCLUDE` for `qm_deploy_directory`, which skips the dependencies whose paths match the given regular expressions.

@@ -62,6 +62,7 @@ set(_scripts
 
 set(_configured_projects
     QMSetupAPI/test_targets
+    buildsystem/BuildRepoHelpers/test_plugin_type
     modules/Preprocess/test_definition_scopes
     modules/private/InstallPackage/test_make_program
 )
