@@ -15,6 +15,8 @@ cmake -B build -DQMSETUP_BUILD_TESTS=ON \
 - Most behavior under `cmake/modules/private`. It says on it that it may be modified or removed, and nothing outside qmsetup should be calling it. `qm_install_package` has a local regression test for forwarding the selected generator program, but its external package workflows are otherwise left alone because useful coverage would want a network.
 - `qm_compiler_*`, which is under `private` for the same reason and has one of its own. Each is a list of compiler flags chosen per compiler, so a test could only read the list back to itself, which says nothing about whether the flags are the right ones. What would catch a mistake there is compiling with them.
 
+- The deployment by `qmcorecmd deploy -s` on Linux of a library of the package manager under `/usr/lib`, such as libz. A test requires a fixture linked against a library of the distribution, which changes the dependency graph of the fixtures for one table of names.
+
 ## Not tested yet
 
 - The pass that strips a universal binary down to the architecture in use, which needs a binary built for two. `lipo` itself is on every machine with the command line tools, so what is missing is the fixture: building one means a second pass over the whole deploy tree with `CMAKE_OSX_ARCHITECTURES`, and it would test one function.

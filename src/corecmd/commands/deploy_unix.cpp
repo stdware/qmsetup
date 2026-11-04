@@ -251,9 +251,7 @@ namespace Deploy {
         return path;
     }
 
-    bool isSystemLibrary(const fs::path &path, const TString &fileName, bool standard) {
-        std::ignore = path;
-        // Nothing is filtered until --standard says so.
+    bool isSystemLibrary(const TString &fileName, bool standard) {
         if (!standard) {
             return false;
         }
@@ -375,48 +373,105 @@ namespace Deploy {
         return path;
     }
 
-    // Returns whether path is under a library directory of the system: /lib, /lib32, /lib64,
-    // /libx32 or their counterparts under /usr, with their subdirectories, such as the
-    // directories of the architectures of Debian. /usr/local holds what the user installed and
-    // is not one.
-    bool isUnderSystemDirectory(const fs::path &path) {
-        static const char *const directories[] = {"/lib",     "/lib32",     "/lib64",
-                                                  "/libx32",  "/usr/lib",   "/usr/lib32",
-                                                  "/usr/lib64", "/usr/libx32"};
-        for (const auto directory : directories) {
-            const auto relative = stdc::path::lexically_relative(path, directory);
-            if (!relative.empty() && *relative.begin() != "..") {
+    // Matched by name, because /usr/lib also holds the libraries of the package manager. A
+    // prefix ends with ".so", "-" or "_", because a bare "libm" also matches libmagic.
+    const char *const systemLibraryPrefixes[] = {
+        // glibc
+        "ld-linux",
+        "libc.so",
+        "libc-",
+        "libm.so",
+        "libm-",
+        "libmvec.so",
+        "libdl.so",
+        "libdl-",
+        "libpthread.so",
+        "libpthread-",
+        "librt.so",
+        "librt-",
+        "libresolv.so",
+        "libutil.so",
+        "libanl.so",
+        "libnss_",
+        "libthread_db.so",
+        "libbrokenlocale.so",
+
+        // GCC
+        "libstdc++",
+        "libgcc_s",
+
+        // Graphics driver
+        "libgl.so",
+        "libglx.so",
+        "libglx_",
+        "libegl.so",
+        "libegl_",
+        "libgldispatch.so",
+        "libopengl.so",
+        "libglesv1_cm.so",
+        "libglesv2.so",
+        "libglapi.so",
+        "libgbm.so",
+        "libdrm.so",
+        "libdrm_",
+        "libvulkan.so",
+        "libnvidia-",
+        "libcuda.so",
+
+        // X11 and Wayland
+        "libx11.so",
+        "libx11-xcb.so",
+        "libxcb",
+        "libxau.so",
+        "libxdmcp.so",
+        "libxext.so",
+        "libxrender.so",
+        "libxi.so",
+        "libxfixes.so",
+        "libxrandr.so",
+        "libxcursor.so",
+        "libxinerama.so",
+        "libxcomposite.so",
+        "libxdamage.so",
+        "libxtst.so",
+        "libxss.so",
+        "libxxf86vm.so",
+        "libxshmfence.so",
+        "libxkbcommon.so",
+        "libxkbcommon-x11.so",
+        "libsm.so",
+        "libice.so",
+        "libwayland-",
+
+        // Sound
+        "libasound.so",
+        "libpulse.so",
+        "libpulse-",
+        "libpipewire-",
+        "libjack.so",
+
+        // Fonts
+        "libfontconfig.so",
+        "libfreetype.so",
+
+        // GLib
+        "libglib-2.0.so",
+        "libgobject-2.0.so",
+        "libgio-2.0.so",
+        "libgmodule-2.0.so",
+        "libgthread-2.0.so",
+    };
+
+    bool isSystemLibrary(const TString &fileName, bool standard) {
+        if (!standard) {
+            return false;
+        }
+        for (const auto prefix : systemLibraryPrefixes) {
+            if (stdc::str::starts_with(fileName, prefix)) {
                 return true;
             }
         }
         return false;
-    }
-
-    bool isSystemLibrary(const fs::path &path, const TString &fileName, bool standard) {
-        // Nothing is filtered until --standard says so.
-        if (!standard) {
-            return false;
-        }
-        // A library of the system, such as libGL of the graphics driver or libxcb, is provided
-        // by every machine, and the one of the machine has to be used. The libraries that Qt
-        // for Linux installs beside itself are not of the system, its ICU among them, whose
-        // version other systems lack. The ICU was once passed over by its name.
-        if (isUnderSystemDirectory(path)) {
-            return true;
-        }
-        return stdc::str::starts_with(fileName, "libstdc++") ||
-               stdc::str::starts_with(fileName, "libgcc") ||
-               stdc::str::starts_with(fileName, "libglib") ||
-               stdc::str::starts_with(fileName, "libpthread") ||
-               stdc::str::starts_with(fileName, "libgthread") ||
-               stdc::str::starts_with(fileName, "libc.so") ||
-               stdc::str::starts_with(fileName, "libc-") ||
-               stdc::str::starts_with(fileName, "libdl.so") ||
-               stdc::str::starts_with(fileName, "libdl-") ||
-               // Spelled out rather than as "libm", which would take libmagic and libmount with
-               // it.
-               stdc::str::starts_with(fileName, "libm.so") ||
-               stdc::str::starts_with(fileName, "libm-");
     }
 
     void noteDependency(const fs::path &path) {

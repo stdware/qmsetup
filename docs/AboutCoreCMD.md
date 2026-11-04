@@ -175,7 +175,7 @@ Where they are looked for follows from that. Everywhere, the directory each name
 
 **On Unix the copies are rewritten.** A library that has moved cannot find its neighbours by the path it was built with, so every binary that was named and every plugin that was copied has its rpath rewritten to point where the libraries went. The binaries in the output directory no longer name the machine they were built on. Windows has nothing of the sort and needs none.
 
-`-s` leaves out what every machine already has. On Windows nothing under the system directories is ever deployed whether or not `-s` was given, and `-s` additionally drops the MSVC runtime. On Unix nothing is filtered until `-s` says so, and a deployment without it drags the C library along.
+`-s` leaves out what every machine already has. On Windows nothing under the system directories is ever deployed whether or not `-s` was given, and `-s` additionally drops the MSVC runtime. On Unix nothing is filtered until `-s` says so, and a deployment without it drags the C library along. On Linux `-s` leaves out the libraries that have to match the machine: glibc and the dynamic loader, the GCC runtime, the libraries of the graphics driver such as libGL, libEGL and libvulkan, the client libraries of X11, xcb, Wayland and the sound servers, fontconfig, FreeType and GLib. These libraries are recognized by file name rather than by directory, because `/usr/lib` also holds the libraries of the package manager, such as a Qt or an OpenSSL of the distribution, which are deployed. On macOS `-s` leaves out libc++ and libSystem.
 
 Every library deployed must have a different file name, since they all land in the one directory.
 

@@ -45,10 +45,9 @@ endforeach()
 # The libraries of the system on Linux
 # ------------------------------------------------------------------
 
-# With STANDARD a library under a library directory of the system, such as libGL of the
-# graphics driver and libxcb, which QtGui and the platform plugin require, is left to the
-# machine. The ICU that Qt installs beside its libraries is deployed, because other systems
-# lack its version.
+# With STANDARD a library of the system, such as libGL of the graphics driver and libxcb, which
+# QtGui and the platform plugin require, is left to the machine. The ICU that Qt installs beside
+# its libraries is deployed, because other systems lack its version.
 if(CMAKE_HOST_UNIX AND NOT CMAKE_HOST_APPLE)
     set(_system)
     set(_icu)
